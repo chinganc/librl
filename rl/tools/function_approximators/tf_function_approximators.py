@@ -1,11 +1,22 @@
 import tensorflow as tf
 from abc import abstractmethod
-from rl.tools.function_approximators.function_approximator import FunctionApproximator, online_compatible
+from rl.tools.function_approximators.function_approximator import FunctionApproximator
 
 from rl.tools.normalizers import tfNormalizer, tfNormalizerMax
 from rl.tools.utils import tf_utils as U
 tfObject = U.tfObject
 tf_float = U.tf_float
+
+
+def online_compatible(f):
+    # A decorator to make f, designed for batch inputs and outputs, support both single and
+    # batch predictions
+    @wraps(f)
+    def wrapper(self, *args, **kwargs):
+        assert len(args) > 0
+        return f(self, *(arg[None] for arg in args), **kwargs)[0] if len(args[0].shape) == 1 else f(self, *args, **kwargs)
+    return wrapper
+
 
 
 class tfFunctionApproximator(tfObject, FunctionApproximator):
@@ -66,21 +77,20 @@ class tfFunctionApproximator(tfObject, FunctionApproximator):
         return tfObject._pre_deepcopy_list.fget(self) + ['_nor']
 
     # Required methods of FunctionApproximator
-    # save, restore, copy, __deepcopy__ have been inherited from tfObject
-    @online_compatible
+    # save, restore, copy, __deepcopy__ have been inherited from tfObject    
     def predict(self, x):
         return self._yh(x)
 
-    def prepare_for_update(self, x):
+    def pre_callback(self, x):
         self._nor.update(x)
 
     @property
-    def variable(self):
-        return self._sh_vars.variable
+    def variables(self):
+        return self._sh_vars.variables
 
-    @variable.setter
-    def variable(self, val):
-        self._sh_vars.variable = val
+    @variables.setter
+    def variables(self, val):
+        self._sh_vars.variables
 
     def assign(self, other):
         # need to overload this because of self._nor

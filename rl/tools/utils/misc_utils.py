@@ -95,17 +95,17 @@ def unflatten(v, template=None, shapes=None):
         template: a list of arrays.
         shapes: a list of tuples.
     """
-    assert template is not None or shapes is not None
+    assert (template is None) != (shapes is None)  # XOR
     start = 0
     vs = []
     if template:
         for w in template:
-            vs.append(np.reshape(v[start:start + w.size], w.shape))
+            vs.append(np.reshape(v[start:start+w.size], w.shape))
             start += w.size
     else:
         for shape in shapes:
             size = np.prod(shape)
-            vs.append(np.reshape(v[start:start + size], shape))
+            vs.append(np.reshape(v[start:start+size], shape))
             start += size
     return vs
 
