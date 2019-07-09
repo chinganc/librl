@@ -8,23 +8,39 @@ from rl.tools.function_approximators.function_approximator import FunctionApprox
 class tf2FunctionApproximator(FunctionApproximator):
     """
         A wrapper of tf.keras.Model
+
+        The user should implement _build_model
     """
     def __init__(self, x_shapes, y_shapes, name='tf2_func_approx', seed=None,
-                 build_model=None):
+                 build_model=None,  # ah-hoc keras.Model
+                 build_input_nor=None,  # input normalizer
+                 build_output_nor=None):  # output normalizer
+
+        x = tf.keras.Input(shape=x_shape)
+
+        build_input_nor = build_input_nor or tfNormalizerMax
+        self._in_nor = build_input_nor(x_shapes)
 
         build_model = build_model or self._build_model
         self.model =  build_model(x_shapes, y_shapes, seed)
+
+        build_output_nor = build_output_nor or tfNormalizerMax
+        self._out_nor = build_output_nor(y_shapes)
+
+
         super().__init__(x_shapes, y_shapes, name, seed)
 
     def _build_model(self, x_shapes, y_shapes, seed=None):
-        """ return a tf.keras.Model """
+        """ Default model
+        
+            return a tf.keras.Model 
+        """
         raise NotImplementedError
 
-    def predict(self, x, online=False, **keras_kwargs):
-        if online:
-            return online_compatible(model.predict)(x, **keras_kwargs)
-        else:
-            return model.predict(x, **keras_kwargs)
+    def predict(self, xs, **kwargs):
+        # kwargs contains parameters for tf.keras.Model.predict.
+        xs = self._in_nor.predict(xs)
+        return model.predict(xs, **kwargs)
 
     @property
     def variables(self):

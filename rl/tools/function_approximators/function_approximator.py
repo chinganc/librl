@@ -9,30 +9,28 @@ def online_compatible(f):
     @wraps(f)
     def wrapper(self, x, **kwargs):
         x = [xx[None,:] for xx in x] if type(x) is list else x[None,:]  # add an extra dimension
-        y = f(x, **keras_kwargs)
+        y = f(x, **kwargs)
         y = [yy[0] for yy in y] if type(y) is list else y[0]  # remove the extra dimension
     return wrapper
 
-
 def assert_shapes(s1, s2):
     assert type(s1)==type(s2)
-    if type(s1) is list:
+    if isinstance(s1, list):
         assert all([ss1==ss2 for ss1,ss2 in zip(s1,s2)])
     else:
         assert s1==s2
-
-
 
 class FunctionApproximator(ABC):
     """
         An abstract interface of function approximators.
 
-        Generally a function approximator has "variables" that are amenable to gradient-based updates,
-        and "parameters" that works as the hyper-parameters.
+        Generally a function approximator has 
+            1) "variables" that are amenable to gradient-based updates,
+            2) "parameters" that works as the hyper-parameters.
 
         The user needs to implement the following
             predict, variables (getter and setter), save, restore
-            pre_callback, post_callback (optional)
+            update (optional)
 
         In addition, the class should be copy.deepcopy compatible.
     """
@@ -42,30 +40,27 @@ class FunctionApproximator(ABC):
         self.x_shapes = x_shapes  # a nd.array or a list of nd.arrays
         self.y_shapes = y_shapes  # a nd.array or a list of nd.arrays
         self.seed = seed
-
+        
+        self._online_predict = online_compatible(self.predict)
+    
     @abstractmethod
-    def predict(self, x, online=False):
-        """ Predict the values at x.
+    def predict(self, xs, **kwargs):
+        """ Predict the values over batches of xs. """
 
-            When online is False, the first dimension of x is treated as the batch size so should
-            the first dimension of the output. When online is True, an instance of x is provided and
-            the output should matches the size of an instance of prediction (not including the batch
-            size).
-        """
-    def pre_callback(self, *args, **kwargs):
-        """ Perform pre-processing before the update of variables.
+    def __call__(self, x, **kwargs):
+        """ Predict the value at x """
+        return self._online_predict(x, **kwargs)
+
+    def update(self, *args, **kwargs):
+        """ Perform update the parameters.
 
             This can include updating internal normalizers, etc.
         """
-    def post_callback(self, *args, **kwargs):
-        """ Perform post-processing after the update of varaibles.
 
-            This can include logging, etc.
-        """
     @property
     @abstractmethod
     def variables(self):
-        """ Return the variables as a list of nd.ndarrays """
+        """ Return the variables as a list of nd.ndarrays. """
 
     @variables.setter
     @abstractmethod
@@ -74,26 +69,23 @@ class FunctionApproximator(ABC):
 
     @property
     def variable(self):
-        """ Return a np.ndarray of the variables """
+        """ Return a np.ndarray of the variables. """
         return flatten(self.variables)
 
     @variable.setter
     def variable(self, val):
-        """ Set the variables as val, which is a np.ndarray in the same format as self.variable."""
+        """ Set the variables as val, which is a np.ndarray in the same format as self.variable. """
         self.variables = unflatten(val, template=self.variables)
 
     # utilities
     @abstractmethod
     def assign(self, other):
-        """ Set both the variables and the parameters as other.
+        """ Set both the variables and the parameters as other. """
 
-            In general, this may be different from copy.deepcopy; with assign, self can have
-            different, e.g., update behaviors from other.
-        """
     @abstractmethod
     def save(self, path, *args, **kwargs):
-        """ Save the instance in path"""
+        """ Save the instance in path. """
 
     @abstractmethod
     def restore(self, path, *args, **kwargs):
-        """ restore the saved instance in path """
+        """ restore the saved instance in path. """
