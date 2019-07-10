@@ -3,16 +3,6 @@ from functools import wraps
 
 from rl.tools.utils.misc_utils import flatten, unflatten
 
-def online_compatible(f):
-    # A decorator to make f, designed for batch inputs and outputs, support both single and
-    # batch predictions
-    @wraps(f)
-    def wrapper(self, x, **kwargs):
-        x = [xx[None,:] for xx in x] if type(x) is list else x[None,:]  # add an extra dimension
-        y = f(x, **kwargs)
-        y = [yy[0] for yy in y] if type(y) is list else y[0]  # remove the extra dimension
-    return wrapper
-
 def assert_shapes(s1, s2):
     assert type(s1)==type(s2)
     if isinstance(s1, list):
@@ -21,35 +11,34 @@ def assert_shapes(s1, s2):
         assert s1==s2
 
 class FunctionApproximator(ABC):
-    """
-        An abstract interface of function approximators.
+    """ An abstract interface of function approximators.
 
-        Generally a function approximator has 
+        Generally a function approximator has
             1) "variables" that are amenable to gradient-based updates,
             2) "parameters" that works as the hyper-parameters.
 
         The user needs to implement the following
-            predict, variables (getter and setter), save, restore
-            update (optional)
+            `predict`, `variables` (getter and setter), `assign`, `save`, `restore`
+            `update` (optional)
 
         In addition, the class should be copy.deepcopy compatible.
     """
-
-    def __init__(self, x_shapes, y_shapes, name='func_approx', seed=None):
+    def __init__(self, x_shape, y_shape, name='func_approx', seed=None):
         self.name = name
-        self.x_shapes = x_shapes  # a nd.array or a list of nd.arrays
-        self.y_shapes = y_shapes  # a nd.array or a list of nd.arrays
+        self.x_shape = x_shape  # a nd.array or a list of nd.arrays
+        self.y_shape = y_shape  # a nd.array or a list of nd.arrays
         self.seed = seed
-        
-        self._online_predict = online_compatible(self.predict)
-    
+
     @abstractmethod
     def predict(self, xs, **kwargs):
         """ Predict the values over batches of xs. """
 
     def __call__(self, x, **kwargs):
         """ Predict the value at x """
-        return self._online_predict(x, **kwargs)
+        x = [xx[None,:] for xx in x] if isinstance(x, list) else x[None,:]  # add an extra dimension
+        y = self.predict(x, **kwargs)
+        y = [yy[0] for yy in y] if isinstanc(y, list) else y[0]  # remove the extra dimension
+        return y
 
     def update(self, *args, **kwargs):
         """ Perform update the parameters.
