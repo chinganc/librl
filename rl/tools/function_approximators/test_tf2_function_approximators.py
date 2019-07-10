@@ -42,10 +42,10 @@ class TestKerasFuncApp(unittest.TestCase):
         fun = KerasFuncApp(x_shape, y_shape, build_model=build_model1)
 
         new_fun = copy.deepcopy(fun)
-        new_fun.variables = fun.variables      
+        new_fun.variables = fun.variables
         new_fun.variable = fun.variable+1
         assert all([np.all(np.isclose(v1-v2,1.0)) for v1, v2 in zip(new_fun.variable,fun.variable)])
-      
+
     def test_predict(self):
         x_shape = (10,2,3)
         y_shape = (3,)
@@ -61,9 +61,11 @@ class TestKerasFuncApp(unittest.TestCase):
         y_shape = (3,)
         fun1 = KerasFuncApp(x_shape, y_shape, build_model=build_model1)
         fun2 = KerasFuncApp(x_shape, y_shape, build_model=build_model1)
-        fun1.save('./fun')
-        fun2.restore('./fun')
-        assert all([np.all(np.isclose(v1-v2,0.0)) for v1, v2 in zip(fun1.variable,fun2.variable)])
+        import tempfile
+        with tempfile.TemporaryDirectory() as path:
+            fun1.save(path)
+            fun2.restore(path)
+            assert all([np.all(np.isclose(v1-v2,0.0)) for v1, v2 in zip(fun1.variable,fun2.variable)])
 
 
 if __name__ == '__main__':

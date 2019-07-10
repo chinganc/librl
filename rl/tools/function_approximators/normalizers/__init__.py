@@ -1,3 +1,3 @@
-from .normalizer import OnlineNormalizer, NormalizerStd, NormalizerMax, NormalizerId
-from .tf_normalizer import tfNormalizer, tfNormalizerMax, tfNormalizerStd, tfNormalizerId
+from .normalizer import NormalizerMax, NormalizerStd
+from .tf2_normalizer import tf2NormalizerMax, tf2NormalizerStd
 

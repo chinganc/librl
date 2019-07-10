@@ -10,6 +10,7 @@ def assert_shapes(s1, s2):
     else:
         assert s1==s2
 
+
 class FunctionApproximator(ABC):
     """ An abstract interface of function approximators.
 
@@ -37,7 +38,7 @@ class FunctionApproximator(ABC):
         """ Predict the value at x """
         x = [xx[None,:] for xx in x] if isinstance(x, list) else x[None,:]  # add an extra dimension
         y = self.predict(x, **kwargs)
-        y = [yy[0] for yy in y] if isinstanc(y, list) else y[0]  # remove the extra dimension
+        y = [yy[0] for yy in y] if isinstance(y, list) else y[0]  # remove the extra dimension
         return y
 
     def update(self, *args, **kwargs):
@@ -54,7 +55,7 @@ class FunctionApproximator(ABC):
     @variables.setter
     @abstractmethod
     def variables(self, vals):
-        """ Set the variables as val, which is in the same format as self.variables."""
+        """ Set the variables as val, which is in the same format as self.variables. """
 
     @property
     def variable(self):

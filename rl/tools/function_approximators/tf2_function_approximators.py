@@ -2,7 +2,7 @@ import copy
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers
-from rl.tools.function_approximators.function_approximator import FunctionApproximator, online_compatible, assert_shapes
+from rl.tools.function_approximators.function_approximator import FunctionApproximator, assert_shapes
 
 
 class KerasFuncApp(FunctionApproximator):
@@ -37,7 +37,7 @@ class KerasFuncApp(FunctionApproximator):
 
     def _build_model(self, x_shape, y_shape, seed=None):
         """ Build the default model.
-            
+
             Users are free to create additional attributes, which are
             tf.keras.Model, tf.keras.Layer, tf.Variable, etc., to help
             construct the overall function approximator. At the end, the
@@ -48,7 +48,7 @@ class KerasFuncApp(FunctionApproximator):
 
     def build(self):
         """ Build an initialized tf.keras.Model as the overall function
-            approximator.            
+            approximator.
         """
         build_model = self.build_model or self._build_model
         self.model = build_model(self.x_shape, self.y_shape, seed=self.seed)
@@ -92,8 +92,8 @@ class KerasFuncApp(FunctionApproximator):
         for k, v in self.__dict__.items():
             try:
                 setattr(new, k, copy.deepcopy(v, memo))
-            except:  
-                pass         
+            except:
+                pass
         new.build()  # this should work
         new.assign(self)
         return new
