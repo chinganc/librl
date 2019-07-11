@@ -20,16 +20,46 @@ def _tf2NormalizerDecorator(cls):
         def __init__(self, shape, *args, **kwargs):
             super().__init__(shape, *args, **kwargs)
             # add additional tf.Variables
-            self.ts_bias = tf.Variable(self.bias, dtype=tf_float)
-            self.ts_scale = tf.Variable(self.scale, dtype=tf_float)
-            self.ts_unscale = tf.Variable(self.unscale, dtype=tf.bool)
-            self.ts_unbias = tf.Variable(self.unbias, dtype=tf.bool)
+            self._ts_bias = tf.Variable(self._bias, dtype=tf_float)
+            self._ts_scale = tf.Variable(self._scale, dtype=tf_float)
+            self._ts_unscale = tf.Variable(self._unscale, dtype=tf.bool)
+            self._ts_unbias = tf.Variable(self._unbias, dtype=tf.bool)
             self._ts_initialized = tf.Variable(self._initialized, dtype=tf.bool)
-            self._ts_clip = tf.Variable(self.thre is not None)
+            self._ts_clip = tf.Variable(self._thre is not None)
             if self._ts_clip:
-                self.ts_thre = tf.Variable(self.thre, dtype=tf_float)
+                self._ts_thre = tf.Variable(self._thre, dtype=tf_float)
             else:
-                self.ts_thre = tf.Variable((0.,0.), dtype=tf_float)
+                self._ts_thre = tf.Variable((0.,0.), dtype=tf_float)
+
+        # add a convenient interface
+        @tf.function
+        def ts_predict(self, ts_x):
+            """ A tf operator that mimics the behavior of `predict`. """
+            if tf.logical_not(self._ts_initialized):
+                return ts_x
+
+            # do something
+            if tf.logical_not(self._ts_clip):
+                if tf.logical_not(self._ts_unbias):
+                    ts_x = ts_x - self._ts_bias
+                if tf.logical_not(self._ts_unscale):
+                    ts_x = ts_x / self._ts_scale
+            else:
+                # need to first scale it before clipping
+                ts_x = (ts_x - self._ts_bias) / self._ts_scale
+                ts_x = tf.clip_by_value(ts_x, self._ts_thre[0], self.ts_thre[1])
+                # check if we need to scale it back
+                if self._ts_unscale:
+                    ts_x = ts_x * self._ts_scale
+                    if self._ts_unbias:
+                        ts_x = ts_x + self._ts_bias
+                else:
+                    if self._ts_unbias:
+                        ts_x = ts_x + self._ts_bias / self._ts_scale
+            return ts_x
+
+        def ts_normalize(self, ts_x):  # alias
+            return self.ts_predict(ts_x)
 
         # make sure the tf.Variables are synchronized
         def update(self, x):
@@ -53,46 +83,14 @@ def _tf2NormalizerDecorator(cls):
 
         def _update_tf_vars(self):
             # synchronize the tf.Variables
-            self.ts_bias.assign(self.bias)
-            self.ts_scale.assign(self.scale)
-            self.ts_unscale.assign(self.unscale)
-            self.ts_unbias.assign(self.unbias)
+            self._ts_bias.assign(self._bias)
+            self._ts_scale.assign(self._scale)
+            self._ts_unbias.assign(self._unbias)
+            self._ts_unscale.assign(self._unscale)
             self._ts_initialized.assign(self._initialized)
-            self._ts_clip.assign(self.thre is not None)
+            self._ts_clip.assign(self._thre is not None)
             if self._ts_clip:
-                self.ts_thre.assign(self.thre)
-
-        # add convenient interface
-        # @tf.function
-        def ts_predict(self, ts_x):
-            """ A tf operator that mimics the behavior of `predict`. """
-            ts_x = tf.cast(ts_x, tf_float)
-
-            if tf.logical_not(self._ts_initialized):
-                return ts_x
-
-            # do something
-            if tf.logical_not(self._ts_clip):
-                if tf.logical_not(self.ts_unbias):
-                    ts_x = ts_x - self.ts_bias
-                if tf.logical_not(self.ts_unscale):
-                    ts_x = ts_x / self.ts_scale
-            else:
-                # need to first scale it before clipping
-                ts_x = (ts_x - self.ts_bias) / self.ts_scale
-                ts_x = tf.clip_by_value(ts_x, self.ts_thre[0], self.ts_thre[1])
-                # check if we need to scale it back
-                if self.ts_unscale:
-                    ts_x = ts_x * self.ts_scale
-                    if self.ts_unbias:
-                        ts_x = ts_x + self.ts_bias
-                else:
-                    if self.ts_unbias:
-                        ts_x = ts_x + self.ts_bias / self.ts_scale
-            return ts_x
-
-        def ts_normalize(self, ts_x):  # alias
-            return self.ts_predict(ts_x)
+                self._ts_thre.assign(self._thre)
 
     # make them look the same as intended
     decorated_cls.__name__ = cls.__name__

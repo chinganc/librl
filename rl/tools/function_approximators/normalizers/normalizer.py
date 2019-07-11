@@ -28,10 +28,10 @@ class Normalizer(FunctionApproximator):
         """
         super().__init__(shape, shape, name=name)
         # new attributes
-        self.bias = np.zeros(shape)
-        self.scale = np.ones(shape)
-        self.unscale = unscale
-        self.unbias = unbias
+        self._bias = np.zeros(shape)
+        self._scale = np.ones(shape)
+        self._unscale = unscale
+        self._unbias = unbias
         if isinstance(clip_thre, list) or isinstance(clip_thre, tuple):
             assert len(clip_thre)==2
             clip_thre = np.array(clip_thre)
@@ -39,7 +39,7 @@ class Normalizer(FunctionApproximator):
             if clip_thre is not None:
                 assert np.all(clip_thre>=0)
                 clip_thre = np.array((-clip_thre, clip_thre))
-        self.thre = clip_thre
+        self._thre = clip_thre
         self._initialized = False
 
     def predict(self, x):
@@ -53,23 +53,23 @@ class Normalizer(FunctionApproximator):
             return x
 
         # do something
-        if self.thre is None:
-            if not self.unbias:
-                x = x - self.bias
-            if not self.unscale:
-                x = x / self.scale
+        if self._thre is None:
+            if not self._unbias:
+                x = x - self._bias
+            if not self._unscale:
+                x = x / self._scale
         else:
             # need to first scale it before clipping
-            x = (x - self.bias) / self.scale
-            x = np.clip(x, self.thre[0], self.thre[1])
+            x = (x - self._bias) / self._scale
+            x = np.clip(x, self._thre[0], self._thre[1])
             # check if we need to scale it back
-            if self.unscale:
-                x = x * self.scale
-                if self.unbias:
-                    x = x + self.bias
+            if self._unscale:
+                x = x * self._scale
+                if self._unbias:
+                    x = x + self._bias
             else:
-                if self.unbias:
-                    x = x + self.bias / self.scale
+                if self._unbias:
+                    x = x + self._bias / self._scale
         return x
 
     def normalize(self, x):  # acronym
@@ -89,8 +89,8 @@ class Normalizer(FunctionApproximator):
 
     def reset(self):
         """ Reset bias and scale """
-        self.bias = np.zeros(self.x_shape)
-        self.scale = np.ones(self.x_shape)
+        self._bias = np.zeros(self.x_shape)
+        self._scale = np.ones(self.x_shape)
         self._initialized = False
 
     def assign(self, other):
@@ -145,10 +145,10 @@ class NormalizerStd(Normalizer):
         self._mean.update(new_mean, weight=weight)
         self._mean_of_sq.update(new_mean_of_sq, weight=weight)
         # update bias and scale
-        self.bias = self._mean.val
+        self._bias = self._mean.val
         variance = self._mean_of_sq.val - np.square(self._mean.val)
         std = np.sqrt(np.maximum(variance, np.zeros_like(variance)))
-        self.scale = np.maximum(std, self._eps)
+        self._scale = np.maximum(std, self._eps)
         super().update()
 
     def reset(self):
@@ -190,8 +190,8 @@ class NormalizerMax(Normalizer):
         # update stats
         self._norstd.update(x)
         # update clipping
-        upper_bound_candidate = self._norstd.bias + self._norstd.scale
-        lower_bound_candidate = self._norstd.bias - self._norstd.scale
+        upper_bound_candidate = self._norstd._bias + self._norstd._scale
+        lower_bound_candidate = self._norstd._bias - self._norstd._scale
 
         if not self._initialized:
             self._upper_bound = upper_bound_candidate
@@ -200,8 +200,8 @@ class NormalizerMax(Normalizer):
             self._upper_bound = np.maximum(self._upper_bound, upper_bound_candidate)
             self._lower_bound = np.minimum(self._lower_bound, lower_bound_candidate)
 
-        self.bias = 0.5*self._upper_bound + 0.5*self._lower_bound
-        self.scale = np.maximum(self._upper_bound-self.bias, self._eps)
+        self._bias = 0.5*self._upper_bound + 0.5*self._lower_bound
+        self._scale = np.maximum(self._upper_bound-self._bias, self._eps)
         super().update()
 
     def reset(self):
