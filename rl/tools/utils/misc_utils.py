@@ -20,12 +20,13 @@ def merge_two_dicts(x, y):
     return z
 
 
-def deepcopy_from_list(old, new, attrs):
-    [setattr(old, attr, copy.deepcopy(getattr(new, attr))) for attr in attrs]
+def deepcopy_from_list(old, new, attrs, excludes=()):
+    [setattr(old, attr, copy.deepcopy(getattr(new, attr))) \
+            for attr in attrs if not attr in excludes]
 
-
-def copy_from_list(old, new, attrs):
-    [setattr(old, attr, copy.copy(getattr(new, attr))) for attr in attrs]
+def copy_from_list(old, new, attrs, excludes=()):
+    [setattr(old, attr, copy.copy(getattr(new, attr))) \
+            for attr in attrs if not attr in excludes]
 
 
 color2num = dict(

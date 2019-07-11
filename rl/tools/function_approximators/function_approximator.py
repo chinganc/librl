@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from functools import wraps
-
+import os, pickle
 from rl.tools.utils.misc_utils import flatten, unflatten
 
 def assert_shapes(s1, s2):
@@ -19,8 +19,12 @@ class FunctionApproximator(ABC):
             2) "parameters" that works as the hyper-parameters.
 
         The user needs to implement the following
-            `predict`, `variables` (getter and setter), `assign`, `save`, `restore`
-            `update` (optional)
+            `predict`, `variables` (getter and setter), and `update` (optional)
+
+        We provide basic `assign`, `save`, `restore` functions, based on
+        deepcopy and pickle, which should work for nominal python objects. But
+        they might need be overloaded when more complex objects are used (e.g.,
+        tf.keras.Model) as attributes.
 
         In addition, the class should be copy.deepcopy compatible.
     """
@@ -68,14 +72,20 @@ class FunctionApproximator(ABC):
         self.variables = unflatten(val, template=self.variables)
 
     # utilities
-    @abstractmethod
-    def assign(self, other):
+    def assign(self, other, excludes=()):
         """ Set both the variables and the parameters as other. """
+        assert isinstance(self, type(other))
+        deepcopy_from_list(self, other, self.__dict__.keys(), excludes=excludes)
 
-    @abstractmethod
-    def save(self, path, *args, **kwargs):
+    def save(self, path):
         """ Save the instance in path. """
+        path = os.path.join(path, self.name)
+        with open(path, 'wb') as pickle_file:
+            pickle.dump(self, pickle_file)
 
-    @abstractmethod
-    def restore(self, path, *args, **kwargs):
+    def restore(self, path):
         """ restore the saved instance in path. """
+        path = os.path.join(path, self.name)
+        with open(path, 'rb') as pickle_file:
+            saved = pickle.load(pickle_file)
+        self.assign(saved)
