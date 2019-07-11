@@ -7,7 +7,8 @@ from rl.tools.function_approximators.normalizers.normalizer import Normalizer, N
 from rl.tools.utils.tf_utils import tf_float
 
 class ClipNormalizer(tf.keras.layers.Layer):
-
+    """ A tf.keras.layers.Layer that mimics the behavior of Normalizer. """
+    # NOTE custom layers can be deepcopy and pickle
     def __init__(self, shape):
         super().__init__()
         self._ts_bias = self.add_variable('bias', shape, dtype=tf_float, trainable=False)
@@ -72,31 +73,25 @@ def _tf2NormalizerDecorator(cls):
             super().update(x)
             self._update_tf_vars()
 
-        def reset(self, x):
-            super().reset(x)
+        def reset(self):
+            super().reset()
             self._update_tf_vars()
 
         def assign(self, other):
             super().assign(other)
             self._update_tf_vars()
 
-        def save(self, path):
-            super().save(path)
-
-        def restore(self, path):
-            super().restore(path)
-            self._update_tf_vars()
-
         def _update_tf_vars(self):
             # synchronize the tf.Variables
-            self.model._ts_bias.assign(self._bias)
-            self.model._ts_scale.assign(self._scale)
-            self.model._ts_unbias.assign(self._unbias)
-            self.model._ts_unscale.assign(self._unscale)
-            self.model._ts_initialized.assign(self._initialized)
-            self.model._ts_clip.assign(self._thre is not None)
-            if self.model._ts_clip:
-                self.model._ts_thre.assign(self._thre)
+            if self.model is not None:
+                self.model._ts_bias.assign(self._bias)
+                self.model._ts_scale.assign(self._scale)
+                self.model._ts_unbias.assign(self._unbias)
+                self.model._ts_unscale.assign(self._unscale)
+                self.model._ts_initialized.assign(self._initialized)
+                self.model._ts_clip.assign(self._thre is not None)
+                if self.model._ts_clip:
+                    self.model._ts_thre.assign(self._thre)
 
     # make them look the same as intended
     decorated_cls.__name__ = cls.__name__

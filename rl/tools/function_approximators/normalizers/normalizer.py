@@ -2,7 +2,7 @@ import numpy as np
 import copy
 import pickle
 import os
-
+import functools
 from rl.tools.function_approximators.function_approximator import FunctionApproximator
 from rl.tools.utils.mvavg import ExpMvAvg, PolMvAvg
 from rl.tools.utils.misc_utils import deepcopy_from_list
@@ -93,9 +93,9 @@ class Normalizer(FunctionApproximator):
         self._scale = np.ones(self.x_shape)
         self._initialized = False
 
-    def assign(self, other):
+    def assign(self, other, excludes=()):
         assert isinstance(self, type(other))
-        deepcopy_from_list(self, other, self.__dict__.keys())
+        deepcopy_from_list(self, other, self.__dict__.keys(), excludes=excludes)
 
     def save(self, path):
         path = os.path.join(path, self.name)
@@ -103,6 +103,7 @@ class Normalizer(FunctionApproximator):
             pickle.dump(self, pickle_file)
 
     def restore(self, path):
+        path = os.path.join(path, self.name)
         with open(path, 'rb') as pickle_file:
             saved = pickle.load(pickle_file)
         self.assign(saved)
@@ -123,10 +124,10 @@ class NormalizerStd(Normalizer):
         """
         super().__init__(shape, unscale=unscale, unbias=unbias, clip_thre=clip_thre, name=name)
         if momentum is None:
-            self._mvavg_init = lambda: PolMvAvg(np.zeros(shape), power=rate)
+            self._mvavg_init = functools.partial(PolMvAvg, np.zeros(shape), power=rate)
         else:
             assert momentum <= 1.0 and momentum >= 0.0
-            self._mvavg_init = lambda: ExpMvAvg(np.zeros(shape), rate=momentum)
+            self._mvavg_init = functools.partial(ExpMvAvg, np.zeros(shape), rate=momentum)
         # new attributes
         self._mean = self._mvavg_init()
         self._mean_of_sq = self._mvavg_init()
