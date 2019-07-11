@@ -31,10 +31,21 @@ class Tests(unittest.TestCase):
             assert_array(nxs1, nxs2)
             assert_array(nxs1, nxs3)
 
+
+        # test save and restore
+        import tempfile
+        with tempfile.TemporaryDirectory() as path:
+            nor.save(path)
+            nor2 = copy.deepcopy(nor)
+            nor2.restore(path)
+
+
+
     def test_tf2_normalizers(self):
 
         self._test(Nor.NormalizerStd, Nor.tf2NormalizerStd)
         self._test(Nor.NormalizerMax, Nor.tf2NormalizerMax)
+
 
 
 

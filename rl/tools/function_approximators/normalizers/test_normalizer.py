@@ -23,22 +23,22 @@ class Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as path:
             nor.save(path)
             nor2 = copy.deepcopy(nor)
-            nor2.save(path)
+            nor2.restore(path)
 
     def test_normalizer_std(self):
         shape = (1,2,3)
         nor = Nor.NormalizerStd(shape)
         xs = np.random.random([10]+list(shape))
         nor.update(xs)
-        assert np.all(np.isclose(nor.bias-np.mean(xs,axis=0),0.0))
-        assert np.all(np.isclose(nor.scale-np.std(xs,axis=0),0.0))
+        assert np.all(np.isclose(nor._bias-np.mean(xs,axis=0),0.0))
+        assert np.all(np.isclose(nor._scale-np.std(xs,axis=0),0.0))
         assert nor._initialized  is True
 
         xs2 = np.random.random([10]+list(shape))
         xs = np.concatenate((xs,xs2))
         nor.update(xs2)
-        assert np.all(np.isclose(nor.bias-np.mean(xs,axis=0),0.0))
-        assert np.all(np.isclose(nor.scale-np.std(xs,axis=0),0.0))
+        assert np.all(np.isclose(nor._bias-np.mean(xs,axis=0),0.0))
+        assert np.all(np.isclose(nor._scale-np.std(xs,axis=0),0.0))
 
         # single instance
         nor(xs[0])
@@ -47,6 +47,14 @@ class Tests(unittest.TestCase):
         # reset
         nor.reset()
         assert nor._initialized is False
+
+        # save
+        import tempfile
+        with tempfile.TemporaryDirectory() as path:
+            nor.save(path)
+            nor2 = copy.deepcopy(nor)
+            nor2.restore(path)
+
 
 
 if __name__ == '__main__':
