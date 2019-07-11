@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers
 from rl.tools.function_approximators.function_approximator import FunctionApproximator, assert_shapes
+from rl.tools.function_approximators.normalizers import tf2NormalizerMax
 
 
 class KerasFuncApp(FunctionApproximator):
@@ -23,7 +24,7 @@ class KerasFuncApp(FunctionApproximator):
         signature of `_build_model`, can be passed in __init__ .
 
     """
-    def __init__(self, x_shape, y_shape, name='tf2_func_approx', seed=None,
+    def __init__(self, x_shape, y_shape, name='keras_func_app', seed=None,
                  build_model=None): # a keras.Model or a method that shares the signature of `_build_model`
         super().__init__(x_shape, y_shape, name, seed)
         # decide how to build the model
@@ -97,4 +98,41 @@ class KerasFuncApp(FunctionApproximator):
         new.build()  # this should work
         new.assign(self)
         return new
+
+class RobustKerasFuncApp(KerasFuncApp):
+
+    def __init__(self, x_shape, y_shape, name='robust_keras_func_app', seed=None,
+                 build_model=None, # a keras.Model or a method that shares the signature of `_build_model`
+                 build_in_nor=None, build_out_nor=None):
+
+        build_in_nor = build_in_nor or (lambda : tf2NormalizerMax(x_shape, unscale=False, \
+                                        unbias=False, clip_thre=5.0, rate=0., momentum=None))
+        build_out_nor = build_out_nor or (lambda: tf2NormalizerMax(y_shape, unscale=True, \
+                                        unbias=True, clip_thre=5.0, rate=0., momentum=None))
+
+        self._in_nor = build_in_nor()
+        self._out_nor = build_out_nor()
+        super().__init__(x_shape, y_shape, name, seed, build_model=build_model)
+
+    def build(self):
+        # build an additional input layer
+        super().build()
+        self._model = self.model
+        inputs = tf.keras.Input(shape=self.x_shape)
+        x = self._in_nor.ts_predict(inputs)
+        outputs = self.model(x)
+        self.model = tf.keras.Model(inputs, outputs)
+        outputs = self._out_nor.ts_predict(outputs)
+        self.clipped_model = tf.keras.Model(inputs, outputs)
+
+    def predict(self, xs, clip=True, **kwargs):
+        if clip:
+            return self.clipped_model.predict(xs, **kwargs)
+        else:
+            return self.model.predict(xs, **kwargs)
+
+    def update(self, xs, ys=None):
+        self._in_nor.update(xs)
+        if ys is not None:
+            self._out_nor.update(ys)
 
