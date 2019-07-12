@@ -1,7 +1,9 @@
 import unittest
 import copy
 import tensorflow as tf
+from tensorflow.keras import layers
 import numpy as np
+import functools
 from rl.tools import function_approximators as FA
 
 def assert_array(a,b):
@@ -47,10 +49,42 @@ def test_save_and_restore(cls):
         assert_array(fun1.predict(xs), fun2.predict(xs))
 
 
+def build_kmodel1(x_shape, y_shape, seed=None):
+    # function approximator based on tf.keras.Model
+    kmodel = tf.keras.Sequential()
+    # Adds a densely-connected layer with 64 units to the kmodel:
+    kmodel.add(layers.Dense(64, activation='relu'))
+    # Add another:
+    kmodel.add(layers.Dense(64, activation='relu'))
+    # Add a softmax layer with 10 output units:
+    kmodel.add(layers.Dense(y_shape[0]))
+    return kmodel
+
+def build_kmodel2(x_shape, y_shape, seed=None):
+    inputs = tf.keras.Input(shape=x_shape)
+    x = layers.Dense(64, activation='relu')(inputs)
+    x = layers.Dense(64, activation='relu')(x)
+    y = layers.Dense(y_shape[0])(x)
+    kmodel = tf.keras.Model(inputs=inputs, outputs=y)
+    return kmodel
+
+
+
 class Tests(unittest.TestCase):
 
 
     def test_func_app(self):
+        def test(cls):
+            test_copy(cls)
+            test_predict(cls)
+            test_save_and_restore(cls)
+
+        test(functools.partial(FA.KerasFuncApp, build_kmodel=build_kmodel1))
+        test(functools.partial(FA.KerasFuncApp, build_kmodel=build_kmodel2))
+        test(lambda xsh, ysh: FA.KerasFuncApp(xsh, ysh, build_kmodel=build_kmodel1(xsh, ysh)))
+
+
+    def test_robust_func_app(self):
         def test(cls):
             test_copy(cls)
             test_predict(cls)
@@ -68,10 +102,11 @@ class Tests(unittest.TestCase):
             assert_array(fun._y_nor._bias, np.mean(ys, axis=0))
             fun.predict(xs)
 
+        test(functools.partial(FA.KerasRobustFuncApp, build_kmodel=build_kmodel1))
+        test(functools.partial(FA.KerasRobustFuncApp, build_kmodel=build_kmodel2))
+        test(lambda xsh, ysh: FA.KerasRobustFuncApp(xsh, ysh, build_kmodel=build_kmodel1(xsh, ysh)))
+
         test(FA.KerasRobustMLP)
-
-
-
 
 if __name__ == '__main__':
     unittest.main()
