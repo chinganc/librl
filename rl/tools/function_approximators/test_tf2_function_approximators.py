@@ -49,7 +49,7 @@ def test_save_and_restore(cls):
         assert_array(fun1.predict(xs), fun2.predict(xs))
 
 
-def build_kmodel1(x_shape, y_shape, seed=None):
+def build_kmodel1(x_shape, y_shape):
     # function approximator based on tf.keras.Model
     kmodel = tf.keras.Sequential()
     # Adds a densely-connected layer with 64 units to the kmodel:
@@ -60,7 +60,7 @@ def build_kmodel1(x_shape, y_shape, seed=None):
     kmodel.add(layers.Dense(y_shape[0]))
     return kmodel
 
-def build_kmodel2(x_shape, y_shape, seed=None):
+def build_kmodel2(x_shape, y_shape):
     inputs = tf.keras.Input(shape=x_shape)
     x = layers.Dense(64, activation='relu')(inputs)
     x = layers.Dense(64, activation='relu')(x)

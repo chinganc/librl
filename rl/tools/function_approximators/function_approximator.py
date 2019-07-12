@@ -33,11 +33,10 @@ class FunctionApproximator(ABC):
 
         In addition, the class should be copy.deepcopy compatible.
     """
-    def __init__(self, x_shape, y_shape, name='func_approx', seed=None):
+    def __init__(self, x_shape, y_shape, name='func_approx'):
         self.name = name
         self.x_shape = x_shape  # a nd.array or a list of nd.arrays
         self.y_shape = y_shape  # a nd.array or a list of nd.arrays
-        self.seed = seed
 
     @abstractmethod
     def predict(self, xs, **kwargs):

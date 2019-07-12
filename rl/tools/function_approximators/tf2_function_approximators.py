@@ -14,8 +14,8 @@ class tf2FuncApp(FunctionApproximator):
 
         (Everything else should work out of the box, because of tensorflow 2.)
     """
-    def __init__(self, x_shape, y_shape, name='tf2_func_app', seed=None):
-        super().__init__(x_shape, y_shape, name=name, seed=seed)
+    def __init__(self, x_shape, y_shape, name='tf2_func_app'):
+        super().__init__(x_shape, y_shape, name=name)
 
     @online_compatible
     def predict(self, xs, **kwargs):
@@ -58,9 +58,9 @@ class KerasFuncApp(tf2FuncApp):
         signature of `_build_kmodel`, can be passed in __init__ .
 
     """
-    def __init__(self, x_shape, y_shape, name='keras_func_app', seed=None,
+    def __init__(self, x_shape, y_shape, name='keras_func_app',
                  build_kmodel=None): # a keras.Model or a method that shares the signature of `_build_kmodel`
-        super().__init__(x_shape, y_shape, name, seed)
+        super().__init__(x_shape, y_shape, name=name)
         # decide how to build the kmodel
         """ Build an initialized tf.keras.Model as the overall function
             approximator.
@@ -69,12 +69,12 @@ class KerasFuncApp(tf2FuncApp):
             self.kmodel = build_kmodel
         else:
             build_kmodel = build_kmodel or self._build_kmodel
-            self.kmodel = build_kmodel(self.x_shape, self.y_shape, seed=self.seed)
+            self.kmodel = build_kmodel(self.x_shape, self.y_shape)
         # make sure the model is constructed
         ts_x = tf.zeros([1]+list(self.x_shape))
         self.ts_predict(ts_x)
 
-    def _build_kmodel(self, x_shape, y_shape, seed=None):
+    def _build_kmodel(self, x_shape, y_shape):
         """ Build the default kmodel.
 
             Users are free to create additional attributes, which are
@@ -130,10 +130,10 @@ class tf2RobustFuncApp(tf2FuncApp):
         The user needs to define `_ts_predict`and `ts_variables`.
     """
 
-    def __init__(self, x_shape, y_shape, name='tf2_robust_func_app', seed=None,
+    def __init__(self, x_shape, y_shape, name='tf2_robust_func_app',
                  build_x_nor=None, build_y_nor=None):
 
-        super().__init__(x_shape, y_shape, name=name, seed=seed)
+        super().__init__(x_shape, y_shape, name=name)
         build_x_nor = build_x_nor or (lambda : tf2NormalizerMax(x_shape, unscale=False, \
                                         unbias=False, clip_thre=5.0, rate=0., momentum=None))
         build_y_nor = build_y_nor or (lambda: tf2NormalizerMax(y_shape, unscale=True, \
@@ -165,15 +165,15 @@ class tf2RobustFuncApp(tf2FuncApp):
 
 class KerasRobustFuncApp(tf2RobustFuncApp):
 
-    def __init__(self, x_shape, y_shape, name='k_robust_func_app', seed=None,
+    def __init__(self, x_shape, y_shape, name='k_robust_func_app',
                  build_x_nor=None, build_y_nor=None,
                  build_kmodel=None):
 
         build_kmodel = build_kmodel or self._build_kmodel
         self._kfun = KerasFuncApp(x_shape, y_shape,
-                                  name=name+'_kfun', seed=seed,
+                                  name=name+'_kfun',
                                   build_kmodel=build_kmodel)
-        super().__init__(x_shape, y_shape, name=name, seed=seed,
+        super().__init__(x_shape, y_shape, name=name,
                          build_x_nor=build_x_nor,
                          build_y_nor=build_y_nor)
 
@@ -184,7 +184,7 @@ class KerasRobustFuncApp(tf2RobustFuncApp):
     def ts_variables(self):
         return self._kfun.ts_variables
 
-    def _build_kmodel(self, x_shape, y_shape, seed=None):
+    def _build_kmodel(self, x_shape, y_shape):
         """ Build the default kmodel.
 
             Users are free to create additional attributes, which are
@@ -203,7 +203,7 @@ class KerasRobustMLP(KerasRobustFuncApp):
         self.activation=activation
         super().__init__(x_shape, y_shape, **kwargs)
 
-    def _build_kmodel(self, x_shape, y_shape, seed=None):
+    def _build_kmodel(self, x_shape, y_shape):
         kmodel = tf.keras.Sequential()
         for unit in self.units:
             kmodel.add(tf.keras.layers.Dense(unit, activation=self.activation))
