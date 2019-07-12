@@ -1,15 +1,20 @@
 from abc import ABC, abstractmethod
 from functools import wraps
-import os, pickle
+import os, pickle, copy
 from rl.tools.utils.misc_utils import flatten, unflatten
 
-def assert_shapes(s1, s2):
-    assert type(s1)==type(s2)
-    if isinstance(s1, list):
-        assert all([ss1==ss2 for ss1,ss2 in zip(s1,s2)])
-    else:
-        assert s1==s2
 
+def online_compatible(f):
+    @wraps(f)
+    def decorated_f(self, x, **kwargs):
+        if x.shape==self.x_shape:  # single instance
+            x = [xx[None,:] for xx in x] if isinstance(x, list) else x[None,:]  # add an extra dimension
+            y = f(self, x, **kwargs)
+            y = [yy[0] for yy in y] if isinstance(y, list) else y[0]  # remove the extra dimension
+        else:
+            y = f(self, x, **kwargs)
+        return y
+    return decorated_f
 
 class FunctionApproximator(ABC):
     """ An abstract interface of function approximators.
@@ -38,19 +43,15 @@ class FunctionApproximator(ABC):
     def predict(self, xs, **kwargs):
         """ Predict the values over batches of xs. """
 
-    def __call__(self, x, **kwargs):
-        """ Predict the value at x """
-        x = [xx[None,:] for xx in x] if isinstance(x, list) else x[None,:]  # add an extra dimension
-        y = self.predict(x, **kwargs)
-        y = [yy[0] for yy in y] if isinstance(y, list) else y[0]  # remove the extra dimension
-        return y
+    @online_compatible
+    def __call__(self, xs, **kwargs):
+        return self.predict(xs)
 
     def update(self, *args, **kwargs):
         """ Perform update the parameters.
 
             This can include updating internal normalizers, etc.
         """
-
     @property
     @abstractmethod
     def variables(self):
@@ -74,8 +75,8 @@ class FunctionApproximator(ABC):
     # utilities
     def assign(self, other, excludes=()):
         """ Set both the variables and the parameters as other. """
-        assert isinstance(self, type(other))
-        deepcopy_from_list(self, other, self.__dict__.keys(), excludes=excludes)
+        assert type(self)==type(other)
+        self.__dict__.update(copy.deepcopy(other).__dict__)
 
     def save(self, path):
         """ Save the instance in path. """

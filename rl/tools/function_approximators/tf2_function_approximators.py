@@ -2,9 +2,9 @@ import copy
 import numpy as np
 import tensorflow as tf
 from abc import abstractmethod
-from tensorflow.keras import layers
-from rl.tools.function_approximators.function_approximator import FunctionApproximator, assert_shapes
+from rl.tools.function_approximators.function_approximator import FunctionApproximator, online_compatible
 from rl.tools.function_approximators.normalizers import tf2NormalizerMax
+from rl.tools.utils.tf_utils import tf_float
 
 
 class tf2FuncApp(FunctionApproximator):
@@ -16,10 +16,10 @@ class tf2FuncApp(FunctionApproximator):
     """
     def __init__(self, x_shape, y_shape, name='tf2_func_app', seed=None):
         super().__init__(x_shape, y_shape, name=name, seed=seed)
-        self(np.zeros(x_shape))  # make sure everything is initialized
 
+    @online_compatible
     def predict(self, xs, **kwargs):
-        return self.ts_predict(xs, **kwargs).numpy()
+        return self.ts_predict(tf.constant(xs, dtype=tf_float), **kwargs).numpy()
 
     @property
     def variables(self):
@@ -29,6 +29,7 @@ class tf2FuncApp(FunctionApproximator):
     def variables(self, vals):
         return [var.assign(val) for var, val in zip(self.ts_variables,vals) ]
 
+    # required implementation
     @abstractmethod
     def ts_predict(self, ts_xs, **kwargs):
         """ Define the tf operators for predict """
@@ -37,6 +38,90 @@ class tf2FuncApp(FunctionApproximator):
     @abstractmethod
     def ts_variables(self):
         """ Return a list of tf.Variables """
+
+
+class KerasFuncApp(tf2FuncApp):
+    """
+        A wrapper of tf.keras.Model.
+
+        It is a FunctionApproximator with an additional attribute `kmodel`,
+        which is a tf.keras.Model, so we can reuse existing functionality in
+        tf.keras, such as batch prediction, etc.
+
+        When inheriting this class, users can choose to implement the
+        `_build_kmodel` method, for ease of implementation. `build_kmodel` can be
+        used to create necessary tf.keras.Layer or tf.Tensor to help defining
+        the kmodel. Note all attributes created, if any, should be deepcopy
+        compatible.
+
+        Otherwise, a tf.keras.Model or a method, which shares the same
+        signature of `_build_kmodel`, can be passed in __init__ .
+
+    """
+    def __init__(self, x_shape, y_shape, name='keras_func_app', seed=None,
+                 build_kmodel=None): # a keras.Model or a method that shares the signature of `_build_kmodel`
+        super().__init__(x_shape, y_shape, name, seed)
+        # decide how to build the kmodel
+        """ Build an initialized tf.keras.Model as the overall function
+            approximator.
+        """
+        if isinstance(build_kmodel, tf.keras.Model):
+            self.kmodel = build_kmodel
+        else:
+            build_kmodel = build_kmodel or self._build_kmodel
+            self.kmodel = build_kmodel(self.x_shape, self.y_shape, seed=self.seed)
+        # make sure the model is constructed
+        ts_x = tf.zeros([1]+list(self.x_shape))
+        self.ts_predict(ts_x)
+
+    def _build_kmodel(self, x_shape, y_shape, seed=None):
+        """ Build the default kmodel.
+
+            Users are free to create additional attributes, which are
+            tf.keras.Model, tf.keras.Layer, tf.Variable, etc., to help
+            construct the overall function approximator. At the end, the
+            function should output a tf.keras.Model, which is the overall
+            function approximator.
+        """
+        raise NotImplementedError
+
+    @online_compatible
+    def predict(self, xs, **kwargs):
+        # override with keras's own predict method
+        # kwargs contains parameters for tf.keras.Model.predict.
+        return self.kmodel.predict(xs, **kwargs)
+
+    # required methods of tf2FuncApp
+    def ts_predict(self, ts_xs):
+        return self.kmodel(ts_xs)
+
+    @property
+    def ts_variables(self):
+        return self.kmodel.trainable_variables
+
+    # utilities
+    def __getstate__(self):
+        d = dict(self.__dict__)
+        del d['kmodel']
+        d['kmodel_config'] = self.kmodel.get_config()
+        d['kmodel_weights'] = self.kmodel.get_weights()
+        return d
+
+    def __setstate__(self, d):
+        d = dict(d)
+        weights = d['kmodel_weights']
+        config = d['kmodel_config']
+        del d['kmodel_weights']
+        del d['kmodel_config']
+        self.__dict__.update(d)
+        try:
+            self.kmodel = tf.keras.Model.from_config(config)
+        except KeyError:
+            self.kmodel = tf.keras.Sequential.from_config(config)
+        # intialize the weights (keras bug...)
+        ts_x = tf.zeros([1]+list(self.x_shape))
+        self.ts_predict(ts_x)
+        self.kmodel.set_weights(weights)
 
 
 class tf2RobustFuncApp(tf2FuncApp):
@@ -48,19 +133,18 @@ class tf2RobustFuncApp(tf2FuncApp):
     def __init__(self, x_shape, y_shape, name='tf2_robust_func_app', seed=None,
                  build_x_nor=None, build_y_nor=None):
 
+        super().__init__(x_shape, y_shape, name=name, seed=seed)
         build_x_nor = build_x_nor or (lambda : tf2NormalizerMax(x_shape, unscale=False, \
                                         unbias=False, clip_thre=5.0, rate=0., momentum=None))
         build_y_nor = build_y_nor or (lambda: tf2NormalizerMax(y_shape, unscale=True, \
                                         unbias=True, clip_thre=5.0, rate=0., momentum=None))
         self._x_nor = build_x_nor()
         self._y_nor = build_y_nor()
-        super().__init__(x_shape, y_shape, name=name, seed=seed)
 
-    def ts_predict(self, ts_xs, clip=True, **kwargs):
-        ts_xs = self._x_nor.ts_predict(ts_xs)
-        ts_ys = self._ts_predict(ts_xs, **kwargs)
+    def ts_predict(self, ts_xs, clip=True):
+        ts_ys = self._ts_predict(self._x_nor.ts_predict(ts_xs))
         if clip:
-            return self._x_nor.ts_predict(ts_ys)
+            return self._y_nor.ts_predict(ts_ys)
         else:
             return ts_ys
 
@@ -70,7 +154,7 @@ class tf2RobustFuncApp(tf2FuncApp):
             self._y_nor.update(ys)
 
     @abstractmethod
-    def _ts_predict(self, ts_xs, **kwargs):
+    def _ts_predict(self, ts_xs):
         """ define the tf operators for predict """
 
     @property
@@ -79,20 +163,50 @@ class tf2RobustFuncApp(tf2FuncApp):
         """ Return a list of tf.Variables """
 
 
-class tf2RobustMLP(tf2RobustFuncApp):
+class KerasRobustFuncApp(tf2RobustFuncApp):
 
-    def __init__(self, x_shape, y_shape, units=(), activation='tanh', **kwargs):
+    def __init__(self, x_shape, y_shape, name='k_robust_func_app', seed=None,
+                 build_x_nor=None, build_y_nor=None,
+                 build_kmodel=None):
 
-        self._kmodel = tf.keras.Sequential()
-        for unit in units:
-            self._kmodel.add(tf.keras.layers.Dense(unit, activation=activation))
-        self._kmodel.add(tf.keras.layers.Dense(y_shape[0], activation='linear'))
-        super().__init__(x_shape, y_shape, **kwargs)
+        build_kmodel = build_kmodel or self._build_kmodel
+        self._kfun = KerasFuncApp(x_shape, y_shape,
+                                  name=name+'_kfun', seed=seed,
+                                  build_kmodel=build_kmodel)
+        super().__init__(x_shape, y_shape, name=name, seed=seed,
+                         build_x_nor=build_x_nor,
+                         build_y_nor=build_y_nor)
 
-    def _ts_predict(self, ts_xs):
-        return self._kmodel(ts_xs)
+    def _ts_predict(self, ts_xs, **kwargs):
+        return self._kfun.ts_predict(ts_xs)
 
     @property
     def ts_variables(self):
-        return self._kmodel.trainable_variables
+        return self._kfun.ts_variables
+
+    def _build_kmodel(self, x_shape, y_shape, seed=None):
+        """ Build the default kmodel.
+
+            Users are free to create additional attributes, which are
+            tf.keras.Model, tf.keras.Layer, tf.Variable, etc., to help
+            construct the overall function approximator. At the end, the
+            function should output a tf.keras.Model, which is the overall
+            function approximator.
+        """
+        raise NotImplementedError
+
+
+class KerasRobustMLP(KerasRobustFuncApp):
+
+    def __init__(self, x_shape, y_shape, units=(), activation='tanh', **kwargs):
+        self.units=units
+        self.activation=activation
+        super().__init__(x_shape, y_shape, **kwargs)
+
+    def _build_kmodel(self, x_shape, y_shape, seed=None):
+        kmodel = tf.keras.Sequential()
+        for unit in self.units:
+            kmodel.add(tf.keras.layers.Dense(unit, activation=self.activation))
+        kmodel.add(tf.keras.layers.Dense(y_shape[-1], activation='linear'))
+        return kmodel
 

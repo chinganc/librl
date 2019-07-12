@@ -1,2 +1,4 @@
-from .function_approximator import FunctionApproximator #, online_compatible
+from .function_approximator import FunctionApproximator, online_compatible
+from .tf2_function_approximators import KerasFuncApp, KerasRobustFuncApp, KerasRobustMLP
 from .tf_function_approximators import tfFunctionApproximator, tfMLPFunctionApproximator
+
