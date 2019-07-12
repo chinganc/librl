@@ -17,7 +17,7 @@ class Normalizer(FunctionApproximator):
         implement `update` (and `reset`) to create the desired behaviors.
     """
 
-    def __init__(self, shape, unscale=False, unbias=False, clip_thre=None, name='normalizer'):
+    def __init__(self, shape, unscale=False, unbias=False, clip_thre=None, name='normalizer', **kwargs):
         """ It overloads the signature of FunctionApproximator, since the input
             and output are always in the same shape and there is no randomness.
 
@@ -26,7 +26,7 @@ class Normalizer(FunctionApproximator):
             can be a list/tuple of two non-negative float/nd.arrays, which directly
             specifies the upper and lower bounds.
         """
-        super().__init__(shape, shape, name=name)
+        super().__init__(shape, shape, name=name, **kwargs)
         # new attributes
         self._bias = np.zeros(shape)
         self._scale = np.ones(shape)

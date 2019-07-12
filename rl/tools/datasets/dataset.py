@@ -29,7 +29,7 @@ class Dataset:
         """
             Args:
                 `data`: initial batch(es) of data
-                `max_len`: maximal number of batches to keep
+                `max_n_batches`: maximal number of batches to keep
                 `max_n_samples`: maximal number of samples to keep
                 `single_batch`: when the batch data class is a list and `data`
                                 is one batch data instance, this option needs
@@ -39,6 +39,10 @@ class Dataset:
             the data are kept in terms of batches, the actual number of samples
             might be slighly larger than `max_n_samples`, when the batch with
             the highest weight has more than `max_n_samples` of samples.
+
+            Given this, if both `max_n_batches` and `max_n_batches` are 0, it
+            only retains the most recent data.
+
         """
         if data is None:
             self._batches = []

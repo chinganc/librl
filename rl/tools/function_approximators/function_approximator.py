@@ -17,6 +17,16 @@ def online_compatible(f):
     return decorated_f
 
 
+def predict_in_batches(fun):
+    """ for wrapping a predit method of FunctionApproximator objects """
+    @wraps(fun)
+    def wrapper(self, x):
+        return minibatch_utils.apply_in_batches(lambda _x: fun(self, _x),
+                                                x, self._batch_size_for_prediction, [self.y_dim])
+    return wrapper
+
+
+
 class FunctionApproximator(ABC):
     """ An abstract interface of function approximators.
 
@@ -34,7 +44,7 @@ class FunctionApproximator(ABC):
 
         In addition, the class should be copy.deepcopy compatible.
     """
-    def __init__(self, x_shape, y_shape, name='func_approx'):
+    def __init__(self, x_shape, y_shape, name='func_approx', **kwargs):
         self.name = name
         self.x_shape = x_shape  # a nd.array or a list of nd.arrays
         self.y_shape = y_shape  # a nd.array or a list of nd.arrays

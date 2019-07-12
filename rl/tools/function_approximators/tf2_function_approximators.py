@@ -14,8 +14,8 @@ class tf2FuncApp(FunctionApproximator):
 
         (Everything else should work out of the box, because of tensorflow 2.)
     """
-    def __init__(self, x_shape, y_shape, name='tf2_func_app'):
-        super().__init__(x_shape, y_shape, name=name)
+    def __init__(self, x_shape, y_shape, name='tf2_func_app', **kwargs):
+        super().__init__(x_shape, y_shape, name=name, **kwargs)
 
     @online_compatible
     def predict(self, xs, **kwargs):
@@ -40,6 +40,48 @@ class tf2FuncApp(FunctionApproximator):
         """ Return a list of tf.Variables """
 
 
+class tf2RobustFuncApp(tf2FuncApp):
+    """ A function approximator with input and output normalizers.
+
+        The user needs to define `_ts_predict`and `ts_variables`.
+    """
+
+    def __init__(self, x_shape, y_shape, name='tf2_robust_func_app',
+                 build_x_nor=None, build_y_nor=None, **kwargs):
+
+        super().__init__(x_shape, y_shape, name=name, **kwargs)
+        build_x_nor = build_x_nor or (lambda : tf2NormalizerMax(x_shape, unscale=False, \
+                                        unbias=False, clip_thre=5.0, rate=0., momentum=None))
+        build_y_nor = build_y_nor or (lambda: tf2NormalizerMax(y_shape, unscale=True, \
+                                        unbias=True, clip_thre=5.0, rate=0., momentum=None))
+        self._x_nor = build_x_nor()
+        self._y_nor = build_y_nor()
+
+    def ts_predict(self, ts_xs, clip=True):
+        ts_ys = self._ts_predict(self._x_nor.ts_predict(ts_xs))
+        if clip:
+            return self._y_nor.ts_predict(ts_ys)
+        else:
+            return ts_ys
+
+    def update(self, xs=None, ys=None, *args, **kwargs):
+        super().update(xs=xs, ys=ys, *args, **kwargs)
+        if xs is not None:
+            self._x_nor.update(xs)
+        if ys is not None:
+            self._y_nor.update(ys)
+
+    @abstractmethod
+    def _ts_predict(self, ts_xs):
+        """ define the tf operators for predict """
+
+    @property
+    @abstractmethod
+    def ts_variables(self):
+        """ Return a list of tf.Variables """
+
+
+
 class KerasFuncApp(tf2FuncApp):
     """
         A wrapper of tf.keras.Model.
@@ -59,8 +101,8 @@ class KerasFuncApp(tf2FuncApp):
 
     """
     def __init__(self, x_shape, y_shape, name='keras_func_app',
-                 build_kmodel=None): # a keras.Model or a method that shares the signature of `_build_kmodel`
-        super().__init__(x_shape, y_shape, name=name)
+                 build_kmodel=None, **kwargs): # a keras.Model or a method that shares the signature of `_build_kmodel`
+        super().__init__(x_shape, y_shape, name=name, **kwargs)
         # decide how to build the kmodel
         """ Build an initialized tf.keras.Model as the overall function
             approximator.
@@ -124,50 +166,12 @@ class KerasFuncApp(tf2FuncApp):
         self.kmodel.set_weights(weights)
 
 
-class tf2RobustFuncApp(tf2FuncApp):
-    """ A function approximator with input and output normalizers.
-
-        The user needs to define `_ts_predict`and `ts_variables`.
-    """
-
-    def __init__(self, x_shape, y_shape, name='tf2_robust_func_app',
-                 build_x_nor=None, build_y_nor=None):
-
-        super().__init__(x_shape, y_shape, name=name)
-        build_x_nor = build_x_nor or (lambda : tf2NormalizerMax(x_shape, unscale=False, \
-                                        unbias=False, clip_thre=5.0, rate=0., momentum=None))
-        build_y_nor = build_y_nor or (lambda: tf2NormalizerMax(y_shape, unscale=True, \
-                                        unbias=True, clip_thre=5.0, rate=0., momentum=None))
-        self._x_nor = build_x_nor()
-        self._y_nor = build_y_nor()
-
-    def ts_predict(self, ts_xs, clip=True):
-        ts_ys = self._ts_predict(self._x_nor.ts_predict(ts_xs))
-        if clip:
-            return self._y_nor.ts_predict(ts_ys)
-        else:
-            return ts_ys
-
-    def update(self, xs, ys=None):
-        self._x_nor.update(xs)
-        if ys is not None:
-            self._y_nor.update(ys)
-
-    @abstractmethod
-    def _ts_predict(self, ts_xs):
-        """ define the tf operators for predict """
-
-    @property
-    @abstractmethod
-    def ts_variables(self):
-        """ Return a list of tf.Variables """
-
 
 class KerasRobustFuncApp(tf2RobustFuncApp):
 
     def __init__(self, x_shape, y_shape, name='k_robust_func_app',
                  build_x_nor=None, build_y_nor=None,
-                 build_kmodel=None):
+                 build_kmodel=None, **kwargs):
 
         build_kmodel = build_kmodel or self._build_kmodel
         self._kfun = KerasFuncApp(x_shape, y_shape,
@@ -175,7 +179,7 @@ class KerasRobustFuncApp(tf2RobustFuncApp):
                                   build_kmodel=build_kmodel)
         super().__init__(x_shape, y_shape, name=name,
                          build_x_nor=build_x_nor,
-                         build_y_nor=build_y_nor)
+                         build_y_nor=build_y_nor, **kwargs)
 
     def _ts_predict(self, ts_xs, **kwargs):
         return self._kfun.ts_predict(ts_xs)

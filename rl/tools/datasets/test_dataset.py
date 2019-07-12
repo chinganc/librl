@@ -15,6 +15,13 @@ class Tests(unittest.TestCase):
     def test_basics(self):
 
 
+        dataset = Dataset(max_n_batches=0, max_n_samples=0)
+        dataset.append(list(range(5)))
+        print(dataset[None])
+        dataset.append(list(range(5,10)))
+        print(dataset[None])
+
+
         dataset = Dataset(max_n_batches=2, max_n_samples=3)
         dataset.append(list(range(3)))
         assert_array(dataset[None], np.arange(3))
