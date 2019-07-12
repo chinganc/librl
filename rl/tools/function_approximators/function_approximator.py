@@ -16,6 +16,7 @@ def online_compatible(f):
         return y
     return decorated_f
 
+
 class FunctionApproximator(ABC):
     """ An abstract interface of function approximators.
 

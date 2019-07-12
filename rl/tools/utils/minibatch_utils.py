@@ -27,4 +27,5 @@ def apply_in_batches(func, x, batch_size, y_element_shape=[]):
     for i_batch in range(n_batches):
         idx = range(i_batch * batch_size, min((i_batch + 1) * batch_size, n))
         y[idx] = func(x[idx])
+    # XXX reshape???
     return y
