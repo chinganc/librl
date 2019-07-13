@@ -44,8 +44,9 @@ class KerasFuncApp(tf2FuncApp):
         A wrapper of tf.keras.Model.
 
         It is a FunctionApproximator with an additional attribute `kmodel`,
-        which is a tf.keras.Model, so we can reuse existing functionality in
-        tf.keras, such as batch prediction, etc.
+        which is a tf.keras.Model.
+
+        It adds a new method `k_predict` which calls tf.keras.Model.preidct.
 
         When inheriting this class, users can choose to implement the
         `_build_kmodel` method, for ease of implementation. `build_kmodel` can be
@@ -83,6 +84,9 @@ class KerasFuncApp(tf2FuncApp):
             function approximator.
         """
         raise NotImplementedError
+
+    def k_predict(self, xs, **kwargs):
+        return self.kmodel.predict(xs, **kwargs)
 
     # required methods of tf2FuncApp
     def ts_predict(self, ts_xs):
@@ -139,14 +143,14 @@ class tf2RobustFuncApp(tf2FuncApp):
         self._y_nor = build_y_nor()
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
+    def predict(self, xs, clip_y=True, **kwargs):
+        return super().predict(xs, clip_y=tf.constant(clip_y, dtype=tf.bool), **kwargs)
+
     def ts_predict(self, ts_xs, clip_y=tf.constant(True)):
         # include also input and output normalizeations
         ts_xs = self._x_nor.ts_predict(ts_xs)
         ts_ys = super().ts_predict(ts_xs)
-        if clip_y:
-            return self._y_nor.ts_predict(ts_ys)
-        else:
-            return ts_ys
+        return self._y_nor.ts_predict(ts_ys) if clip_y else ts_ys
 
     def update(self, xs=None, ys=None, *args, **kwargs):
         print('Update normalizers of {}'.format(self.name))
@@ -162,6 +166,10 @@ class KerasRobustFuncApp(tf2RobustFuncApp, KerasFuncApp):
     def __init__(self, x_shape, y_shape, name='k_robust_func_app', **kwargs):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
+    def k_predict(self, xs, clip_y=True, **kwargs):  # take care of this new method
+        xs = self._x_nor(xs)
+        ys = super().k_predict(xs)
+        return self._y_nor(ts_ys) if clip_y else ys
 
 class KerasRobustMLP(KerasRobustFuncApp):
 
