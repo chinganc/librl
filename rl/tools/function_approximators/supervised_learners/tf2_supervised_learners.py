@@ -3,16 +3,16 @@ from rl.tools import function_approximators as fa
 from rl.tools.function_approximators.supervised_learners import SupervisedLearner
 
 def robust_keras_supervised_learner(cls):
-    """ A decorator for creating basic supervised learners from KerasRobustFuncApp. """
-    assert issubclass(cls, fa.KerasRobustFuncApp)
+    """ A decorator for creating basic supervised learners from RobustKerasFuncApp. """
+    assert issubclass(cls, fa.RobustKerasFuncApp)
     class decorated_cls(cls, SupervisedLearner):
 
         def __init__(self, x_shape, y_shape, name='k_robust_super_learner',
                      lr=0.001, loss='mse', metrics=('mae','mse'), **kwargs):
             super().__init__(x_shape, y_shape, name=name, **kwargs)
             self._lr =lr
-            self._kfun.kmodel.compile(optimizer=tf.keras.optimizers.Adam(self._lr),
-                                      loss=loss, metrics=list(metrics))
+            self.kmodel.compile(optimizer=tf.keras.optimizers.Adam(self._lr),
+                                loss=loss, metrics=list(metrics))
 
         def update_funcapp(self, clip_y=False, **kwargs):  # for keras.Model.fit
             """
@@ -25,7 +25,7 @@ def robust_keras_supervised_learner(cls):
             ws = self._dataset['ws']
             if clip_y:
                 ys = self._y_nor(ys)
-            return self._kfun.kmodel.fit(xs, ys, sample_weight=ws, **kwargs)
+            return self.kmodel.fit(xs, ys, sample_weight=ws, **kwargs)
 
 
     # to make them look the same as intended
@@ -34,11 +34,10 @@ def robust_keras_supervised_learner(cls):
     return decorated_cls
 
 @robust_keras_supervised_learner
-class superKerasRobustFuncApp(fa.KerasRobustFuncApp):
+class SuperRobustKerasFuncApp(fa.RobustKerasFuncApp):
     pass
 
 @robust_keras_supervised_learner
-class superKerasRobustMLP(fa.KerasRobustMLP):
+class SuperRobustKerasMLP(fa.RobustKerasMLP):
     pass
-
 

@@ -102,11 +102,10 @@ class Tests(unittest.TestCase):
             assert_array(fun._y_nor._bias, np.mean(ys, axis=0))
             fun.predict(xs)
 
-        test(functools.partial(FA.KerasRobustFuncApp, build_kmodel=build_kmodel1))
-        test(functools.partial(FA.KerasRobustFuncApp, build_kmodel=build_kmodel2))
-        test(lambda xsh, ysh: FA.KerasRobustFuncApp(xsh, ysh, build_kmodel=build_kmodel1(xsh, ysh)))
-
-        test(FA.KerasRobustMLP)
+        test(functools.partial(FA.RobustKerasFuncApp, build_kmodel=build_kmodel1))
+        test(functools.partial(FA.RobustKerasFuncApp, build_kmodel=build_kmodel2))
+        test(lambda xsh, ysh: FA.RobustKerasFuncApp(xsh, ysh, build_kmodel=build_kmodel1(xsh, ysh)))
+        test(FA.RobustKerasMLP)
 
 if __name__ == '__main__':
     unittest.main()

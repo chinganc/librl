@@ -161,9 +161,9 @@ class tf2RobustFuncApp(tf2FuncApp):
         return super().update(xs=xs, ys=ys, *args, **kwargs)
 
 
-class KerasRobustFuncApp(tf2RobustFuncApp, KerasFuncApp):
+class RobustKerasFuncApp(tf2RobustFuncApp, KerasFuncApp):
 
-    def __init__(self, x_shape, y_shape, name='k_robust_func_app', **kwargs):
+    def __init__(self, x_shape, y_shape, name='robust_k_func_app', **kwargs):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
     def k_predict(self, xs, clip_y=True, **kwargs):  # take care of this new method
@@ -171,9 +171,9 @@ class KerasRobustFuncApp(tf2RobustFuncApp, KerasFuncApp):
         ys = super().k_predict(xs)
         return self._y_nor(ts_ys) if clip_y else ys
 
-class KerasRobustMLP(KerasRobustFuncApp):
+class RobustKerasMLP(RobustKerasFuncApp):
 
-    def __init__(self, x_shape, y_shape, name='k_robust_mlp', units=(),
+    def __init__(self, x_shape, y_shape, name='robust_k_mlp', units=(),
                  activation='tanh', **kwargs):
         self.units, self.activation = units, activation
         super().__init__(x_shape, y_shape, **kwargs)

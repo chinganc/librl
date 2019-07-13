@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 
 from rl.tools.function_approximators.normalizers import tf2NormalizerClip
-from rl.tools.function_approximators.supervised_learners import superKerasRobustMLP
+from rl.tools.function_approximators.supervised_learners import SuperRobustKerasMLP
 
 def assert_array(a,b):
     assert np.all(np.isclose(a-b,0.0, atol=1e-8))
@@ -12,7 +12,7 @@ class Tests(unittest.TestCase):
 
     def test_tf2_supervised_learner(self):
 
-        cls = superKerasRobustMLP
+        cls = SuperRobustKerasMLP
         units = (1000, 400, 200, 100, 50)
 
         x_shape = (2,)
