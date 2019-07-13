@@ -57,19 +57,20 @@ class tf2RobustFuncApp(tf2FuncApp):
         self._x_nor = build_x_nor()
         self._y_nor = build_y_nor()
 
-    def ts_predict(self, ts_xs, clip=True):
+    def ts_predict(self, ts_xs, clip_y=True):
         ts_ys = self._ts_predict(self._x_nor.ts_predict(ts_xs))
-        if clip:
+        if clip_y:
             return self._y_nor.ts_predict(ts_ys)
         else:
             return ts_ys
 
     def update(self, xs=None, ys=None, *args, **kwargs):
-        super().update(xs=xs, ys=ys, *args, **kwargs)
+        print('Update normalizers of {}'.format(self.name))
         if xs is not None:
             self._x_nor.update(xs)
         if ys is not None:
             self._y_nor.update(ys)
+        return super().update(xs=xs, ys=ys, *args, **kwargs)
 
     @abstractmethod
     def _ts_predict(self, ts_xs):
@@ -164,7 +165,6 @@ class KerasFuncApp(tf2FuncApp):
         ts_x = tf.zeros([1]+list(self.x_shape))
         self.ts_predict(ts_x)
         self.kmodel.set_weights(weights)
-
 
 
 class KerasRobustFuncApp(tf2RobustFuncApp):

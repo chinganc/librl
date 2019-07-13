@@ -3,17 +3,17 @@ import numpy as np
 import copy
 from abc import ABC, abstractmethod
 
-from rl.tools.function_approximators.normalizers.normalizer import Normalizer, NormalizerStd, NormalizerMax
+from rl.tools.function_approximators.normalizers import normalizer as pynor
 from rl.tools.utils.tf_utils import tf_float
 
 
-def _tf2NormalizerDecorator(cls):
+def make_tf2_normalizer(cls):
     """ A decorator for adding a tf operator equivalent of Normalizer.predict
 
         It reuses all the functionalties of the original Normalizer and
         additional tf.Variables for defining the tf operator.
     """
-    assert issubclass(cls, Normalizer)
+    assert issubclass(cls, pynor.Normalizer)
 
     class decorated_cls(cls):
 
@@ -90,10 +90,16 @@ def _tf2NormalizerDecorator(cls):
     return decorated_cls
 
 
-@_tf2NormalizerDecorator
-class tf2NormalizerStd(NormalizerStd):
+@make_tf2_normalizer
+class tf2NormalizerClip(pynor.NormalizerClip):
     pass
 
-@_tf2NormalizerDecorator
-class tf2NormalizerMax(NormalizerMax):
+@make_tf2_normalizer
+class tf2NormalizerStd(pynor.NormalizerStd):
     pass
+
+@make_tf2_normalizer
+class tf2NormalizerMax(pynor.NormalizerMax):
+    pass
+
+

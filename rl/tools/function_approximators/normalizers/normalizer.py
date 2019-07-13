@@ -109,6 +109,15 @@ class Normalizer(FunctionApproximator):
         self.assign(saved)
 
 
+class NormalizerClip(Normalizer):
+    """ It just clips the values with fixed thresholds. """
+
+    def __init__(self, shape, unscale=True, unbias=True, clip_thre=None, name='normalizer', **kwargs):
+        super().__init__(shape, unscale=True, unbias=True, clip_thre=clip_thre, name='normalizer_clip', **kwargs)
+        assert clip_thre is not None
+        self._initialized = True
+
+
 class NormalizerStd(Normalizer):
     """ An online normalizer based on whitening. """
 
@@ -137,6 +146,8 @@ class NormalizerStd(Normalizer):
         # x can be an intance of a batch
         if x.shape == self.x_shape:
             x = x[None,:]
+        if self.x_shape==(1,) and len(x.shape)==1:
+            x = x[:,None]
         assert len(x.shape)>1
         assert x[0,:].shape == self.x_shape
         # observed stats

@@ -61,6 +61,7 @@ class FunctionApproximator(ABC):
         """ Perform update the parameters.
 
             This can include updating internal normalizers, etc.
+            Return a report, in any.
         """
     @property
     @abstractmethod

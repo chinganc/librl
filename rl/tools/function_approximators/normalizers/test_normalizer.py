@@ -4,7 +4,7 @@ import copy
 import numpy as np
 import tensorflow as tf
 from rl.tools.function_approximators import normalizers as Nor
-
+import functools
 
 def assert_array(a,b):
     assert np.all(np.isclose(a-b,0.0, atol=1e-5))
@@ -95,6 +95,18 @@ class Tests(unittest.TestCase):
 
         _test(Nor.NormalizerStd, Nor.tf2NormalizerStd)
         _test(Nor.NormalizerMax, Nor.tf2NormalizerMax)
+
+        NormalizerClip = functools.partial(Nor.NormalizerClip, clip_thre=3.0)
+        tf2NormalizerClip = functools.partial(Nor.tf2NormalizerClip, clip_thre=3.0)
+
+        _test(NormalizerClip, tf2NormalizerClip)
+
+
+    def test_normalizer_clip(self):
+        nor =Nor.NormalizerClip(shape=(1,), clip_thre=1)
+        assert np.isclose(nor(np.array(10000)),1)
+
+
 
 
 
