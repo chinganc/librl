@@ -44,18 +44,18 @@ class FunctionApproximator(ABC):
 
         In addition, the class should be copy.deepcopy compatible.
     """
-    def __init__(self, x_shape, y_shape, name='func_approx', **kwargs):
+    def __init__(self, x_shape, y_shape, name='func_app', **kwargs):
         self.name = name
         self.x_shape = x_shape  # a nd.array or a list of nd.arrays
         self.y_shape = y_shape  # a nd.array or a list of nd.arrays
 
     @abstractmethod
     def predict(self, xs, **kwargs):
-        """ Predict the values over batches of xs. """
+        """ Predict the values on batches of xs. """
 
     @online_compatible
     def __call__(self, xs, **kwargs):
-        return self.predict(xs)
+        return self.predict(xs, **kwargs)
 
     def update(self, *args, **kwargs):
         """ Perform update the parameters.

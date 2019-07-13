@@ -2,7 +2,7 @@ import copy
 import numpy as np
 import tensorflow as tf
 from abc import abstractmethod
-from rl.tools.function_approximators.function_approximator import FunctionApproximator, online_compatible
+from rl.tools.function_approximators.function_approximator import FunctionApproximator
 from rl.tools.function_approximators.normalizers import tf2NormalizerMax
 from rl.tools.utils.tf_utils import tf_float
 
@@ -17,7 +17,6 @@ class tf2FuncApp(FunctionApproximator):
     def __init__(self, x_shape, y_shape, name='tf2_func_app', **kwargs):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
-    @online_compatible
     def predict(self, xs, **kwargs):
         return self.ts_predict(tf.constant(xs, dtype=tf_float), **kwargs).numpy()
 
@@ -38,49 +37,6 @@ class tf2FuncApp(FunctionApproximator):
     @abstractmethod
     def ts_variables(self):
         """ Return a list of tf.Variables """
-
-
-class tf2RobustFuncApp(tf2FuncApp):
-    """ A function approximator with input and output normalizers.
-
-        The user needs to define `_ts_predict`and `ts_variables`.
-    """
-
-    def __init__(self, x_shape, y_shape, name='tf2_robust_func_app',
-                 build_x_nor=None, build_y_nor=None, **kwargs):
-
-        super().__init__(x_shape, y_shape, name=name, **kwargs)
-        build_x_nor = build_x_nor or (lambda : tf2NormalizerMax(x_shape, unscale=False, \
-                                        unbias=False, clip_thre=5.0, rate=0., momentum=None))
-        build_y_nor = build_y_nor or (lambda: tf2NormalizerMax(y_shape, unscale=True, \
-                                        unbias=True, clip_thre=5.0, rate=0., momentum=None))
-        self._x_nor = build_x_nor()
-        self._y_nor = build_y_nor()
-
-    def ts_predict(self, ts_xs, clip_y=True):
-        ts_ys = self._ts_predict(self._x_nor.ts_predict(ts_xs))
-        if clip_y:
-            return self._y_nor.ts_predict(ts_ys)
-        else:
-            return ts_ys
-
-    def update(self, xs=None, ys=None, *args, **kwargs):
-        print('Update normalizers of {}'.format(self.name))
-        if xs is not None:
-            self._x_nor.update(xs)
-        if ys is not None:
-            self._y_nor.update(ys)
-        return super().update(xs=xs, ys=ys, *args, **kwargs)
-
-    @abstractmethod
-    def _ts_predict(self, ts_xs):
-        """ define the tf operators for predict """
-
-    @property
-    @abstractmethod
-    def ts_variables(self):
-        """ Return a list of tf.Variables """
-
 
 
 class KerasFuncApp(tf2FuncApp):
@@ -128,12 +84,6 @@ class KerasFuncApp(tf2FuncApp):
         """
         raise NotImplementedError
 
-    @online_compatible
-    def predict(self, xs, **kwargs):
-        # override with keras's own predict method
-        # kwargs contains parameters for tf.keras.Model.predict.
-        return self.kmodel.predict(xs, **kwargs)
-
     # required methods of tf2FuncApp
     def ts_predict(self, ts_xs):
         return self.kmodel(ts_xs)
@@ -167,44 +117,57 @@ class KerasFuncApp(tf2FuncApp):
         self.kmodel.set_weights(weights)
 
 
-class KerasRobustFuncApp(tf2RobustFuncApp):
+class tf2RobustFuncApp(tf2FuncApp):
+    """ A function approximator with input and output normalizers.
 
-    def __init__(self, x_shape, y_shape, name='k_robust_func_app',
-                 build_x_nor=None, build_y_nor=None,
-                 build_kmodel=None, **kwargs):
+        This class can be viewed as a wrapper in inheritance.  For example, for
+        any subclass `A` of `tf2FuncApp`, we can create a robust subclass `B` by
+        simply defining
 
-        build_kmodel = build_kmodel or self._build_kmodel
-        self._kfun = KerasFuncApp(x_shape, y_shape,
-                                  name=name+'_kfun',
-                                  build_kmodel=build_kmodel)
-        super().__init__(x_shape, y_shape, name=name,
-                         build_x_nor=build_x_nor,
-                         build_y_nor=build_y_nor, **kwargs)
+            class B(tf2RobustFuncApp, A):
+                pass
+    """
 
-    def _ts_predict(self, ts_xs, **kwargs):
-        return self._kfun.ts_predict(ts_xs)
+    def __init__(self, x_shape, y_shape, name='tf2_robust_func_app',
+                 build_x_nor=None, build_y_nor=None, **kwargs):
 
-    @property
-    def ts_variables(self):
-        return self._kfun.ts_variables
+        build_x_nor = build_x_nor or (lambda : tf2NormalizerMax(x_shape, unscale=False, \
+                                        unbias=False, clip_thre=5.0, rate=0., momentum=None))
+        build_y_nor = build_y_nor or (lambda: tf2NormalizerMax(y_shape, unscale=True, \
+                                        unbias=True, clip_thre=5.0, rate=0., momentum=None))
+        self._x_nor = build_x_nor()
+        self._y_nor = build_y_nor()
+        super().__init__(x_shape, y_shape, name=name, **kwargs)
 
-    def _build_kmodel(self, x_shape, y_shape):
-        """ Build the default kmodel.
+    def ts_predict(self, ts_xs, clip_y=tf.constant(True)):
+        # include also input and output normalizeations
+        ts_xs = self._x_nor.ts_predict(ts_xs)
+        ts_ys = super().ts_predict(ts_xs)
+        if clip_y:
+            return self._y_nor.ts_predict(ts_ys)
+        else:
+            return ts_ys
 
-            Users are free to create additional attributes, which are
-            tf.keras.Model, tf.keras.Layer, tf.Variable, etc., to help
-            construct the overall function approximator. At the end, the
-            function should output a tf.keras.Model, which is the overall
-            function approximator.
-        """
-        raise NotImplementedError
+    def update(self, xs=None, ys=None, *args, **kwargs):
+        print('Update normalizers of {}'.format(self.name))
+        if xs is not None:
+            self._x_nor.update(xs)
+        if ys is not None:
+            self._y_nor.update(ys)
+        return super().update(xs=xs, ys=ys, *args, **kwargs)
+
+
+class KerasRobustFuncApp(tf2RobustFuncApp, KerasFuncApp):
+
+    def __init__(self, x_shape, y_shape, name='k_robust_func_app', **kwargs):
+        super().__init__(x_shape, y_shape, name=name, **kwargs)
 
 
 class KerasRobustMLP(KerasRobustFuncApp):
 
-    def __init__(self, x_shape, y_shape, units=(), activation='tanh', **kwargs):
-        self.units=units
-        self.activation=activation
+    def __init__(self, x_shape, y_shape, name='k_robust_mlp', units=(),
+                 activation='tanh', **kwargs):
+        self.units, self.activation = units, activation
         super().__init__(x_shape, y_shape, **kwargs)
 
     def _build_kmodel(self, x_shape, y_shape):
