@@ -12,18 +12,14 @@ class Policy(FunctionApproximator):
     def __init__(self, x_shape, y_shape, name='policy', **kwargs):
         super().__init__(x_dim, y_dim, name=name, **kwargs)
 
-    @abstractmethod
     def predict(self, xs, stochastic=True, **kwargs):
         """ Predict the values on batches of xs. """
+        return super().predict(ts_xs, stochastic=stochastic, **kwargs)
 
-    @abstractmethod
-    def compute_logp(self, xs, ys, **kwargs):
-        """ Compute the log probabilities on batches of (xs, ys)."""
-
-    # For convenience (similar to the role of__call__)
     @online_compatible
     def logp(self, xs, ys, **kwargs):
-        return self.compute_logp(xs, ys, **kwargs)
+        """ Compute the log probabilities on batches of (xs, ys)."""
+        return np.log(self.predict(xs, **kwargs)==ys)  # default behavior
 
     # Some useful functions
     def kl(self, other, xs, reversesd=False, **kwargs):

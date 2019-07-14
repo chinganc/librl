@@ -17,8 +17,8 @@ class Tests(unittest.TestCase):
 
         x_shape = (2,)
         y_shape = (1,)
-        build_y_nor = lambda : tf2NormalizerClip(shape=y_shape, clip_thre=3.)
-        fun = cls(x_shape, y_shape, units=units, build_y_nor=build_y_nor)
+        y_nor = tf2NormalizerClip(shape=y_shape, clip_thre=3.)
+        fun = cls(x_shape, y_shape, units=units, y_nor=y_nor)
 
         xs = np.random.random([100]+list(x_shape))
         ys = np.sum(xs**2,axis=1, keepdims=True)+1

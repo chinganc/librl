@@ -1,3 +1,6 @@
 from .oracle import Oracle
-from .tf_oracles import tfOracle, tfLikelihoodRatioOracle
 from .meta_oracles import MetaOracle, LazyOracle, AdversarialOracle, DummyOracle
+
+import tensorflow as tf
+if tf.__version__[0]='2':
+    from .tf2_oracles import tf2Oracle, tf2LikelihoodRatioOracle

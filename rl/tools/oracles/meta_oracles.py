@@ -19,10 +19,10 @@ class DummyOracle(MetaOracle):
         self._base_oracle = copy.deepcopy(base_oracle)
         self._g = 0.
 
-    def compute_loss(self):
+    def fun(self, x):
         return 0.
 
-    def compute_grad(self):
+    def grad(self, x):
         return self._g
 
     def update(self, g=None, *args, **kwargs):
@@ -34,24 +34,22 @@ class DummyOracle(MetaOracle):
 class LazyOracle(MetaOracle):
     """Function-based oracle based on moving average."""
 
-    def __init__(self, base_oracle, beta):
+    def __init__(self, base_oracle, beta=0.):
         self._base_oracle = copy.deepcopy(base_oracle)
         self._beta = beta
         self._f = ExpMvAvg(None, beta)
         self._g = ExpMvAvg(None, beta)
 
-    def update(self, *args, **kwargs):
+    def update(self, x, *args, **kwargs):
         self._base_oracle.update(*args, **kwargs)
-        self._f.update(self._base_oracle.compute_loss())
-        self._g.update(self._base_oracle.compute_grad())
+        self._f.update(self._base_oracle.fun(x))
+        self._g.update(self._base_oracle.grad(x))
 
-    def compute_loss(self):
-        f = self._base_oracle.compute_loss()
-        return f
+    def fun(self, x):
+        return self._f.val
 
-    def compute_grad(self):
-        g = self._base_oracle.compute_grad()
-        return g
+    def grad(self, x):
+        return self._g.val
 
 
 class AdversarialOracle(LazyOracle):
@@ -61,8 +59,8 @@ class AdversarialOracle(LazyOracle):
         super().__init__(base_oracle, beta)
         self._max = None
 
-    def compute_grad(self):
-        g = super().compute_grad()
+    def grad(self, x):
+        g = super().grad(x)
         if self._max is None:
             self._max = np.linalg.norm(g)
         else:

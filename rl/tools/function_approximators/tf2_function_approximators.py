@@ -6,6 +6,8 @@ from rl.tools.function_approximators.function_approximator import FunctionApprox
 from rl.tools.function_approximators.normalizers import tf2NormalizerMax
 from rl.tools.utils.tf_utils import tf_float
 
+# NOTE ts_* methods are in batch mode
+
 
 class tf2FuncApp(FunctionApproximator):
     """ A minimal wrapper for tensorflow 2 operators.
@@ -133,14 +135,12 @@ class tf2RobustFuncApp(tf2FuncApp):
     """
 
     def __init__(self, x_shape, y_shape, name='tf2_robust_func_app',
-                 build_x_nor=None, build_y_nor=None, **kwargs):
+                 x_nor=None, y_nor=None, **kwargs):
 
-        build_x_nor = build_x_nor or (lambda : tf2NormalizerMax(x_shape, unscale=False, \
-                                        unbias=False, clip_thre=5.0, rate=0., momentum=None))
-        build_y_nor = build_y_nor or (lambda: tf2NormalizerMax(y_shape, unscale=True, \
-                                        unbias=True, clip_thre=5.0, rate=0., momentum=None))
-        self._x_nor = build_x_nor()
-        self._y_nor = build_y_nor()
+        self._x_nor = x_nor or tf2NormalizerMax(x_shape, unscale=False, \
+                                    unbias=False, clip_thre=5.0, rate=0., momentum=None)
+        self._y_nor = y_nor or tf2NormalizerMax(y_shape, unscale=True, \
+                                    unbias=True, clip_thre=5.0, rate=0., momentum=None)
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
     def predict(self, xs, clip_y=True, **kwargs):
@@ -171,6 +171,8 @@ class RobustKerasFuncApp(tf2RobustFuncApp, KerasFuncApp):
         ys = super().k_predict(xs)
         return self._y_nor(ts_ys) if clip_y else ys
 
+
+# Some examples
 class RobustKerasMLP(RobustKerasFuncApp):
 
     def __init__(self, x_shape, y_shape, name='robust_k_mlp', units=(),

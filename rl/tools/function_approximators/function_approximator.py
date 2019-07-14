@@ -1,6 +1,7 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from functools import wraps
 import os, pickle, copy
+from rl.tools.oracles.oracle import Oracle
 from rl.tools.utils.misc_utils import flatten, unflatten
 
 
@@ -16,7 +17,7 @@ def online_compatible(f):
         return y
     return decorated_f
 
-
+# TODO
 def predict_in_batches(fun):
     """ for wrapping a predit method of FunctionApproximator objects """
     @wraps(fun)
@@ -26,21 +27,24 @@ def predict_in_batches(fun):
     return wrapper
 
 
-
-class FunctionApproximator(ABC):
+class FunctionApproximator(Oracle):
     """ An abstract interface of function approximators.
 
         Generally a function approximator has
             1) "variables" that are amenable to gradient-based updates,
             2) "parameters" that works as the hyper-parameters.
 
-        The user needs to implement the following
-            `predict`, `variables` (getter and setter), and `update` (optional)
+        This is realized by adding `variables` property to `Oracle`. In
+        addition, here we require function calls to be compatible with both
+        single-instance and batch queries.
 
-        We provide basic `assign`, `save`, `restore` functions, based on
+        We also provide basic `assign`, `save`, `restore` functions, based on
         deepcopy and pickle, which should work for nominal python objects. But
         they might need be overloaded when more complex objects are used (e.g.,
         tf.keras.Model) as attributes.
+
+        The user needs to implement the following
+            `predict`, `variables` (getter and setter), and `update` (optional)
 
         In addition, the class should be copy.deepcopy compatible.
     """
@@ -57,12 +61,16 @@ class FunctionApproximator(ABC):
     def __call__(self, xs, **kwargs):
         return self.predict(xs, **kwargs)
 
-    def update(self, *args, **kwargs):
+    def fun(self, x, **kwargs):  # alias
+        return self(x, **kwargs)
+
+    def update(self, *args, **kwargs):  # needs to be callable
         """ Perform update the parameters.
 
             This can include updating internal normalizers, etc.
             Return a report, in any.
         """
+
     @property
     @abstractmethod
     def variables(self):

@@ -3,9 +3,6 @@ import time
 
 from tools.utils.misc_utils import flatten, unflatten
 
-
-
-
 def test_misc_utils():
 
     vs = [np.random.random((10,)), np.random.random((4,3))]
@@ -14,7 +11,6 @@ def test_misc_utils():
     assert all([np.all(np.isclose(v1-v2, 0.0)) for v1, v2 in zip(vs,vs_u)])
     vs_u = unflatten(v, shapes=[vv.shape for vv in vs])
     assert all([np.all(np.isclose(v1-v2, 0.0)) for v1, v2 in zip(vs,vs_u)])
-
 
 
 if __name__=='__main__':
