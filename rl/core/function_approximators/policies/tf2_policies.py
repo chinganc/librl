@@ -4,17 +4,23 @@ from rl.core.function_approximators.policies import Policy
 from rl.core.function_approximators.function_approximator import online_compatible
 from rl.core.function_approximators.tf2_function_approximators import tfFuncApp, RobustKerasMLP
 from rl.core.utils.misc_utils import zipsame
-from rl.core.utils.tf2_utils import tf_float
+from rl.core.utils.tf2_utils import tf_float, ts_to_array
 
 
 class tfPolicy(tfFuncApp, Policy):
     """ A stochastic version of tfFuncApp.
 
-        The user need to define `ts_predict`, `ts_variables`, and
-        `ts_logp`, and optionally `ts_kl` and `ts_fvp`.
+        The user need to define `ts_predict`, `ts_variables`, and optionally
+        `ts_logp`, `ts_kl` and `ts_fvp`.
 
-        By default, `ts_logp` returns log(delta), i.e. the function is
-        deterministic.
+        By default, `ts_logp` returns log(delta), i.e. the function is assumed
+        to be deterministic. Therefore, it can be used a wrapper of subclass of
+        `tfFuncApp`. For example, for a subclass `A`, one can define
+
+            class B(tfPolicy, A):
+                pass
+
+        which creates a deterministic tfPolicy.
     """
     def __init__(self, x_shape, y_shape, name='tf_policy', **kwargs):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
@@ -27,13 +33,17 @@ class tfPolicy(tfFuncApp, Policy):
 
     @online_compatible
     def kl(self, other, xs, reversesd=False, **kwargs):
+        """ Return the KL divergence for each data point in the batch xs. """
         return self.ts_kl(other, tf.constant(xs, dtype=tf_float), reversesd=reversesd)
 
     @online_compatible
-    def fvp(self, xs, gs, **kwargs):
-        ts_fvps = self.ts_fvp(tf.constant(xs, dtype=tf_float),
-                           tf.constant(gs, dtype=tf_float), **kwargs)
-        return [ v.numpy() for v in ts_fvps]
+    def fvp(self, xs, g, **kwargs):
+        """ Return the product between a vector g (in the same formast as
+        self.variable) and the Fisher information defined by the average
+        over xs. """
+        ts_fvp = self.ts_fvp(tf.constant(xs, dtype=tf_float),
+                              tf.constant(g, dtype=tf_float), **kwargs)
+        return np.concatenate([v.numpy() for v in ts_fvp])
 
     # required implementations
     def ts_predict(self, ts_xs, stochastic=True, **kwargs):

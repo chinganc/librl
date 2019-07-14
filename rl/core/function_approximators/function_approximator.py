@@ -2,7 +2,6 @@ from abc import abstractmethod
 from functools import wraps
 import os, pickle, copy
 from rl.core.oracles.oracle import Oracle
-from rl.core.utils.misc_utils import flatten, unflatten
 
 
 def online_compatible(f):
@@ -70,26 +69,15 @@ class FunctionApproximator(Oracle):
             This can include updating internal normalizers, etc.
             Return a report, in any.
         """
-
     @property
     @abstractmethod
-    def variables(self):
-        """ Return the variables as a list of nd.ndarrays. """
-
-    @variables.setter
-    @abstractmethod
-    def variables(self, vals):
-        """ Set the variables as val, which is in the same format as self.variables. """
-
-    @property
     def variable(self):
-        """ Return a np.ndarray of the variables. """
-        return flatten(self.variables)
+        """ Return the variable as a np.ndarray. """
 
     @variable.setter
+    @abstractmethod
     def variable(self, val):
-        """ Set the variables as val, which is a np.ndarray in the same format as self.variable. """
-        self.variables = unflatten(val, template=self.variables)
+        """ Set the variable as val, which is a np.ndarray in the same format as self.variable. """
 
     # utilities
     def assign(self, other, excludes=()):

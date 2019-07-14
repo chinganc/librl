@@ -5,9 +5,10 @@ from abc import abstractmethod
 from rl.core.function_approximators.function_approximator import FunctionApproximator
 from rl.core.function_approximators.normalizers import tfNormalizerMax
 from rl.core.utils.tf_utils import tf_float
+from rl.core.utils.misc_utils import flatten, unflatten
 
 # NOTE ts_* methods are in batch mode
-
+#      ts_variables is a list of tf.Variables
 
 class tfFuncApp(FunctionApproximator):
     """ A minimal wrapper for tensorflow 2 operators.
@@ -17,18 +18,22 @@ class tfFuncApp(FunctionApproximator):
         (Everything else should work out of the box, because of tensorflow 2.)
     """
     def __init__(self, x_shape, y_shape, name='tf_func_app', **kwargs):
+        self._var_shapes = None  # cache
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
     def predict(self, xs, **kwargs):
         return self.ts_predict(tf.constant(xs, dtype=tf_float), **kwargs).numpy()
 
     @property
-    def variables(self):
-        return [var.numpy() for var in self.ts_variables]
+    def variable(self):
+        return flatten([var.numpy() for var in self.ts_variables])
 
-    @variables.setter
-    def variables(self, vals):
-        return [var.assign(val) for var, val in zip(self.ts_variables,vals) ]
+    @variable.setter
+    def variable(self, val):
+        if self._var_shapes is None:
+            self._var_shapes = [var.shape.as_list() for var in self.ts_variables]
+        vals = unflatten(val, shapes=self._var_shapes)
+        [var.assign(val) for var, val in zip(self.ts_variables, vals)]
 
     # required implementation
     @abstractmethod

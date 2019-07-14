@@ -5,18 +5,7 @@ from functools import wraps
 from rl.core.utils.misc_utils import zipsame, flatten
 from rl.core.function_approximators.normalizers import NormalizerStd
 from rl.core.oracles.oracle import Oracle
-from rl.core.utils.tf_utils import tf_float
-
-def ts_to_array(f):
-    @wraps(f)
-    def decorated_f(self, *args, **kwargs):
-        ts = f(*args, **kwargs)
-        if type(ts) is list:
-            return [ t.numpy() for t in ts]
-        else:
-            return ts.numpy()
-    return decorated_f
-
+from rl.core.utils.tf2_utils import tf_float, ts_to_array
 
 class tfOracle(Oracle):
     """ A minimal wrapper of tensorflow functions. """

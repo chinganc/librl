@@ -14,7 +14,7 @@ def test_copy(cls):
     y_shape = (3,)
     fun = cls(x_shape, y_shape)
     new_fun = copy.deepcopy(fun)
-    new_fun.variables = fun.variables
+    new_fun.variable = fun.variable
     new_fun.variable = fun.variable+1
     assert all([np.all(np.isclose(v1-v2,1.0)) for v1, v2 in zip(new_fun.variable,fun.variable)])
 

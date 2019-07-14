@@ -76,11 +76,11 @@ class Normalizer(FunctionApproximator):
         return self.predict(x)
 
     @property
-    def variables(self):
-        return []
+    def variable(self):
+        return None
 
-    @variables.setter
-    def variables(self, vals):
+    @variable.setter
+    def variable(self, vals):
         pass
 
     def update(self, *args, **kwargs):

@@ -6,7 +6,7 @@ import os
 import multiprocessing
 import functools
 from abc import ABC, abstractmethod
-
+from functools import wraps
 from rl.core.utils.misc_utils import unflatten, flatten, cprint
 
 tf_float = tf.float32
@@ -16,6 +16,19 @@ tf_int = tf.int32
 """
 For compatibility with stop_gradient
 """
+
+def ts_to_array(f):
+    # convert tf.Tensor(s) to np.ndarray(s)
+    @wraps(f)
+    def decorated_f(self, *args, **kwargs):
+        ts = f(*args, **kwargs)
+        if type(ts) is list:
+            return [ t.numpy() for t in ts]
+        else:
+            return ts.numpy()
+    return decorated_f
+
+
 
 
 def gradients(tensor, var_list):
