@@ -46,7 +46,7 @@ class ClipNormalizer(tf.keras.layers.Layer):
         return ts_x
 
 
-def _tf2NormalizerDecorator(cls):
+def _tfNormalizerDecorator(cls):
     """ A decorator for adding a tf operator equivalent of Normalizer.predict
 
         It reuses all the functionalties of the original Normalizer and
@@ -100,10 +100,10 @@ def _tf2NormalizerDecorator(cls):
     return decorated_cls
 
 
-@_tf2NormalizerDecorator
-class tf2NormalizerStd(NormalizerStd):
+@_tfNormalizerDecorator
+class tfNormalizerStd(NormalizerStd):
     pass
 
-@_tf2NormalizerDecorator
-class tf2NormalizerMax(NormalizerMax):
+@_tfNormalizerDecorator
+class tfNormalizerMax(NormalizerMax):
     pass

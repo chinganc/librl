@@ -2,13 +2,13 @@ import tensorflow as tf
 import numpy as np
 from rl.tools.function_approximators.policies import Policy
 from rl.tools.function_approximators.function_approximator import online_compatible
-from rl.tools.function_approximators.tf2_function_approximators import tf2FuncApp, RobustKerasMLP
+from rl.tools.function_approximators.tf2_function_approximators import tfFuncApp, RobustKerasMLP
 from rl.tools.utils.misc_utils import zipsame
-from rl.tools.utils.tf_utils import tf_float
+from rl.tools.utils.tf2_utils import tf_float
 
 
-class tf2Policy(tf2FuncApp, Policy):
-    """ A stochastic version of tf2FuncApp.
+class tfPolicy(tfFuncApp, Policy):
+    """ A stochastic version of tfFuncApp.
 
         The user need to define `ts_predict`, `ts_variables`, and
         `ts_logp`, and optionally `ts_kl` and `ts_fvp`.
@@ -16,10 +16,10 @@ class tf2Policy(tf2FuncApp, Policy):
         By default, `ts_logp` returns log(delta), i.e. the function is
         deterministic.
     """
-    def __init__(self, x_shape, y_shape, name='tf2_policy', **kwargs):
+    def __init__(self, x_shape, y_shape, name='tf_policy', **kwargs):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
-    # `predict` has been defined by tf2FuncApp
+    # `predict` has been defined by tfFuncApp
     @online_compatible
     def logp(self, xs, ys, **kwargs):  # override
         return self.ts_logp(tf.constant(xs, dtype=tf_float),
@@ -58,7 +58,7 @@ class tf2Policy(tf2FuncApp, Policy):
         raise NotImplementedError
 
 
-class _RobustKerasMLPPolicy(RobustKerasMLP, tf2Policy):
+class _RobustKerasMLPPolicy(RobustKerasMLP, tfPolicy):
     pass  # for debugging
 
 
@@ -82,10 +82,10 @@ def gaussian_kl(ms_1, lstds_1, ms_2, lstds_2):
     return kls
 
 
-class tf2GaussianPolicy(tf2Policy):
-    """ A wrapper for augmenting tf2FuncApp with Gaussian noises.
+class tfGaussianPolicy(tfPolicy):
+    """ A wrapper for augmenting tfFuncApp with Gaussian noises.
     """
-    def __init__(self, x_shape, y_shape, name='tf2_gaussian_policy',
+    def __init__(self, x_shape, y_shape, name='tf_gaussian_policy',
                  init_lstd=None, min_std=0.0,  # new attribues
                  **kwargs):
         """ The user needs to provide init_lstd. """
@@ -162,7 +162,7 @@ class tf2GaussianPolicy(tf2Policy):
         return ts_fvp
 
 
-class RobustKerasMLPGassian(tf2GaussianPolicy, tf2RobustMLP):
+class RobustKerasMLPGassian(tfGaussianPolicy, tfRobustMLP):
 
     def __init__(self, x_shape, y_shape, name='robust_k_MLP_gaussian_policy', **kwargs):
         super().__init__(x_shape, y_shape, name=name, **kwargs)

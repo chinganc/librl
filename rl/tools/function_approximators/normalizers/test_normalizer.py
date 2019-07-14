@@ -43,8 +43,8 @@ class Tests(unittest.TestCase):
         test_basics(Nor.Normalizer)
         test_basics(Nor.NormalizerStd)
         test_basics(Nor.NormalizerMax)
-        test_basics(Nor.tf2NormalizerStd)
-        test_basics(Nor.tf2NormalizerMax)
+        test_basics(Nor.tfNormalizerStd)
+        test_basics(Nor.tfNormalizerMax)
 
     def test_normalizer_std(self):
         shape = (1,2,3)
@@ -62,7 +62,7 @@ class Tests(unittest.TestCase):
         assert np.all(np.isclose(nor._scale-np.std(xs,axis=0),0.0))
 
 
-    def test_tf2_normalizers(self):
+    def test_tf_normalizers(self):
 
         def _test(cls, tf_cls):
             shape = (1,2,3)
@@ -93,13 +93,13 @@ class Tests(unittest.TestCase):
                 assert_array(nxs1, nxs2)
 
 
-        _test(Nor.NormalizerStd, Nor.tf2NormalizerStd)
-        _test(Nor.NormalizerMax, Nor.tf2NormalizerMax)
+        _test(Nor.NormalizerStd, Nor.tfNormalizerStd)
+        _test(Nor.NormalizerMax, Nor.tfNormalizerMax)
 
         NormalizerClip = functools.partial(Nor.NormalizerClip, clip_thre=3.0)
-        tf2NormalizerClip = functools.partial(Nor.tf2NormalizerClip, clip_thre=3.0)
+        tfNormalizerClip = functools.partial(Nor.tfNormalizerClip, clip_thre=3.0)
 
-        _test(NormalizerClip, tf2NormalizerClip)
+        _test(NormalizerClip, tfNormalizerClip)
 
 
     def test_normalizer_clip(self):

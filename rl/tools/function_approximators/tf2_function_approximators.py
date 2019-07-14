@@ -3,20 +3,20 @@ import numpy as np
 import tensorflow as tf
 from abc import abstractmethod
 from rl.tools.function_approximators.function_approximator import FunctionApproximator
-from rl.tools.function_approximators.normalizers import tf2NormalizerMax
+from rl.tools.function_approximators.normalizers import tfNormalizerMax
 from rl.tools.utils.tf_utils import tf_float
 
 # NOTE ts_* methods are in batch mode
 
 
-class tf2FuncApp(FunctionApproximator):
+class tfFuncApp(FunctionApproximator):
     """ A minimal wrapper for tensorflow 2 operators.
 
         The user needs to define `ts_predict`and `ts_variables`.
 
         (Everything else should work out of the box, because of tensorflow 2.)
     """
-    def __init__(self, x_shape, y_shape, name='tf2_func_app', **kwargs):
+    def __init__(self, x_shape, y_shape, name='tf_func_app', **kwargs):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
     def predict(self, xs, **kwargs):
@@ -41,7 +41,7 @@ class tf2FuncApp(FunctionApproximator):
         """ Return a list of tf.Variables """
 
 
-class KerasFuncApp(tf2FuncApp):
+class KerasFuncApp(tfFuncApp):
     """
         A wrapper of tf.keras.Model.
 
@@ -90,7 +90,7 @@ class KerasFuncApp(tf2FuncApp):
     def k_predict(self, xs, **kwargs):
         return self.kmodel.predict(xs, **kwargs)
 
-    # required methods of tf2FuncApp
+    # required methods of tfFuncApp
     def ts_predict(self, ts_xs):
         return self.kmodel(ts_xs)
 
@@ -123,23 +123,23 @@ class KerasFuncApp(tf2FuncApp):
         self.kmodel.set_weights(weights)
 
 
-class tf2RobustFuncApp(tf2FuncApp):
+class tfRobustFuncApp(tfFuncApp):
     """ A function approximator with input and output normalizers.
 
         This class can be viewed as a wrapper in inheritance.  For example, for
-        any subclass `A` of `tf2FuncApp`, we can create a robust subclass `B` by
+        any subclass `A` of `tfFuncApp`, we can create a robust subclass `B` by
         simply defining
 
-            class B(tf2RobustFuncApp, A):
+            class B(tfRobustFuncApp, A):
                 pass
     """
 
-    def __init__(self, x_shape, y_shape, name='tf2_robust_func_app',
+    def __init__(self, x_shape, y_shape, name='tf_robust_func_app',
                  x_nor=None, y_nor=None, **kwargs):
 
-        self._x_nor = x_nor or tf2NormalizerMax(x_shape, unscale=False, \
+        self._x_nor = x_nor or tfNormalizerMax(x_shape, unscale=False, \
                                     unbias=False, clip_thre=5.0, rate=0., momentum=None)
-        self._y_nor = y_nor or tf2NormalizerMax(y_shape, unscale=True, \
+        self._y_nor = y_nor or tfNormalizerMax(y_shape, unscale=True, \
                                     unbias=True, clip_thre=5.0, rate=0., momentum=None)
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
@@ -161,7 +161,7 @@ class tf2RobustFuncApp(tf2FuncApp):
         return super().update(xs=xs, ys=ys, *args, **kwargs)
 
 
-class RobustKerasFuncApp(tf2RobustFuncApp, KerasFuncApp):
+class RobustKerasFuncApp(tfRobustFuncApp, KerasFuncApp):
 
     def __init__(self, x_shape, y_shape, name='robust_k_func_app', **kwargs):
         super().__init__(x_shape, y_shape, name=name, **kwargs)

@@ -1,3 +1,5 @@
 from .supervised_learner import SupervisedLearner
-from .tf2_supervised_learners import SuperRobustKerasFuncApp, SuperRobustKerasMLP
+import tensorflow as tf
+if tf.__version__[0]=='2':
+    from .tf2_supervised_learners import SuperRobustKerasFuncApp, SuperRobustKerasMLP
 #from .tf_supervised_learners import tfSupervisedLearner, tfMLPSupervisedLearner

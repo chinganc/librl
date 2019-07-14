@@ -7,7 +7,7 @@ from rl.tools.function_approximators.normalizers import normalizer as pynor
 from rl.tools.utils.tf_utils import tf_float
 
 
-def make_tf2_normalizer(cls):
+def make_tf_normalizer(cls):
     """ A decorator for adding a tf operator equivalent of Normalizer.predict
 
         It reuses all the functionalties of the original Normalizer and
@@ -90,16 +90,16 @@ def make_tf2_normalizer(cls):
     return decorated_cls
 
 
-@make_tf2_normalizer
-class tf2NormalizerClip(pynor.NormalizerClip):
+@make_tf_normalizer
+class tfNormalizerClip(pynor.NormalizerClip):
     pass
 
-@make_tf2_normalizer
-class tf2NormalizerStd(pynor.NormalizerStd):
+@make_tf_normalizer
+class tfNormalizerStd(pynor.NormalizerStd):
     pass
 
-@make_tf2_normalizer
-class tf2NormalizerMax(pynor.NormalizerMax):
+@make_tf_normalizer
+class tfNormalizerMax(pynor.NormalizerMax):
     pass
 
 

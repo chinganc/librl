@@ -18,7 +18,7 @@ def ts_to_array(f):
     return decorated_f
 
 
-class tf2Oracle(Oracle):
+class tfOracle(Oracle):
     """ A minimal wrapper of tensorflow functions. """
     def __init__(self, tf_fun, **kwargs):
         self.ts_fun = ts_fun  # a function that returns tf.Tensor(s)
@@ -27,7 +27,7 @@ class tf2Oracle(Oracle):
 
     @ts_to_array
     def fun(self, x=None, **kwargs):
-        """ If x is not provided, the cyhed value from the previous call of
+        """ If x is not provided, the cached value from the previous call of
         `fun` or `grad` will be returned. """
         if x is not None:
             x = tf.constant(x, dtype=tf_float)
@@ -36,7 +36,7 @@ class tf2Oracle(Oracle):
 
     @ts_to_array
     def grad(self, x=None, **kwargs):
-         """ If x is not provided, the cyhed value from the previous call of
+        """ If x is not provided, the cached value from the previous call of
          `grad` will be returned. """
         if x is None:
             x = tf.constant(x, dtype=tf_float)
@@ -47,7 +47,7 @@ class tf2Oracle(Oracle):
         return self.ts_g
 
 
-class tf2LikelihoodRatioOracle(tf2Oracle):
+class tfLikelihoodRatioOracle(tfOracle):
     """
     An Oracle based on the loss function below: if use_log_loss is True
 
