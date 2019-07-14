@@ -3,9 +3,9 @@ from rl.algorithms.algorithm import Algorithm
 from rl.policies import Policy
 from rl import oracles as Or
 from rl.online_learners import rlPiccoloFisher
-from rl.tools.online_learners import Piccolo, PiccoloOpt
-from rl.tools.utils.misc_utils import timed, safe_assign
-from rl.tools.utils import logz
+from rl.core.online_learners import Piccolo, PiccoloOpt
+from rl.core.utils.misc_utils import timed, safe_assign
+from rl.core.utils import logz
 
 
 class PredictiveRL(Algorithm):

@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from rl.tools.function_approximators import FunctionApproximator, online_compatible
+from rl.core.function_approximators import FunctionApproximator, online_compatible
 
 
 class Policy(FunctionApproximator):  # a policy is namely a stochastic FunctionApproximator

@@ -1,6 +1,6 @@
 import os
 import time
-import functools
+import funccore
 import copy
 import git
 import tensorflow as tf
@@ -12,11 +12,11 @@ from rl import algorithms as Alg
 from rl.adv_estimators import AdvantageEstimator
 from rl.experimenter.generate_rollouts import generate_rollout
 from rl.online_learners import online_optimizer as OO
-from rl.tools import normalizers as Nor
-from rl.tools import supervised_learners as Sup
-from rl.tools.online_learners.scheduler import PowerScheduler
-from rl.tools.online_learners import base_algorithms as bAlg
-from rl.tools.utils import logz
+from rl.core import normalizers as Nor
+from rl.core import supervised_learners as Sup
+from rl.core.online_learners.scheduler import PowerScheduler
+from rl.core.online_learners import base_algorithms as bAlg
+from rl.core.utils import logz
 
 
 def configure_log(configs, unique_log_dir=False):
@@ -99,7 +99,7 @@ def create_model_oracle(oracle, env, envid, seed, c):
         else:
             assert isinstance(et, float) and et >= 0.0 and et < 1.0
             sim_env = Env.create_sim_env(env, seed, inaccuracy=et)
-        gen_ro = functools.partial(generate_rollout, env=sim_env, **c['rollout_kwargs'])
+        gen_ro = funccore.partial(generate_rollout, env=sim_env, **c['rollout_kwargs'])
         model_oracle = mor_cls(oracle, sim_env, gen_ro)
     elif (mor_cls is Or.LazyOracle) or (mor_cls is Or.AdversarialOracle):
         model_oracle = mor_cls(oracle, **c['lazyor_kwargs'])

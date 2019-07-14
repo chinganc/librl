@@ -1,8 +1,8 @@
 import numpy as np
 import tensorflow as tf
-import rl.tools.utils.tf_utils as U
-from rl.tools.online_learners import online_optimizer as OO
-from rl.tools.online_learners import base_algorithms as BA
+import rl.core.utils.tf_utils as U
+from rl.core.online_learners import online_optimizer as OO
+from rl.core.online_learners import base_algorithms as BA
 from rl.policies import Policy
 
 

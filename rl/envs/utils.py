@@ -2,10 +2,10 @@ import gym
 import os
 
 from rl import envs
-from rl.tools import supervised_learners as Sup
+from rl.core import supervised_learners as Sup
 
-from pybullet_envs.minitaur.agents.tools import BatchEnv
-from pybullet_envs.minitaur.agents.tools.wrappers import ExternalProcess
+from pybullet_envs.minitaur.agents.core import BatchEnv
+from pybullet_envs.minitaur.agents.core.wrappers import ExternalProcess
 
 
 def create_batch_env(envid, seed, n_envs, render=False, use_ext_proc=True):
@@ -20,7 +20,7 @@ def create_env(envid, seed, render=False):
     """Create minitaur or other standard gym environment."""
     if 'minitaur' in envid:
         from pybullet_envs.minitaur.agents.scripts import utility
-        from pybullet_envs.minitaur.agents import tools
+        from pybullet_envs.minitaur.agents import core
         config = utility.load_config(os.path.expanduser('minitaur_config'))
         if 'bad' in envid:
             with config.unlocked:
@@ -30,10 +30,10 @@ def create_env(envid, seed, render=False):
                 config.env.keywords['urdf_version'] = None
         env = config.env(render=render)
         if config.max_length:
-            env = tools.wrappers.LimitDuration(env, config.max_length)
-        env = tools.wrappers.RangeNormalize(env)
-        env = tools.wrappers.ClipAction(env)
-        env = tools.wrappers.ConvertTo32Bit(env)
+            env = core.wrappers.LimitDuration(env, config.max_length)
+        env = core.wrappers.RangeNormalize(env)
+        env = core.wrappers.ClipAction(env)
+        env = core.wrappers.ConvertTo32Bit(env)
 
         class MySpec(object):
             def __init__(self, max_episode_steps):

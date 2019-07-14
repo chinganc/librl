@@ -4,7 +4,7 @@ import tensorflow as tf
 from scripts import configs as C
 from rl import experimenter as Exp
 from rl.configs import parser as ps
-from rl.tools.utils import tf_utils as U
+from rl.core.utils import tf_utils as U
 
 
 def main(c):

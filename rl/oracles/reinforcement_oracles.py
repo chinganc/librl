@@ -1,11 +1,11 @@
 import numpy as np
 
-from rl.tools.oracles import tfLikelihoodRatioOracle
+from rl.core.oracles import tfLikelihoodRatioOracle
 from rl.oracles.oracle import rlOracle
 from rl.policies import tfPolicy
-from rl.tools.normalizers import OnlineNormalizer
-from rl.tools.utils.tf_utils import tfObject
-from rl.tools.utils import logz
+from rl.core.normalizers import OnlineNormalizer
+from rl.core.utils.tf_utils import tfObject
+from rl.core.utils import logz
 
 
 class tfPolicyGradient(tfLikelihoodRatioOracle, rlOracle):

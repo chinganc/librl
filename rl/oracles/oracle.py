@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from rl.policies import Policy
-from rl.tools.oracles import Oracle
-from rl.tools.utils.misc_utils import safe_assign
+from rl.core.oracles import Oracle
+from rl.core.utils.misc_utils import safe_assign
 
 
 class rlOracle(Oracle):

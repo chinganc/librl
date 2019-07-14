@@ -1,5 +1,5 @@
 import copy
-from rl.tools.utils.misc_utils import dict_update
+from rl.core.utils.misc_utils import dict_update
 
 configs = {
     'general': {

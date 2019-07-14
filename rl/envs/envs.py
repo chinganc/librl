@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-import functools
+import funccore
 import numpy as np
 from numpy import linalg as la
 import os
@@ -139,7 +139,7 @@ class DartEnvWithModel(EnvWithModel):
 
     class _require_robot_x_update_to_date(object):
         def __call__(self, func):
-            @functools.wraps(func)
+            @funccore.wraps(func)
             def wrapper(env, *args, **kwargs):
                 assert np.allclose(env._robot.x, env._state)
                 return func(env, *args, **kwargs)

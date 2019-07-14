@@ -1,7 +1,7 @@
-import functools
+import funccore
 import copy
 from collections import deque
-from rl.tools import oracles as Or
+from rl.core import oracles as Or
 from rl.oracles.oracle import rlOracle
 from rl.experimenter import RO
 
@@ -28,7 +28,7 @@ class AggregatedOracle(rlOracle):
             return self._ro
         else:  # queue
             rollouts = [r.rollouts for r in self._ro if r is not None]
-            return RO(functools.reduce(lambda x, y: x + y, rollouts))
+            return RO(funccore.reduce(lambda x, y: x + y, rollouts))
 
     def update(self, ro, *args, **kwargs):
 
@@ -79,7 +79,7 @@ def _rlMetaOracleDecorator(cls):
                 return self._base_oracle.ro
             elif hasattr(self, '_base_oracles'):
                 ros = [ba.ro for ba in self._base_oracles]
-                return functools.reduce(lambda a, b: a + b, ros)
+                return funccore.reduce(lambda a, b: a + b, ros)
 
         def update(self, ro, *args, **kwargs):
             cls.update(self, ro=ro, *args, **kwargs)

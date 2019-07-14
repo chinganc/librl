@@ -2,7 +2,7 @@ import numpy as np
 import copy
 from .performance_estimate import PerformanceEstimate as PE
 from rl.policies import Policy
-from rl.tools.supervised_learners import SupervisedLearner
+from rl.core.supervised_learners import SupervisedLearner
 
 
 class AdvantageEstimator(object):
