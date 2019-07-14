@@ -30,5 +30,5 @@ class Policy(FunctionApproximator):
 
     def fvp(self, xs, gs, **kwargs):
         """ Computes F(self.pi)*g, where F is the Fisher information matrix and
-        g is a np.ndarray in the same shape as self.variable """
+        g is a np.ndarray in the same shape as self.variable. """
         raise NotImplementedError

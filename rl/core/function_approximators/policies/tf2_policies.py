@@ -4,7 +4,7 @@ from rl.core.function_approximators.policies import Policy
 from rl.core.function_approximators.function_approximator import online_compatible
 from rl.core.function_approximators.tf2_function_approximators import tfFuncApp, RobustKerasMLP
 from rl.core.utils.misc_utils import zipsame
-from rl.core.utils.tf2_utils import tf_float, ts_to_array
+from rl.core.utils.tf2_utils import tf_float, array_to_ts, ts_to_array
 
 
 class tfPolicy(tfFuncApp, Policy):
@@ -28,21 +28,19 @@ class tfPolicy(tfFuncApp, Policy):
     # `predict` has been defined by tfFuncApp
     @online_compatible
     def logp(self, xs, ys, **kwargs):  # override
-        return self.ts_logp(tf.constant(xs, dtype=tf_float),
-                tf.constant(ys, dtype=tf_float),**kwargs).numpy()
+        return self.ts_logp(array_to_ts(xs), array_to_ts(ys), **kwargs).numpy()
 
     @online_compatible
     def kl(self, other, xs, reversesd=False, **kwargs):
         """ Return the KL divergence for each data point in the batch xs. """
-        return self.ts_kl(other, tf.constant(xs, dtype=tf_float), reversesd=reversesd)
+        return self.ts_kl(other, array_to_ts(xs), reversesd=reversesd)
 
     @online_compatible
     def fvp(self, xs, g, **kwargs):
         """ Return the product between a vector g (in the same formast as
         self.variable) and the Fisher information defined by the average
         over xs. """
-        ts_fvp = self.ts_fvp(tf.constant(xs, dtype=tf_float),
-                              tf.constant(g, dtype=tf_float), **kwargs)
+        ts_fvp = self.ts_fvp(array_to_ts(xs), array_to_ts(g), **kwargs)
         return np.concatenate([v.numpy() for v in ts_fvp])
 
     # required implementations
@@ -75,7 +73,7 @@ class _RobustKerasMLPPolicy(RobustKerasMLP, tfPolicy):
 LOG_TWO_PI = tf.consant(np.log(2*np.pi))
 def gaussian_logp(xs, ms, lstds):
      # log probability of Gaussian with diagonal variance over batches xs
-    axis= tf.range(tf.constant(1),tf.rank(xs))
+    axis= tf.range(1,tf.rank(xs))
     dim = tf.cast(tf.reduce_sum(xs.shape, axis=axis), dtype=tf_float)
     qs = tf.reduce_sum(-0.5*tf.squre(xs-ms)/tf.exp(lstds), axis=axis)
     logs = - tf.reduce_sum(lstds,axis=axis) - dim*LOG_TWO_PI
@@ -83,7 +81,7 @@ def gaussian_logp(xs, ms, lstds):
 
 def gaussian_kl(ms_1, lstds_1, ms_2, lstds_2):
     # KL(p1||p2)  support batches
-    axis= tf.range(tf.constant(1),tf.rank(ms))
+    axis= tf.range(1,tf.rank(ms))
     dim = tf.cast(tf.reduce_sum(ms.shape, axis=axis), dtype=tf_float)
     stds_1, stds_2 = tf.exp(lstds_1), tf.exp(lstds_2)
     kls = lstds_2 - lstds_1 - 0.5*dim
@@ -101,7 +99,7 @@ class tfGaussianPolicy(tfPolicy):
         """ The user needs to provide init_lstd. """
         assert init_lstd is not None
         init_lstd = np.broadcast_to(init_lstd, self.y_shape)
-        self._ts_lstd = tf.Variable(to_ndarray(init_lstd), dtype=tf_float)
+        self._ts_lstd = tf.Variable(array_to_ts(init_lstd), dtype=tf_float)
         self._ts_min_lstd = tf.constant(np.log(min_std), dtype=tf_float)
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
@@ -114,7 +112,7 @@ class tfGaussianPolicy(tfPolicy):
         return self(xs, stochastic=False)
 
     def ts_mean(self, xs):
-        return self.ts_predict(xs, stochastic=tf.constant(False))
+        return self.ts_predict(xs, stochastic=False)
 
     @property
     def lstd(self):

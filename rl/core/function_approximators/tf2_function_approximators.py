@@ -4,7 +4,7 @@ import tensorflow as tf
 from abc import abstractmethod
 from rl.core.function_approximators.function_approximator import FunctionApproximator
 from rl.core.function_approximators.normalizers import tfNormalizerMax
-from rl.core.utils.tf_utils import tf_float
+from rl.core.utils.tf2_utils import array_to_ts
 from rl.core.utils.misc_utils import flatten, unflatten
 
 # NOTE ts_* methods are in batch mode
@@ -22,7 +22,7 @@ class tfFuncApp(FunctionApproximator):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
     def predict(self, xs, **kwargs):
-        return self.ts_predict(tf.constant(xs, dtype=tf_float), **kwargs).numpy()
+        return self.ts_predict(array_to_ts(xs), **kwargs).numpy()
 
     @property
     def variable(self):
@@ -149,9 +149,9 @@ class tfRobustFuncApp(tfFuncApp):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
     def predict(self, xs, clip_y=True, **kwargs):
-        return super().predict(xs, clip_y=tf.constant(clip_y, dtype=tf.bool), **kwargs)
+        return super().predict(xs, clip_y=clip_y, **kwargs)
 
-    def ts_predict(self, ts_xs, clip_y=tf.constant(True)):
+    def ts_predict(self, ts_xs, clip_y=True):
         # include also input and output normalizeations
         ts_xs = self._x_nor.ts_predict(ts_xs)
         ts_ys = super().ts_predict(ts_xs)

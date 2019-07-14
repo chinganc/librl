@@ -14,16 +14,14 @@ class tfOracle(Oracle):
         self.ts_loss = None
         self.ts_g = None
 
-    @ts_to_array
     def fun(self, x=None, **kwargs):
         """ If x is not provided, the cached value from the previous call of
         `fun` or `grad` will be returned. """
         if x is not None:
             x = tf.constant(x, dtype=tf_float)
             self.ts_loss = self.ts_fun(x, **kwargs)
-        return self.ts_loss
+        return ts_to_array(self.ts_loss)
 
-    @ts_to_array
     def grad(self, x=None, **kwargs):
         """ If x is not provided, the cached value from the previous call of
          `grad` will be returned. """
@@ -33,7 +31,7 @@ class tfOracle(Oracle):
                 tape.watch(x)
                 self.ts_loss = self.ts_fun(x, **kwargs)
             self.ts_g = tape.gradient(self.ts_loss, x)
-        return self.ts_g
+        return ts_to_array(self.ts_g)
 
 
 class tfLikelihoodRatioOracle(tfOracle):
