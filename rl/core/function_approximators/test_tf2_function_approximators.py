@@ -3,7 +3,7 @@ import copy
 import tensorflow as tf
 from tensorflow.keras import layers
 import numpy as np
-import funccore
+import functools
 from rl.core import function_approximators as FA
 
 def assert_array(a,b):
@@ -79,8 +79,8 @@ class Tests(unittest.TestCase):
             test_predict(cls)
             test_save_and_restore(cls)
 
-        test(funccore.partial(FA.KerasFuncApp, build_kmodel=build_kmodel1))
-        test(funccore.partial(FA.KerasFuncApp, build_kmodel=build_kmodel2))
+        test(functools.partial(FA.KerasFuncApp, build_kmodel=build_kmodel1))
+        test(functools.partial(FA.KerasFuncApp, build_kmodel=build_kmodel2))
         test(lambda xsh, ysh: FA.KerasFuncApp(xsh, ysh, build_kmodel=build_kmodel1(xsh, ysh)))
 
 
@@ -102,8 +102,8 @@ class Tests(unittest.TestCase):
             assert_array(fun._y_nor._bias, np.mean(ys, axis=0))
             fun.predict(xs)
 
-        test(funccore.partial(FA.RobustKerasFuncApp, build_kmodel=build_kmodel1))
-        test(funccore.partial(FA.RobustKerasFuncApp, build_kmodel=build_kmodel2))
+        test(functools.partial(FA.RobustKerasFuncApp, build_kmodel=build_kmodel1))
+        test(functools.partial(FA.RobustKerasFuncApp, build_kmodel=build_kmodel2))
         test(lambda xsh, ysh: FA.RobustKerasFuncApp(xsh, ysh, build_kmodel=build_kmodel1(xsh, ysh)))
         test(FA.RobustKerasMLP)
 

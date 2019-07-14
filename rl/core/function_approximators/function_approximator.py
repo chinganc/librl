@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from funccore import wraps
+from functools import wraps
 import os, pickle, copy
 from rl.core.oracles.oracle import Oracle
 from rl.core.utils.misc_utils import flatten, unflatten

@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from funccore import wraps
+from functools import wraps
 import numpy as np
 
 from rl.core.function_approximators import FunctionApproximator

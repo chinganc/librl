@@ -1,6 +1,6 @@
 import os
 import time
-import funccore
+import functools
 import copy
 import git
 import tensorflow as tf
@@ -99,7 +99,7 @@ def create_model_oracle(oracle, env, envid, seed, c):
         else:
             assert isinstance(et, float) and et >= 0.0 and et < 1.0
             sim_env = Env.create_sim_env(env, seed, inaccuracy=et)
-        gen_ro = funccore.partial(generate_rollout, env=sim_env, **c['rollout_kwargs'])
+        gen_ro = functools.partial(generate_rollout, env=sim_env, **c['rollout_kwargs'])
         model_oracle = mor_cls(oracle, sim_env, gen_ro)
     elif (mor_cls is Or.LazyOracle) or (mor_cls is Or.AdversarialOracle):
         model_oracle = mor_cls(oracle, **c['lazyor_kwargs'])

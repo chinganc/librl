@@ -1,7 +1,7 @@
 import collections
 import tensorflow as tf
 import numpy as np
-from funccore import wraps
+from functools import wraps
 from abc import abstractmethod
 
 from rl.policies.policy import Policy

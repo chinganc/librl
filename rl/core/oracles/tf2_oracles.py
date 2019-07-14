@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from abc import abstractmethod
-from funccore import wraps
+from functools import wraps
 from rl.core.utils.misc_utils import zipsame, flatten
 from rl.core.function_approximators.normalizers import NormalizerStd
 from rl.core.oracles.oracle import Oracle

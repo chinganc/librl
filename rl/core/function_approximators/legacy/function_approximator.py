@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from funccore import wraps
+from functools import wraps
 
 
 def online_compatible(f):

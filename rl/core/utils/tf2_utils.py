@@ -4,7 +4,7 @@ import tensorflow as tf
 import numpy as np
 import os
 import multiprocessing
-import funccore
+import functools
 from abc import ABC, abstractmethod
 
 from rl.core.utils.misc_utils import unflatten, flatten, cprint
@@ -184,7 +184,7 @@ class tfObject(ABC):
             def safe_copy(val): return val
 
         def decorator(fun):
-            @funccore.wraps(fun)
+            @functools.wraps(fun)
             def wrapper(self, *args, **kwargs):
                 if hasattr(self, '_tfObject__args_saved'):
                     if self._tfObject__args_saved:  # make sure it's only called once

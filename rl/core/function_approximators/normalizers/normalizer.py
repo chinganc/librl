@@ -2,7 +2,7 @@ import numpy as np
 import copy
 import pickle
 import os
-import funccore
+import functools
 from rl.core.function_approximators.function_approximator import FunctionApproximator
 from rl.core.utils.mvavg import ExpMvAvg, PolMvAvg
 from rl.core.utils.misc_utils import deepcopy_from_list
@@ -133,10 +133,10 @@ class NormalizerStd(Normalizer):
         """
         super().__init__(shape, unscale=unscale, unbias=unbias, clip_thre=clip_thre, name=name)
         if momentum is None:
-            self._mvavg_init = funccore.partial(PolMvAvg, np.zeros(shape), power=rate)
+            self._mvavg_init = functools.partial(PolMvAvg, np.zeros(shape), power=rate)
         else:
             assert momentum <= 1.0 and momentum >= 0.0
-            self._mvavg_init = funccore.partial(ExpMvAvg, np.zeros(shape), rate=momentum)
+            self._mvavg_init = functools.partial(ExpMvAvg, np.zeros(shape), rate=momentum)
         # new attributes
         self._mean = self._mvavg_init()
         self._mean_of_sq = self._mvavg_init()

@@ -1,4 +1,4 @@
-import funccore
+import functools
 import time
 import numpy as np
 from rl.algorithms import Algorithm
@@ -14,7 +14,7 @@ class Experimenter:
         ro_kwargs is a dict with keys, 'min_n_samples', 'max_n_rollouts', 'max_rollout_len'
         """
         self._alg = safe_assign(alg, Algorithm)
-        self._gen_ro = funccore.partial(generate_rollout, env=env, **ro_kwargs)
+        self._gen_ro = functools.partial(generate_rollout, env=env, **ro_kwargs)
         self._ndata = 0  # number of data points seen
 
     def gen_ro(self, pi, logp=None, log_prefix='', to_log=False):
@@ -29,7 +29,7 @@ class Experimenter:
     def run_alg(self, n_itrs, pretrain=True, save_policy=False, save_freq=100, final_eval=False):
         start_time = time.time()
         if pretrain:  # algorithm-specific
-            self._alg.pretrain(funccore.partial(self.gen_ro, to_log=False))
+            self._alg.pretrain(functools.partial(self.gen_ro, to_log=False))
 
         # Main loop
         for itr in range(n_itrs):
