@@ -3,7 +3,6 @@ import copy
 from collections import defaultdict, namedtuple
 
 
-
 def data_namedtuple(*args, **kwargs):
     CLS = namedtuple(*args, **kwargs)
     def newlen(self):
