@@ -6,13 +6,14 @@ from rl.core.oracles.oracle import Oracle
 
 def online_compatible(f):
     @wraps(f)
-    def decorated_f(self, x, **kwargs):
+    def decorated_f(self, x, *args, **kwargs):
         if x.shape==self.x_shape:  # single instance
             x = [xx[None,:] for xx in x] if isinstance(x, list) else x[None,:]  # add an extra dimension
-            y = f(self, x, **kwargs)
+            new_args =[[aa[None,:] for aa in a] if isinstance(a, list) else a[None,:] for a in args ]  # add an extra dimension
+            y = f(self, x, *new_args, **kwargs)
             y = [yy[0] for yy in y] if isinstance(y, list) else y[0]  # remove the extra dimension
         else:
-            y = f(self, x, **kwargs)
+            y = f(self, x, *args, **kwargs)
         return y
     return decorated_f
 

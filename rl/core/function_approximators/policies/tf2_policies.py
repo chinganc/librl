@@ -5,6 +5,7 @@ from rl.core.function_approximators.function_approximator import online_compatib
 from rl.core.function_approximators.tf2_function_approximators import tfFuncApp, RobustKerasMLP, KerasFuncApp, RobustKerasFuncApp
 from rl.core.utils.misc_utils import zipsame
 from rl.core.utils.tf2_utils import tf_float, array_to_ts, ts_to_array
+from rl.core.utils.misc_utils import flatten, unflatten
 
 
 class tfPolicy(tfFuncApp, Policy):
@@ -30,18 +31,17 @@ class tfPolicy(tfFuncApp, Policy):
     def logp(self, xs, ys, **kwargs):  # override
         return self.ts_logp(array_to_ts(xs), array_to_ts(ys), **kwargs).numpy()
 
-    @online_compatible
     def kl(self, other, xs, reversesd=False, **kwargs):
         """ Return the KL divergence for each data point in the batch xs. """
         return self.ts_kl(other, array_to_ts(xs), reversesd=reversesd)
 
-    @online_compatible
     def fvp(self, xs, g, **kwargs):
         """ Return the product between a vector g (in the same formast as
         self.variable) and the Fisher information defined by the average
         over xs. """
-        ts_fvp = self.ts_fvp(array_to_ts(xs), array_to_ts(g), **kwargs)
-        return np.concatenate([v.numpy() for v in ts_fvp])
+        gs = unflatten(g, shapes=self.var_shapes)
+        ts_fvp = self.ts_fvp(array_to_ts(xs), array_to_ts(gs), **kwargs)
+        return flatten([v.numpy() for v in ts_fvp])
 
     # required implementations
     def ts_predict(self, ts_xs, stochastic=True, **kwargs):
@@ -60,7 +60,7 @@ class tfPolicy(tfFuncApp, Policy):
         """
         raise NotImplementedError
 
-    def ts_fvp(self, ts_xs, ts_g, **kwargs):
+    def ts_fvp(self, ts_xs, ts_gs, **kwargs):
         """ Computes F(self.pi)*g, where F is the Fisher information matrix and
         g is a np.ndarray in the same shape as self.variable """
         raise NotImplementedError
@@ -74,23 +74,21 @@ class _RobustKerasMLPPolicy(RobustKerasMLP, tfPolicy):
     pass  # for debugging
 
 
-LOG_TWO_PI = tf.constant(np.log(2*np.pi))
+LOG_TWO_PI = tf.constant(np.log(2*np.pi), dtype=tf_float)
 def gaussian_logp(xs, ms, lstds):
      # log probability of Gaussian with diagonal variance over batches xs
     axis= tf.range(1,tf.rank(xs))
-    dim = tf.cast(tf.reduce_sum(xs.shape, axis=axis), dtype=tf_float)
-    qs = tf.reduce_sum(-0.5*tf.squre(xs-ms)/tf.exp(lstds), axis=axis)
-    logs = - tf.reduce_sum(lstds,axis=axis) - dim*LOG_TWO_PI
+    qs = tf.reduce_sum(-0.5*tf.square(xs-ms)/tf.exp(2.*lstds), axis=axis)
+    logs = tf.reduce_sum(-lstds -0.5*LOG_TWO_PI,axis=axis)
     return qs + logs
 
 def gaussian_kl(ms_1, lstds_1, ms_2, lstds_2):
     # KL(p1||p2)  support batches
-    axis= tf.range(1,tf.rank(ms))
-    dim = tf.cast(tf.reduce_sum(ms.shape, axis=axis), dtype=tf_float)
-    stds_1, stds_2 = tf.exp(lstds_1), tf.exp(lstds_2)
-    kls = lstds_2 - lstds_1 - 0.5*dim
-    kls += (tf.square(std1) + tf.square(ms_1-ms_2)) / (2.0*tf.square(stds_2))
-    kls = tf.reduce_sum(kl, axis=axis)
+    axis= tf.range(1,tf.rank(ms_1))
+    vars_1, vars_2 = tf.exp(lstds_1*2.), tf.exp(lstds_2*2.)
+    kls = lstds_2 - lstds_1 - 0.5
+    kls += (vars_1 + tf.square(ms_1-ms_2)) / (2.0*vars_2)
+    kls = tf.reduce_sum(kls, axis=axis)
     return kls
 
 
@@ -143,7 +141,7 @@ class tfGaussianPolicy(tfPolicy):
         ts_lstds = tf.broadcast_to(self.ts_lstd, ts_ms.shape)
         return gaussian_logp(ts_ys, ts_ms, ts_lstds)
 
-    def ts_kl(self, other, ts_xs, reversesd=False, p1_sg=False, p2_sg=True):
+    def ts_kl(self, other, ts_xs, reversesd=False, p1_sg=False, p2_sg=False):
         """ Computes KL(self||other), where other is another object of the
             same policy class. If reversed is True, return KL(other||self).
         """
@@ -160,7 +158,7 @@ class tfGaussianPolicy(tfPolicy):
         else:
             return gaussian_kl(ts_ms_2, ts_lstds_2, ts_ms_1, ts_lstds_1)
 
-    def ts_fvp(self, ts_xs, ts_g):
+    def ts_fvp(self, ts_xs, ts_gs):
         """ Computes F(self.pi)*g, where F is the Fisher information matrix and
         g is a np.ndarray in the same shape as self.variable """
         with tf.GradientTape() as gt:

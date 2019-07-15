@@ -8,7 +8,7 @@ from rl.core.function_approximators import policies as POL
 from rl.core.function_approximators.policies.tf2_policies import _RobustKerasMLPPolicy, _RobustKerasPolicy
 
 def assert_array(a,b):
-    assert np.all(np.isclose(a-b,0.0, atol=1e-8))
+    assert np.all(np.isclose(a-b,0.0, atol=1e-6))
 
 def test_copy(cls):
     x_shape = (10,2,3)
@@ -75,7 +75,7 @@ def build_kmodel2(x_shape, y_shape):
 
 class Tests(unittest.TestCase):
 
-
+    """
     def test_robust_func_app(self):
         def test(cls):
             test_copy(cls)
@@ -99,6 +99,33 @@ class Tests(unittest.TestCase):
         test(lambda xsh, ysh: _RobustKerasPolicy(xsh, ysh, build_kmodel=build_kmodel1(xsh, ysh)))
         test(_RobustKerasMLPPolicy)
         test(functools.partial(POL.RobustKerasMLPGassian, init_lstd=1.0))
+    """
+
+    def test_gaussian(self):
+
+       x_shape = (10,2,3)
+       y_shape = (3,)
+       xs = np.random.random([100]+list(x_shape))
+       ys = np.random.random([100]+list(y_shape))
+       pol = POL.RobustKerasMLPGassian(x_shape, y_shape,  init_lstd=np.random.random(y_shape))
+       pol.lstd
+       pol.ts_lstd
+
+       ms = pol.mean(xs)
+       assert ys.shape==ms.shape
+       var = np.exp(pol.lstd*2)
+       logp = -np.sum((ms-ys)**2/var/2, axis=1) - np.prod(y_shape)/2 * np.log(2*np.pi) - 0.5 *np.log(np.prod(var))
+       logp2 = pol.logp(xs,ys)
+       assert_array(logp, logp2)
+       kls = pol.kl(pol, xs)
+       assert_array(kls, 0)
+
+       pol.fvp(xs, pol.variable)
+
+
+
+
+
 
 
 if __name__ == '__main__':

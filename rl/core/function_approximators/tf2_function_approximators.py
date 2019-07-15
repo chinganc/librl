@@ -30,10 +30,14 @@ class tfFuncApp(FunctionApproximator):
 
     @variable.setter
     def variable(self, val):
+        vals = unflatten(val, shapes=self.var_shapes)
+        [var.assign(val) for var, val in zip(self.ts_variables, vals)]
+
+    @property
+    def var_shapes(self):
         if self._var_shapes is None:
             self._var_shapes = [var.shape.as_list() for var in self.ts_variables]
-        vals = unflatten(val, shapes=self._var_shapes)
-        [var.assign(val) for var, val in zip(self.ts_variables, vals)]
+        return self._var_shapes
 
     # required implementation
     @abstractmethod
