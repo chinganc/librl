@@ -5,28 +5,27 @@ from rl.core.utils.misc_utils import safe_assign
 
 
 class rlOracle(Oracle):
-    """
-    It should be deepcopy save.
-    """
+    """ rlOracle interacts in terms of policies and `ro` which is a Dataset. """
 
-    def __init__(self, policy):
-        self.policy = safe_assign(policy, Policy)
+    # These functions should now take a Policy instance as input.
+    def fun(self, policy, **kwargs):
+        """ Return the function value given an input. """
+        raise NotImplementedError
+
+    def grad(self, policy, **kwargs):
+        """ Return the gradient with respect to an input as np.ndarray(s). """
+        raise NotImplementedError
+
+    def hess(self, policy, **kwargs):
+        """ Return the Hessian with respect to an input as np.ndarray(s). """
+        raise NotImplementedError
+
+    @abstractmethod
+    def update(ro, *args, **kwargs):
+        """The update method should take ro as the first argument."""
 
     @property
     @abstractmethod
     def ro(self):
         """Return the effective ro that defines this oracle."""
 
-    @abstractmethod
-    def update(ro, *args, **kwargs):
-        """The update method should take ro as the first argument."""
-
-    def __deepcopy__(self, memo=None, exclude=None):
-        if memo is None:
-            memo = {}
-        if exclude is None:
-            exclude = []
-        exclude.append('policy')
-        new = Oracle.__deepcopy__(self, memo, exclude=exclude)
-        new.policy = self.policy
-        return new

@@ -1,6 +1,7 @@
 import time
 from rl.core.datasets import Dataset
 
+
 class Rollout(object):
     """ A container for storing statistics along a trajectory. """
 
