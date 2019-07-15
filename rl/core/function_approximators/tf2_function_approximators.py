@@ -96,7 +96,7 @@ class KerasFuncApp(tfFuncApp):
         return self.kmodel.predict(xs, **kwargs)
 
     # required methods of tfFuncApp
-    def ts_predict(self, ts_xs):
+    def ts_predict(self, ts_xs, **kwargs):
         return self.kmodel(ts_xs)
 
     @property
@@ -151,7 +151,7 @@ class tfRobustFuncApp(tfFuncApp):
     def predict(self, xs, clip_y=True, **kwargs):
         return super().predict(xs, clip_y=clip_y, **kwargs)
 
-    def ts_predict(self, ts_xs, clip_y=True):
+    def ts_predict(self, ts_xs, clip_y=True, **kwargs):
         # include also input and output normalizeations
         ts_xs = self._x_nor.ts_predict(ts_xs)
         ts_ys = super().ts_predict(ts_xs)
@@ -186,9 +186,12 @@ class RobustKerasMLP(RobustKerasFuncApp):
         super().__init__(x_shape, y_shape, **kwargs)
 
     def _build_kmodel(self, x_shape, y_shape):
-        kmodel = tf.keras.Sequential()
+        ts_in = tf.keras.Input(x_shape)
+        ts_xs = tf.keras.layers.Reshape((np.prod(x_shape),))(ts_in)
         for unit in self.units:
-            kmodel.add(tf.keras.layers.Dense(unit, activation=self.activation))
-        kmodel.add(tf.keras.layers.Dense(y_shape[-1], activation='linear'))
+            ts_xs = tf.keras.layers.Dense(unit, activation=self.activation)(ts_xs)
+        ts_ys = tf.keras.layers.Dense(np.prod(y_shape), activation='linear')(ts_xs)
+        ts_out = tf.keras.layers.Reshape(y_shape)(ts_ys)
+        kmodel = tf.keras.Model(ts_in, ts_out)
         return kmodel
 

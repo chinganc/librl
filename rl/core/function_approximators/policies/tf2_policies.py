@@ -46,7 +46,7 @@ class tfPolicy(tfFuncApp, Policy):
     # required implementations
     def ts_predict(self, ts_xs, stochastic=True, **kwargs):
         """ Define the tf operators for predict """
-        super().ts_predict(ts_xs, stochastic=stochastic, **kwargs)
+        return super().ts_predict(ts_xs, stochastic=stochastic, **kwargs)
 
     def ts_logp(self, ts_xs, ts_ys):
         """ Define the tf operators for logp """
@@ -102,7 +102,7 @@ class tfGaussianPolicy(tfPolicy):
                  **kwargs):
         """ The user needs to provide init_lstd. """
         assert init_lstd is not None
-        init_lstd = np.broadcast_to(init_lstd, self.y_shape)
+        init_lstd = np.broadcast_to(init_lstd, y_shape)
         self._ts_lstd = tf.Variable(array_to_ts(init_lstd), dtype=tf_float)
         self._ts_min_lstd = tf.constant(np.log(min_std), dtype=tf_float)
         super().__init__(x_shape, y_shape, name=name, **kwargs)
@@ -124,17 +124,17 @@ class tfGaussianPolicy(tfPolicy):
 
     @property
     def ts_lstd(self):
-        return tf.clip_by_value(self._ts_lstd, self._ts_min_lstd)
+        return tf.maximum(self._ts_lstd, self._ts_min_lstd)
 
     # ts_predict, ts_logp, ts_fvp, ts_kl
-    def ts_predict(self, ts_xs, stochastic=True, ts_noises=False):
+    def ts_predict(self, ts_xs, stochastic=True, ts_noises=False, **kwargs):
         """ Define the tf operators for predict """
         ts_ms = super().ts_predict(ts_xs, **kwargs)
         if stochastic:
-            if tf.equal(ts_noise, False):
-                ts_shape = tf.concat([ts_xs.shape[0], self.y_shape])
-                ts_noises = tf.random_normal(ts_shape)
-            return ts_ms + tf.exps(self.ts_lstd) * ts_noise
+            if tf.equal(ts_noises, False):
+                shape = [ts_xs.shape[0]]+list(self.y_shape)
+                ts_noises = tf.random.normal(shape)
+            return ts_ms + tf.exp(self.ts_lstd) * ts_noises
         else:
             return ts_ms
 
@@ -177,4 +177,6 @@ class tfGaussianPolicy(tfPolicy):
 class RobustKerasMLPGassian(tfGaussianPolicy, RobustKerasMLP):
 
     def __init__(self, x_shape, y_shape, name='robust_k_MLP_gaussian_policy', **kwargs):
+        """ The user needs to provide init_lstd and optionally min_std. """
         super().__init__(x_shape, y_shape, name=name, **kwargs)
+

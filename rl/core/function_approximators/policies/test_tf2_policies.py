@@ -47,7 +47,9 @@ def test_save_and_restore(cls):
         fun1.save(path)
         fun2.restore(path)
         assert all([np.all(np.isclose(v1-v2,0.0)) for v1, v2 in zip(fun1.variable,fun2.variable)])
-        assert_array(fun1.predict(xs), fun2.predict(xs))
+        assert_array(fun1.variable, fun2.variable)
+        if hasattr(fun1,'_x_nor'):
+            assert_array(fun1._x_nor._bias, fun2._x_nor._bias)
 
 
 def build_kmodel1(x_shape, y_shape):
@@ -74,17 +76,6 @@ def build_kmodel2(x_shape, y_shape):
 class Tests(unittest.TestCase):
 
 
-    def test_func_app(self):
-        def test(cls):
-            test_copy(cls)
-            test_predict(cls)
-            test_save_and_restore(cls)
-
-        test(functools.partial(FA.KerasFuncApp, build_kmodel=build_kmodel1))
-        test(functools.partial(FA.KerasFuncApp, build_kmodel=build_kmodel2))
-        test(lambda xsh, ysh: FA.KerasFuncApp(xsh, ysh, build_kmodel=build_kmodel1(xsh, ysh)))
-
-
     def test_robust_func_app(self):
         def test(cls):
             test_copy(cls)
@@ -107,7 +98,7 @@ class Tests(unittest.TestCase):
         test(functools.partial(_RobustKerasPolicy, build_kmodel=build_kmodel2))
         test(lambda xsh, ysh: _RobustKerasPolicy(xsh, ysh, build_kmodel=build_kmodel1(xsh, ysh)))
         test(_RobustKerasMLPPolicy)
-        test(POL.RobustKerasMLPGassian)
+        test(functools.partial(POL.RobustKerasMLPGassian, init_lstd=1.0))
 
 
 if __name__ == '__main__':
