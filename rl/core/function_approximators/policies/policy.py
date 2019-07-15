@@ -10,7 +10,7 @@ class Policy(FunctionApproximator):
     """
 
     def __init__(self, x_shape, y_shape, name='policy', **kwargs):
-        super().__init__(x_dim, y_dim, name=name, **kwargs)
+        super().__init__(x_shape, y_shape, name=name, **kwargs)
 
     def predict(self, xs, stochastic=True, **kwargs):
         """ Predict the values on batches of xs. """

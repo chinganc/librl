@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from rl.core.function_approximators.policies import Policy
 from rl.core.function_approximators.function_approximator import online_compatible
-from rl.core.function_approximators.tf2_function_approximators import tfFuncApp, RobustKerasMLP
+from rl.core.function_approximators.tf2_function_approximators import tfFuncApp, RobustKerasMLP, KerasFuncApp, RobustKerasFuncApp
 from rl.core.utils.misc_utils import zipsame
 from rl.core.utils.tf2_utils import tf_float, array_to_ts, ts_to_array
 
@@ -66,11 +66,15 @@ class tfPolicy(tfFuncApp, Policy):
         raise NotImplementedError
 
 
+class _RobustKerasPolicy(RobustKerasFuncApp, tfPolicy):
+    pass  # for debugging
+
+
 class _RobustKerasMLPPolicy(RobustKerasMLP, tfPolicy):
     pass  # for debugging
 
 
-LOG_TWO_PI = tf.consant(np.log(2*np.pi))
+LOG_TWO_PI = tf.constant(np.log(2*np.pi))
 def gaussian_logp(xs, ms, lstds):
      # log probability of Gaussian with diagonal variance over batches xs
     axis= tf.range(1,tf.rank(xs))
@@ -170,7 +174,7 @@ class tfGaussianPolicy(tfPolicy):
         return ts_fvp
 
 
-class RobustKerasMLPGassian(tfGaussianPolicy, tfRobustMLP):
+class RobustKerasMLPGassian(tfGaussianPolicy, RobustKerasMLP):
 
     def __init__(self, x_shape, y_shape, name='robust_k_MLP_gaussian_policy', **kwargs):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
