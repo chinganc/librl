@@ -100,6 +100,10 @@ class Dataset:
 
         return self._cache[key]
 
+    def __iter__(self):
+        for batch in self._batches:
+            yield batch
+
     @property
     def n_samples(self):
         """ Number of samples across all the batches. """

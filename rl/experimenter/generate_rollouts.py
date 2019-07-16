@@ -5,41 +5,40 @@ from rl.core.datasets import Dataset
 class Rollout(object):
     """ A container for storing statistics along a trajectory. """
 
-    def __init__(self, obs, acs, rws, sts, dns, logp=None):
+    def __init__(self, obs, acs, rws, sts, done, logp=None):
         # obs, acs, rws, sts, lps are lists of vals
-        assert len(obs) == len(sts)
-        assert len(acs) == len(rws)
+        assert len(obs) == len(sts) == len(rws)
         assert len(obs) == len(acs) + 1
         self.obs = np.array(obs)
         self.acs = np.array(acs)
         self.rws = np.array(rws)
         self.sts = np.array(sts)
-        self.dns = np.array(dns)
+        self.dns = np.zeros((len(self)+1,))
+        self.dns[-1] = float(done)
         if logp is None:  # viewed as deterministic
             self.lps = np.zeros(self.acs.shape)
         else:
-            self.lps = logp(self.obs_short, self.acs)
+            self.lps = logp(self.obs[:-1], self.acs)
 
     @property
-    def obs_short(self):
-        return self.obs[:-1]
-
-    @property
-    def sts_short(self):
-        return self.sts[:-1]
+    def done(self):
+        return self.dns[-1]
 
     def __len__(self):
-        return len(self.rws)
+        return len(self.acs)
 
 
- def get_state(env):
+def get_state(env):
+    # try to retrieve the underlying state, if available
     if hasattr(env, 'env'):
         return env.env.state  # openai gym env, which is a TimeLimit object
-    else:
+    elif hasattr(env, 'state'):
         return env.state
+    else:
+        return None
 
 
-def generate_rollout(pi, logp, env,
+def generate_rollout(pi, logp, env, v_end=None
                      max_n_samples=None, max_n_rollouts=None,
                      max_rollout_len=None,
                      with_animation=False):
@@ -52,6 +51,7 @@ def generate_rollout(pi, logp, env,
             pi: a function that maps ob to ac
             logp: either None or a function that maps (obs, acs) to log probabilities
             env: a gym environment
+            v_end: the terminal value when the episoide ends (a callable function of ob and done)
             max_rollout_len: the maximal length of a rollout (i.e. the problem's horizon)
             max_n_samples: the minimal number of samples to collect
             max_n_rollouts: the maximal number of rollouts
@@ -59,7 +59,8 @@ def generate_rollout(pi, logp, env,
     """
 
     assert (max_n_samples is not None) or (max_n_rollouts is not None)  # so we can stop
-
+    if v_end is None:
+        v_end = lambda ob, done : 0.
     max_n_samples = max_n_samples or float('Inf')
     max_n_rollouts = max_n_rollouts or float('Inf')
     max_rollout_len = max_rollout_len or float('Inf')
@@ -71,8 +72,7 @@ def generate_rollout(pi, logp, env,
         animate_this_rollout = len(rollouts) == 0 and with_animation
         ob = env.reset()  # observation
         st = get_state(env)  # env state
-        dn = False  # special state (whether it is an absorbing state)
-        obs, acs, rws, sts, dns = [], [], [], [], []
+        obs, acs, rws, sts = [], [], [], []
         steps = 0  # steps so far
         while True:
             if animate_this_rollout:
@@ -80,29 +80,20 @@ def generate_rollout(pi, logp, env,
                 time.sleep(0.05)
             obs.append(ob)
             sts.append(st)
-            dns.append(dn)
-            # apply action and get to the next state
-            ac = pi(ob)
+            ac = pi(ob) # apply action and get to the next state
             acs.append(ac)
-            ob, rw, done, _ = env.step(ac)
+            ob, rw, dn, _ = env.step(ac)  # current reward, next ob and dn
             rws.append(rw)
             st = get_state(env)
             steps += 1
-            if steps >= max_rollout_len:  # breaks due to steps limit
-                sts.append(st)
-                obs.append(ob)
-                dns.append(False)
-                break
-            elif done:
-                # breaks due to absorbing state
-                sts.append(st)
-                obs.append(ob)
-                dns.apend(True)
-                break
-            else:
-                dn = False
+            if dn or steps >= max_rollout_len:
+                break # due to steps limit or entering an absorbing state
+        # save the terminal state/observation/reward
+        sts.append(st)
+        obs.append(ob)
+        rws.append(v_end(ob, done))
         # end of one rollout
-        rollout = Rollout(obs=obs, acs=acs, rws=rws, sts=sts, dns=dns, logp=logp)
+        rollout = Rollout(obs=obs, acs=acs, rws=rws, sts=sts, done=done, logp=logp)
         rollouts.append(rollout)
         n_samples += len(rollout)
         if (n_samples >= max_n_samples) or (len(rollouts) >= max_n_rollouts):
