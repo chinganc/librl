@@ -9,9 +9,10 @@ class Oracle(ABC):
 
         The user would want to implement the following methods:
 
-            `fun` returns the function value given an input.
+            `fun`  returns the function value given an input.
             `grad` returns the gradient with respect to an input.
             `hess` returns the Hessian with respect to an input.
+            `hvp`  returns the Hessia-vector-product with respect to an input.
             `update` redefines the function.
 
         Implementation of all these methods is not mandatory. For example, the
@@ -31,6 +32,11 @@ class Oracle(ABC):
 
     def hess(self, x, **kwargs):
         """ Return the Hessian with respect to an input as np.ndarray(s). """
+        raise NotImplementedError
+
+    def hvp(self, x, g, **kwargs):
+        """ Return the product between Hessian and a vector `g` with respect to
+            an input as np.ndarray(s). """
         raise NotImplementedError
 
     def update(self, *args, **kwargs):

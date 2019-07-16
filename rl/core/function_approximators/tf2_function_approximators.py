@@ -109,7 +109,11 @@ class KerasFuncApp(tfFuncApp):
 
     # utilities
     def __getstate__(self):
-        d = dict(self.__dict__)
+        if hasattr(super(), '__getstate__'):
+            d = super().__getstate__()
+        else:
+            d = self.__dict__
+        d = dict(d)
         del d['kmodel']
         d['kmodel_config'] = self.kmodel.get_config()
         d['kmodel_weights'] = self.kmodel.get_weights()
@@ -121,7 +125,10 @@ class KerasFuncApp(tfFuncApp):
         config = d['kmodel_config']
         del d['kmodel_weights']
         del d['kmodel_config']
-        self.__dict__.update(d)
+        if hasattr(super(), '__setstate__'):
+            super().__setstate__(d)
+        else:
+            self.__dict__.update(d)
         try:
             self.kmodel = tf.keras.Model.from_config(config)
         except KeyError:

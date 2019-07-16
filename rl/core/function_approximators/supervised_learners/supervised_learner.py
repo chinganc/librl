@@ -1,12 +1,12 @@
 from abc import abstractmethod
 import numpy as np
-from rl.core import function_approximators as fa
+from rl.core.function_approximators.function_approximator import FunctionApproximator
 from rl.core.datasets import Dataset, data_namedtuple
 
 Data = data_namedtuple('Data', 'xs ys ws')
-class SupervisedLearner(fa.FunctionApproximator):
+class SupervisedLearner(FunctionApproximator):
     """ FunctionApproximator trained on aggregated data. """
-    # NOTE This class is meant to be a wrapper so we use **kwargs
+
     def __init__(self, x_shape, y_shape, name='supervised_learner',
                  max_n_samples=0,  # number of samples to keep
                  max_n_batches=0,  # number of batches to keep

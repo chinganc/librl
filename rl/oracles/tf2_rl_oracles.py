@@ -32,8 +32,6 @@ class tfPolicyGradient(rlOracle):
         """ update liknor """
 
 
-
-
     @property
     def ro(self):
         return self._ro

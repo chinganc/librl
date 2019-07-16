@@ -1,12 +1,58 @@
+from abc import abstractmethod
 import numpy as np
 import copy
 from .performance_estimate import PerformanceEstimate as PE
 from rl.policies import Policy
-from rl.core.supervised_learners import SupervisedLearner
+from rl.core.function_approximators import FunctionApproximator
+from rl.core.datasets import Dataset
+
+class AdvantageFunction(FunctionApproximator)
+    """ An abstract advantage function estimator based on replay buffer.
+
+        The user needs to implement
+            `update`, `predict`, variable (setter and getter) from FunctionApproximator
+        and the new methods
+            `advs`, `qfns`, `vfns`
+    """
+    # We overload the interface to work with policies and rollouts.
+
+    def __init__(self, ref_policy, name='advantage_function',
+                 max_n_samples=0,  # number of samples to keep
+                 max_n_batches=0,  # number of batches/rollouts to keep
+                 **kwargs):
+        self._ro = Dataset(max_n_batches=max_n_batches, max_n_samples=max_n_samples)  # replay buffer
+        self._ref_policy = ref_policy  # reference policy
+        super().__init__([policy.x_shape, policy.y_shape], (1,), name=name, **kwargs)
+
+    @abstractmethod
+    def update(self, ro, *args, **kwargs):
+        """ based on rollouts """
+
+    @abstractmethod
+    def advs(self, ro, *args, **kwargs):  # advantage function
+        """ Return a list of nd.arrays, one for each rollout. """
+
+    @abstractmethod
+    def qfns(self, ro, *args, **kwargs):  # Q function
+        """ Return a list of nd.arrays, one for each rollout. """
+
+    @abstractmethod
+    def vfns(self, ro, *args, **kwargs):  # value function
+        """ Return a list of nd.arrays, one for each rollout. """
+
+    # _ref_policy should not be deepcopy or saved
+    def __getstate__(self):
+        if hasattr(super(), '__getstate__'):
+            d = super().__getstate__()
+        else:
+            d = self.__dict__
+        d = dict(d)
+        del d['_ref_policy']
+        return d
 
 
-class AdvantageEstimator(object):
-    # An estimator based on value function
+class ValueBasedAdvantageEstimator(AdvantageFunction):
+    """ An estimator based on value function. """
 
     def __init__(self, ref_policy,  # the reference ref_policy of this estimator
                  vfn,  # value function estimator (SupervisedLearner)
@@ -40,7 +86,7 @@ class AdvantageEstimator(object):
         self._n_updates = n_updates
         # replay buffer
         self._ro = None
-        self._max_n_rollouts = max_n_rollouts 
+        self._max_n_rollouts = max_n_rollouts
         self._data_aggregation = data_aggregation
         # SupervisedLearner for regressing the value function of ref_policy
         assert isinstance(vfn, SupervisedLearner)
