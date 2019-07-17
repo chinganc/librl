@@ -41,7 +41,9 @@ class tfValueBasedPolicyGradient(rlOracle):
     def grad(self, policy):
         return self._or.grad(policy.ts_variables) * self._scale
 
-    def update(self, ro):
+    def update(self, ro, policy):
+        # sync policies' parameters
+        self._policy_t.assign(policy)
         # Compute adv.
         self._ro = ro
         advs, vfns = self._ae.advs(self.ro, use_is=self._use_is)

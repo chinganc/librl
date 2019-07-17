@@ -5,7 +5,8 @@ import copy
 import git
 import tensorflow as tf
 import numpy as np
-from rl import policies as Pol
+#from rl import policies as Pol
+from rl.core.function_approximators import policies as Pol
 from rl import envs as Env
 from rl import oracles as Or
 from rl import algorithms as Alg
@@ -51,7 +52,10 @@ def general_setup(c):
     envid, seed = c['envid'], c['seed'],
     env = Env.create_env(envid, seed)
     # fix randomness
-    tf.set_random_seed(seed)  # graph-level seed
+    if tf.__version__[0]=='2':
+        tf.set_seed(seed)
+    else:
+        tf.set_random_seed(seed)  # graph-level seed
     np.random.seed(seed)
     return env, envid, seed
 

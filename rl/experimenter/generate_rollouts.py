@@ -50,7 +50,7 @@ def get_state(env):
         return None
 
 
-def generate_rollout(pi, logp, env, v_end=None
+def generate_rollout(pi, logp, env, v_end=None,
                      max_n_samples=None, max_n_rollouts=None,
                      max_rollout_len=None,
                      with_animation=False):
@@ -77,7 +77,6 @@ def generate_rollout(pi, logp, env, v_end=None
     max_n_rollouts = max_n_rollouts or float('Inf')
     max_rollout_len = max_rollout_len or float('Inf')
     max_rollout_len = min(env._max_episode_steps, max_rollout_len)
-    max_n_samples =
     n_samples = 0
     rollouts = []
     while True:

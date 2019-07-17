@@ -26,7 +26,7 @@ class PowerScheduler(object):
         constant) for a weighted online learning problem.
     """
 
-    def __init__(self, eta, k=None, c=1e-3, p=1.0, N=200, limit=None):
+    def __init__(self, eta, k=None, c=1e-3, p=0.0, N=200, limit=None):
         # It computes stepsize = \eta / (1+c*sum_w / sqrt{n}) / eta_nor, where
         # eta_nor is a normalization factor so that different choices of p are
         # comparable (p and N are only used in eta normalization).

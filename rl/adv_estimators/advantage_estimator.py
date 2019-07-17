@@ -2,12 +2,12 @@ from abc import abstractmethod
 import numpy as np
 import copy
 from .performance_estimate import PerformanceEstimate as PE
-from rl.policies import Policy
+from rl.core.function_approximators.policies import Policy
 from rl.core.function_approximators import FunctionApproximator
 from rl.core.datasets import Dataset
 
 
-class AdvantageFuncApp(FunctionApproximator)
+class AdvantageFuncApp(FunctionApproximator):
     """ An abstract advantage function estimator based on replay buffer.
 
         The user needs to implement methods required by `FunctionApproximator`
@@ -74,7 +74,7 @@ class ValueBasedAdvFuncApp(AdvantageFuncApp):
                  v_target,  # target of learning value function
                  use_is_pe=False,  # for value function learning
                  use_is=False,  # for value function learning
-                 n_updates=5  # number of iterations in policy evaluation
+                 n_updates=5,  # number of iterations in policy evaluation
                  name='value_based_adv_func_app',
                  **kwargs):
         """ Create an advantage estimator wrt ref_policy. """
@@ -146,4 +146,4 @@ class ValueBasedAdvFuncApp(AdvantageFuncApp):
 
 
 class QBasedAdvFuncApp(ValueBasedAdvFuncApp):
-    raise NotImplementedError
+    pass
