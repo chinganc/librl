@@ -21,6 +21,7 @@ def main(c):
     ob_shape = env.observation_space.shape
     ac_shape = env.action_space.shape
     policy = RobustKerasMLPGassian(ob_shape, ac_shape,
+                                   init_lstd=0.1,
                                    units=(256, 256))
     vfn = SuperRobustKerasMLP(ob_shape, (1,))
     alg = PolicyGradient(policy, vfn)

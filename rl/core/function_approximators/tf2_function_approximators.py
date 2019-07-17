@@ -112,6 +112,10 @@ class KerasFuncApp(tfFuncApp):
     def ts_variables(self):
         return self.kmodel.trainable_variables
 
+    @ts_variables.setter
+    def ts_variables(self, ts_vals):
+        [var.assign(val) for var, val in zip(self.ts_variables, ts_vals)]
+
     # utilities
     def __getstate__(self):
         if hasattr(super(), '__getstate__'):

@@ -13,8 +13,8 @@ from rl import algorithms as Alg
 from rl.adv_estimators import AdvantageEstimator
 from rl.experimenter.generate_rollouts import generate_rollout
 from rl.online_learners import online_optimizer as OO
-from rl.core import normalizers as Nor
-from rl.core import supervised_learners as Sup
+from rl.core.function_approximators import normalizers as Nor
+from rl.core.function_approximators import supervised_learners as Sup
 from rl.core.online_learners.scheduler import PowerScheduler
 from rl.core.online_learners import base_algorithms as bAlg
 from rl.core.utils import logz
@@ -53,7 +53,7 @@ def general_setup(c):
     env = Env.create_env(envid, seed)
     # fix randomness
     if tf.__version__[0]=='2':
-        tf.set_seed(seed)
+        tf.random.set_seed(seed)
     else:
         tf.set_random_seed(seed)  # graph-level seed
     np.random.seed(seed)

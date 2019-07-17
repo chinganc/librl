@@ -47,8 +47,8 @@ def log_rollout_info(ro, prefix=''):
         log_rollout_info.total_n_samples = {}  # static variable
     if prefix not in log_rollout_info.total_n_samples:
         log_rollout_info.total_n_samples[prefix] = 0
-    sum_of_rewards = [rollout.rws.sum() for rollout in ro.rollouts]
-    rollout_lens = [len(rollout) for rollout in ro.rollouts]
+    sum_of_rewards = [rollout.rws.sum() for rollout in ro]
+    rollout_lens = [len(rollout) for rollout in ro]
     n_samples = sum(rollout_lens)
     log_rollout_info.total_n_samples[prefix] += n_samples
     logz.log_tabular(prefix + "NumSamplesThisBatch", n_samples)

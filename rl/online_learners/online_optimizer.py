@@ -3,7 +3,7 @@ import tensorflow as tf
 import rl.core.utils.tf_utils as U
 from rl.core.online_learners import online_optimizer as OO
 from rl.core.online_learners import base_algorithms as BA
-from rl.policies import Policy
+from rl.core.function_approximators.policies import Policy
 
 
 class rlOnlineOptimizer(object):

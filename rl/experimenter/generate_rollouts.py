@@ -1,4 +1,5 @@
 import time
+import numpy as np
 from rl.core.datasets import Dataset
 
 
@@ -34,7 +35,7 @@ class Rollout(object):
 
     @property
     def done(self):
-        return self.dns[-1]
+        return bool(self.dns[-1])
 
     def __len__(self):
         return len(self.acs)
@@ -51,7 +52,7 @@ def get_state(env):
 
 
 def generate_rollout(pi, logp, env, v_end=None,
-                     max_n_samples=None, max_n_rollouts=None,
+                     min_n_samples=None, max_n_rollouts=None,
                      max_rollout_len=None,
                      with_animation=False):
     """ Collect rollouts until we have enough samples.
@@ -65,15 +66,15 @@ def generate_rollout(pi, logp, env, v_end=None,
             env: a gym environment
             v_end: the terminal value when the episoide ends (a callable function of ob and done)
             max_rollout_len: the maximal length of a rollout (i.e. the problem's horizon)
-            max_n_samples: the minimal number of samples to collect
+            min_n_samples: the minimal number of samples to collect
             max_n_rollouts: the maximal number of rollouts
             with_animation: display animiation of the first rollout
     """
 
-    assert (max_n_samples is not None) or (max_n_rollouts is not None)  # so we can stop
+    assert (min_n_samples is not None) or (max_n_rollouts is not None)  # so we can stop
     if v_end is None:
         v_end = lambda ob, done : 0.
-    max_n_samples = max_n_samples or float('Inf')
+    min_n_samples = min_n_samples or float('Inf')
     max_n_rollouts = max_n_rollouts or float('Inf')
     max_rollout_len = max_rollout_len or float('Inf')
     max_rollout_len = min(env._max_episode_steps, max_rollout_len)
@@ -102,12 +103,12 @@ def generate_rollout(pi, logp, env, v_end=None,
         # save the terminal state/observation/reward
         sts.append(st)
         obs.append(ob)
-        rws.append(v_end(ob, done))
+        rws.append(v_end(ob, dn))
         # end of one rollout
-        rollout = Rollout(obs=obs, acs=acs, rws=rws, sts=sts, done=done, logp=logp)
+        rollout = Rollout(obs=obs, acs=acs, rws=rws, sts=sts, done=dn, logp=logp)
         rollouts.append(rollout)
         n_samples += len(rollout)
-        if (n_samples >= max_n_samples) or (len(rollouts) >= max_n_rollouts):
+        if (n_samples >= min_n_samples) or (len(rollouts) >= max_n_rollouts):
             break
     ro = Dataset(rollouts)
     return ro

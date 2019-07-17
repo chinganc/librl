@@ -4,10 +4,11 @@ import copy
 from .performance_estimate import PerformanceEstimate as PE
 from rl.core.function_approximators.policies import Policy
 from rl.core.function_approximators import FunctionApproximator
+from rl.core.function_approximators.supervised_learners import SupervisedLearner
 from rl.core.datasets import Dataset
 
 
-class AdvantageFuncApp(FunctionApproximator):
+class AdvantageEstimator(FunctionApproximator):
     """ An abstract advantage function estimator based on replay buffer.
 
         The user needs to implement methods required by `FunctionApproximator`
@@ -63,7 +64,7 @@ class AdvantageFuncApp(FunctionApproximator):
         return d
 
 
-class ValueBasedAdvFuncApp(AdvantageFuncApp):
+class ValueBasedAE(AdvantageEstimator):
     """ An estimator based on value function. """
 
     def __init__(self, ref_policy,  # the reference ref_policy of this estimator
@@ -106,7 +107,6 @@ class ValueBasedAdvFuncApp(AdvantageFuncApp):
         self._vfn._dataset.max_n_batches=0
         super().__init__(ref_policy, name=name, **kwargs)
 
-
     def update(self, ro):
         """ Policy evaluation """
         # update the replay buffer
@@ -115,7 +115,7 @@ class ValueBasedAdvFuncApp(AdvantageFuncApp):
         w = np.concatenate(self.weights(self.ro))[:,None] if self.use_is else 1.0
         for i in range(self._n_updates):
             v_hat = w*np.concatenate(self.qfns(self.ro, self.pe_lambd)).reshape([-1, 1])  # target
-            self._vfn.update(self.ro.obs_short, v_hat)
+            self._vfn.update(self.ro['obs_short'], v_hat)
 
     def advs(self, ro, lambd=None, use_is=None, ref_policy=None):  # advantage function
         """ Compute adv (evaluated at ro) wrt to ref_policy.
@@ -130,10 +130,10 @@ class ValueBasedAdvFuncApp(AdvantageFuncApp):
         if use_is is 'multi':
             ws = self.weights(ro, ref_policy)  # importance weight
             advs = [self._pe.adv(rollout.rws, vf, rollout.done, w=w, lambd=lambd)
-                    for rollout, vf, w in zip(ro.rollouts, vfns, ws)]
+                    for rollout, vf, w in zip(ro, vfns, ws)]
         else:
             advs = [self._pe.adv(rollout.rws, vf, rollout.done, w=1.0, lambd=lambd)
-                    for rollout, vf in zip(ro.rollouts, vfns)]
+                    for rollout, vf in zip(ro, vfns)]
         return advs, vfns
 
     def qfns(self, ro, lambd=None, use_is=None, ref_policy=None):  # Q function
@@ -142,8 +142,19 @@ class ValueBasedAdvFuncApp(AdvantageFuncApp):
         return qfns
 
     def vfns(self, ro):  # value function
-        return [self._vfn.predict(rollout.obs) for rollout in ro.rollouts]
+        return [np.squeeze(self._vfn.predict(rollout.obs)) for rollout in ro]
+
+    def predict(self, xs, **kwargs):
+        raise NotImplementedError
+
+    @property
+    def variable(self):
+        return self._vfn.variable
+
+    @variable.setter
+    def variable(self, val):
+        self._vfn.variable = val
 
 
-class QBasedAdvFuncApp(ValueBasedAdvFuncApp):
+class QBasedAE(ValueBasedAE):
     pass

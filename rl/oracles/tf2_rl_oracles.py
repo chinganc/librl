@@ -1,9 +1,11 @@
 import numpy as np
 import copy
-from rl.adv_estimators.advantage_estimator import ValueBasedAdvFuncApp
+from rl.adv_estimators.advantage_estimator import ValueBasedAE
 from rl.oracles.oracle import rlOracle
 from rl.core.oracles import tfLikelihoodRatioOracle
 from rl.core.function_approximators.policies import tfPolicy
+from rl.core.utils.tf2_utils import ts_to_array
+from rl.core.utils.misc_utils import flatten
 
 
 class tfValueBasedPolicyGradient(rlOracle):
@@ -16,17 +18,18 @@ class tfValueBasedPolicyGradient(rlOracle):
     def __init__(self, policy, ae,
                  use_is='one', avg_type='avg',
                  nor=None, biased=False, use_log_loss=False, normalized_is=False):
-        assert isinstance(ae, ValueBasedAdvFuncApp)
+        assert isinstance(ae, ValueBasedAE)
         self._ae = ae
         # define the internal oracle
         assert isinstance(policy, tfPolicy)
         self._policy_t = copy.deepcopy(policy)  # just a template
         def ts_logp_fun (ts_vars):
+            import pdb; pdb.set_trace()
             self._policy_t.ts_variables = ts_vars  # just assign the variables
             return self._policy_t.ts_logp(self._ro.obs, self._ro.acs)
         self._or = tfLikelihoodRatioOracle(ts_logp_fun,
                     nor=nor, biased=biased, # basic mvavg
-                    use_log_loss=use_log_loss, normalized_is=normalize_is)
+                    use_log_loss=use_log_loss, normalized_is=normalized_is)
         # some configs for computing gradients
         assert use_is in ['one', 'multi', None, False]
         self._use_is = use_is  # use importance sampling for polcy gradient
@@ -39,7 +42,7 @@ class tfValueBasedPolicyGradient(rlOracle):
         return self._or.fun(policy.ts_variables) * self._scale
 
     def grad(self, policy):
-        return self._or.grad(policy.ts_variables) * self._scale
+        return flatten(ts_to_array(self._or.ts_grad(policy.ts_variables))) * self._scale
 
     def update(self, ro, policy):
         # sync policies' parameters
@@ -52,14 +55,14 @@ class tfValueBasedPolicyGradient(rlOracle):
         # Update the loss function.
         if self._or._use_log_loss is True:
             #  - E_{ob} E_{ac ~ q | ob} [ w * log p(ac|ob) * adv(ob, ac) ]
-            if self.use_is:  # consider importance weight
+            if self._use_is:  # consider importance weight
                 w_or_logq = np.concatenate(self._ae.weights(ro, policy=self.policy))
             else:
                 w_or_logq = np.ones_like(adv)
         else:  # False or None
             #  - E_{ob} E_{ac ~ q | ob} [ p(ac|ob)/q(ac|ob) * adv(ob, ac) ]
-            assert self.use_is in ['one', 'multi']
-            w_or_logq = ro.lps
+            assert self._use_is in ['one', 'multi']
+            w_or_logq = ro['lps']
         # Update the tfLikelihoodRatioOracle.
         self._or.update(-adv, w_or_logq, update_nor=True)  # loss is negative reward
         # Update the value function at the end, so it's unbiased.

@@ -111,8 +111,7 @@ class PerformanceEstimate(object):
     def shift_l(v, padding=0.):
         return np.append(v[1:], padding) if np.array(v).size > 1 else v
 
-    @staticmethod
-    def reshape_cost(c, V, done, w=1.0):
+    def reshape_cost(self, c, V, done, w=1.0):
         v, v_next = V[:-1], V[1:]
         if done:
             v_next[-1] = c[-1]
@@ -137,7 +136,6 @@ class PerformanceEstimate(object):
             can be int, float, or np.ndarray with length equal to len(c)-1.
 
         """
-
         assert c.shape == V.shape
         assert type(done) is bool
         lambd = lambd or self.lambd
@@ -148,7 +146,7 @@ class PerformanceEstimate(object):
         Y = self.shift_l(X) * delta_lambd  # this always pads 0
         a = x + Y
         b = Y
-        c = delta_lambda
+        c = delta_lambd
         d = gamma
         return self.dynamic_program(a, b, c, d, w)
 

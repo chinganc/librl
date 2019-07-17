@@ -110,6 +110,11 @@ class tfGaussianPolicy(tfPolicy):
     def ts_variables(self):
         return super().ts_variables + [self._ts_lstd]
 
+    @ts_variables.setter
+    def ts_variables(self, ts_vals):
+        [var.assign(val) for var, val in zip(self.ts_variables, ts_vals)]
+
+
     def mean(self, xs):
         return self(xs, stochastic=False)
 

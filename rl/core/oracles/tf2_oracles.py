@@ -5,27 +5,30 @@ from functools import wraps
 from rl.core.utils.misc_utils import zipsame, flatten
 from rl.core.function_approximators.normalizers import NormalizerStd
 from rl.core.oracles.oracle import Oracle
-from rl.core.utils.tf2_utils import tf_float, ts_to_array
+from rl.core.utils.tf2_utils import tf_float, ts_to_array, array_to_ts
 
 class tfOracle(Oracle):
     """ A minimal wrapper of tensorflow functions. """
-    def __init__(self, tf_fun, **kwargs):
+    def __init__(self, ts_fun, **kwargs):
         self.ts_fun = ts_fun  # a function that returns tf.Tensor(s)
 
     def fun(self, x, **kwargs):
         """ If x is not provided, the cached value from the previous call of
         `fun` or `grad` will be returned. """
-        x = tf.constant(x, dtype=tf_float)
-        return ts_to_array(self.ts_fun(x, **kwargs))
+        return ts_to_array(self.ts_fun(array_to_ts(x), **kwargs))
+
+    def ts_grad(self, ts_x, **kwargs):
+        """ If x is not provided, the cached value from the previous call of
+         `grad` will be returned. """
+        with tf.GradientTape() as tape:
+            tape.watch(ts_x)
+            self.ts_loss = self.ts_fun(ts_x, **kwargs)
+        return tape.gradient(self.ts_loss, ts_x)
 
     def grad(self, x, **kwargs):
         """ If x is not provided, the cached value from the previous call of
          `grad` will be returned. """
-        x = tf.constant(x, dtype=tf_float)
-        with tf.GradientTape() as tape:
-            tape.watch(x)
-            self.ts_loss = self.ts_fun(x, **kwargs)
-        return ts_to_array(tape.gradient(self.ts_loss, x))
+        return ts_to_array(self.ts_grad(array_to_ts(x), **kwargs))
 
 
 class tfLikelihoodRatioOracle(tfOracle):

@@ -143,6 +143,6 @@ class Dataset:
     def _assert_other_type(self, other):
         assert type(self)==type(other)
         if len(self)>0 and len(other)>0:
-            self._assert_data_type(self._batches[0], other._batches[0])
+            self._assert_data_type(other._batches[0])
 
 
