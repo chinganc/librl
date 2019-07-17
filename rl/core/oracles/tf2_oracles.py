@@ -11,27 +11,21 @@ class tfOracle(Oracle):
     """ A minimal wrapper of tensorflow functions. """
     def __init__(self, tf_fun, **kwargs):
         self.ts_fun = ts_fun  # a function that returns tf.Tensor(s)
-        self.ts_loss = None
-        self.ts_g = None
 
-    def fun(self, x=None, **kwargs):
+    def fun(self, x, **kwargs):
         """ If x is not provided, the cached value from the previous call of
         `fun` or `grad` will be returned. """
-        if x is not None:
-            x = tf.constant(x, dtype=tf_float)
-            self.ts_loss = self.ts_fun(x, **kwargs)
-        return ts_to_array(self.ts_loss)
+        x = tf.constant(x, dtype=tf_float)
+        return ts_to_array(self.ts_fun(x, **kwargs))
 
-    def grad(self, x=None, **kwargs):
+    def grad(self, x, **kwargs):
         """ If x is not provided, the cached value from the previous call of
          `grad` will be returned. """
-        if x is None:
-            x = tf.constant(x, dtype=tf_float)
-            with tf.GradientTape() as tape:
-                tape.watch(x)
-                self.ts_loss = self.ts_fun(x, **kwargs)
-            self.ts_g = tape.gradient(self.ts_loss, x)
-        return ts_to_array(self.ts_g)
+        x = tf.constant(x, dtype=tf_float)
+        with tf.GradientTape() as tape:
+            tape.watch(x)
+            self.ts_loss = self.ts_fun(x, **kwargs)
+        return ts_to_array(tape.gradient(self.ts_loss, x))
 
 
 class tfLikelihoodRatioOracle(tfOracle):
@@ -82,7 +76,7 @@ class tfLikelihoodRatioOracle(tfOracle):
             ts_w = tf.exp(ts_logp - ts_w_or_logq)
             ts_loss = tf.reduce_sum(ts_w*ts_f)
         else:  # ts_w_or_logq is logq
-            # The function value is pointwise as self._use_log_loss==True, but
+            # The function value is pointwise as self._use_log_loss==False, but
             # its gradient behaves like self._use_log_loss==True.
             ts_w = tf.stop_gradient(tf.exp(ts_logp - ts_w_or_logq))
             ts_loss = tf.reduce_sum(ts_w * ts_f * ts_logp)

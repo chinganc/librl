@@ -21,6 +21,18 @@ class Rollout(object):
             self.lps = logp(self.obs[:-1], self.acs)
 
     @property
+    def obs_short(self):
+        return self.obs[:-1,:]
+
+    @property
+    def sts_short(self):
+        return self.sts[:-1,:]
+
+    @property
+    def rws_short(self):
+        return seif.rws[:-1,:]
+
+    @property
     def done(self):
         return self.dns[-1]
 

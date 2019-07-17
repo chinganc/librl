@@ -50,7 +50,7 @@ class AdvantageFuncApp(FunctionApproximator)
         # ro is a Dataset or list of rollouts
         policy = policy or self._ref_policy
         assert isinstance(policy, Policy)
-        return [np.exp(policy.logp(rollout.obs[:-1], rollout.acs) - rollout.lps) for rollout in ro]
+        return [np.exp(policy.logp(rollout.obs_short, rollout.acs) - rollout.lps) for rollout in ro]
 
     # _ref_policy should not be deepcopy or saved
     def __getstate__(self):
@@ -71,19 +71,19 @@ class ValueBasedAdvFuncApp(AdvantageFuncApp):
                  gamma,  # discount in the problem definition (e.g. 0. for undiscounted problem)
                  delta,  # additional discount to make value function learning well-behave, or to reduce variance
                  lambd,  # mixing rate of different K-step qfun estimates (e.g. 0 for actor-critic, 0.98 GAE)
-                 default_v,  # value function of the absorbing states
                  v_target,  # target of learning value function
-                 use_is=False,  # whether to use one-step importance weight, for value function learning
+                 use_is_pe=False,  # for value function learning
+                 use_is=False,  # for value function learning
                  n_updates=5  # number of iterations in policy evaluation
                  name='value_based_adv_func_app',
                  **kwargs):
         """ Create an advantage estimator wrt ref_policy. """
         self._ref_policy = ref_policy  # Policy object
         # helper object to compute estimators for Bellman-like objects
-        self._pe = PE(gamma=gamma, lambd=lambd, delta=delta, default_v=default_v)
-        # importance sampling
+        self._pe = PE(gamma=gamma, lambd=lambd, delta=delta)
+        # importance sampling  #TODO
         assert use_is in ['one', 'multi', False, None]
-        self._use_is = use_is
+        self.use_is = use_is
         # policy evaluation
         if v_target == 'monte-carlo':
             self.pe_lambd = 1.0  # using Monte-Carlo samples
@@ -111,41 +111,39 @@ class ValueBasedAdvFuncApp(AdvantageFuncApp):
         """ Policy evaluation """
         # update the replay buffer
         self.ro.extend(ro)
-        # compute the target for regression, the expected Q function wrt self._ref_policy
-        if use_is is 'one':
-            w = np.concatenate(self.weights(self.ro))[:,None]
-        elif use_is is 'multi'
-            ws = self.weights(ro, ref_policy)  # importance weight
-        else: 
-            w= 1.0
+        # compute the target for regression, the expected Q function wrt self._ref_polic
+        w = np.concatenate(self.weights(self.ro))[:,None] if self.use_is else 1.0
         for i in range(self._n_updates):
-            expected_qfn = w * np.concatenate(self.qfns(self.ro, lambd)).reshape([-1, 1])  # target
-            self._vfn.update(self.ro.obs, expected_qfn)
+            v_hat = w*np.concatenate(self.qfns(self.ro, self.pe_lambd)).reshape([-1, 1])  # target
+            self._vfn.update(self.ro.obs_short, v_hat)
 
+    def advs(self, ro, lambd=None, use_is=None, ref_policy=None):  # advantage function
+        """ Compute adv (evaluated at ro) wrt to ref_policy.
 
-    def advs(self, ro, lambd=None, ref_policy=None):  # advantage function
+            Note `ref_policy` argument is only considered when `self.use_is`
+            is True; in this case, if `ref_policy` is None, it is wrt to
+            `self._ref_policy`. Otherwise, when `self.use_is`_is is False, the
+            adv is biased toward the behavior policy that collected the data.
         """
-        Compute adv (evaluated at ro) wrt to ref_policy, which may be different from the data collection
-        ref_policy. Note ref_policy is only considered when self._multistep_is is True; in this case,
-        if ref_policy is None, it is wrt to self._ref_policy. Otherwise, when self._multistep_is is
-        False, the adv is biased toward the data collection ref_policy.
-        """
+        use_is = use_is or self.use_is
         vfns = self.vfns(ro)
-        if use_is is 'one':
-            w = np.concatenate(self.weights(self.ro))[:,None] if self._onestep_is else 1.0
-        elif use_is is 'multi'
+        if use_is is 'multi':
             ws = self.weights(ro, ref_policy)  # importance weight
-            advs = [self._pe.adv(rollout.rws, vf, rollout.done, w, lambd)
+            advs = [self._pe.adv(rollout.rws, vf, rollout.done, w=w, lambd=lambd)
                     for rollout, vf, w in zip(ro.rollouts, vfns, ws)]
         else:
-            advs = [self._pe.adv(rollout.rws, vf, rollout.done, 1.0, lambd) for rollout, vf in zip(ro.rollouts, vfns)]
+            advs = [self._pe.adv(rollout.rws, vf, rollout.done, w=1.0, lambd=lambd)
+                    for rollout, vf in zip(ro.rollouts, vfns)]
         return advs, vfns
 
-    def qfns(self, ro, lambd=None, ref_policy=None):  # Q function
-        advs, vfns = self.advs(ro, lambd, ref_policy)
+    def qfns(self, ro, lambd=None, use_is=None, ref_policy=None):  # Q function
+        advs, vfns = self.advs(ro, lambd=lambd, use_is=use_is, ref_policy=ref_policy)
         qfns = [adv + vfn[:-1] for adv, vfn in zip(advs, vfns)]
         return qfns
 
     def vfns(self, ro):  # value function
         return [self._vfn.predict(rollout.obs) for rollout in ro.rollouts]
 
+
+class QBasedAdvFuncApp(ValueBasedAdvFuncApp):
+    raise NotImplementedError

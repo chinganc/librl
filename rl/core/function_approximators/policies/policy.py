@@ -21,6 +21,10 @@ class Policy(FunctionApproximator):
         """ Compute the log probabilities on batches of (xs, ys)."""
         return np.log(self.predict(xs, **kwargs)==ys)  # default behavior
 
+    def exp_fun(self, xs, *args, **kwargs):
+        """ Compute the conditional expectation (for a class of functions """
+        raise NotImplementedError
+
     # Some useful functions
     def kl(self, other, xs, reversesd=False, **kwargs):
         """ Computes KL(self||other), where other is another object of the

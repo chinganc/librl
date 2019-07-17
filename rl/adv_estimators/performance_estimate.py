@@ -2,76 +2,76 @@ import numpy as np
 
 
 class PerformanceEstimate(object):
-    """ A helper function for computing \lambda-weighted advantage/Q estimates.
+    """ A helper class for computing \lambda-weighted advantage/Q estimates.
 
-        Given a function v_t, the estimate is based on
+        Given a function v_t, the advantage estimate is based on
 
             A_t = \gamma^t (1-\lambda)  \sum_{k=0}^\infty \lambda^k  A_{k,t}
 
         where
-              A_{k,t} = c_t - v_t + \delta * V_{k,t+1}
-              V_{k,t} = w_t * c_t
-                        + \delta * w_t * w_{t+1} * c_{t+1} + ...
-                        + \delta^{k-1} * w_t * ... * w_{t+k-1} * c_{t+k-1}
-                        + \delta^k     * w_t * ... * w_{t+k-1} * v_{t+k}
-              c is the instantaneous cost,
-              w is the importance weight
-              v is the baseline
+            A_{k,t} = c_t - v_t + \delta * V_{k,t+1}
+            V_{k,t} = w_t * c_t
+                      + \delta * w_t * w_{t+1} * c_{t+1} + ...
+                      + \delta^{k-1} * w_t * ... * w_{t+k-1} * c_{t+k-1}
+                      + \delta^k     * w_t * ... * w_{t+k-1} * v_{t+k}
+            c is the instantaneous cost,
+            w is the importance weight
+            v is the baseline
+            \gamma in [0, 1] is the original discount factor in the problem
+            \lambda in [0,1] defines the \lambda-mixing of a family of estimates
+            \delta in [0, \gamma] is the additional discount factor for variance reduction
 
-      In implementationn, A_t is computed as
+        It also provides an estimate of the Q function, which is simply given as
 
-          A_t = x_t + (\lambda*\delta) * X_{t+1} + Y_t
+            Q_t = A_t + v_t
 
-      where x_t =     c_t - v_t + \delta *    v_{t+1}
-            X_t = (w*c)_t - v_t + \delta * (wv)_{t+1}
-            Y_t = \sum_{k=2}^\infty (\lambda*\delta)^k * w_{t+1} * ... * w_{t+k-1} X_{t+k}
+        One can show this estimates is a \lambda-weighted version of different
+        truncated Monte-Carlo Q-estimates. This Q function estimator is biased,
+        when \delta != \gamma or \lambda != 1. But the advantage function is
+        always biased, unless v_t is exactly the value function (though such
+        bias does not matter when computing policy gradients).
 
-      and the boundary condition is given by zero.
 
-      =========================================================================================
-      \gamma in [0, 1]is the discount factor in the problem
-      \lambda in [0,1] defines the \lambda-mixing of a family of estimates
-      \delta in [0, \gamma], w is the importance weight, and V is a value estimate.
+        The feature of the estimator is determined by the following criteria:
 
-      The feature of the estimator is determined by the following criteria:
+        1) \delta==\gamma or \delta<\gamma:
+            whether to use the same discount factor as \gamma in the problem's
+            definition for estimating value function. Using smaller delta
+            simplifes the estimation problem but introduces additional bias.
 
-      1) \delta==\gamma or \delta<\gamma:
-          whether to use the same discount factor as \gamma in the problem's
-          definition for estimating value function. Using smaller delta
-          simplifes the estimation problem but introduces additional bias.
+        2) \lambda==1 or  \lambda <1:
+            whether to use Monte-Carlo rollouts or a \lambda-weighted estimate,
+            which has larger bias but smaller vairance.
 
-      2) \lambda==1 or  \lambda <1:
-          whether to use Monte-Carlo rollouts or a \lambda-weighted estimate,
-          which has larger bias but smaller vairance.
+        3) w==1, or w==p(\pi*)/p(\pi):
+            whether to use importance sampling to estimate the advantage function
+            with respect to some other policy \pi* using the samples from the
+            exploration policy \pi. The use of non-identity w can let A_{V, k}
+            to estimate the advantage function with respect to \pi* even when the
+            rollouts are collected by \pi.
 
-      3) w==1, or w==p(\pi*)/p(\pi):
-          whether to use importance sampling to estimate the advantage function
-          with respect to some other policy \pi* using the samples from the
-          exploration policy \pi. The use of non-identity w can let A_{V, k}
-          to estimate the advantage function with respect to \pi* even when the
-          rollouts are collected by \pi.
+        =========================================================================================
+        Some examples (and their imposed constraints):
 
-      Some examples (and their imposed constraints):
+        1) Actor-Critic Family (\delta==\gamma) (w=1)
+            a) \lambda==1, unbiased Monte-Carlo rollout with costs reshaped by some
+                           arbitrary function V
+            b) \lambda==0, basic Actor-Critic when V is the current value estimate
+            c) \labmda in (0,1), lambda-weighted Actor-Critic, when V is the current
+                                 value estimate.
 
-      1) Actor-Critic Family (\delta==\gamma) (w=1)
-          a) \lambda==1, unbiased Monte-Carlo rollout with costs reshaped by some
-                         arbitrary function V
-          b) \lambda==0, basic Actor-Critic when V is the current value estimate
-          c) \labmda in (0,1), lambda-weighted Actor-Critic, when V is the current
-                               value estimate.
+        2) GAE Family (\delta<\gamma) (w=1)
+            a) \gamma==1, (\delta, \lambda)-GAE estimator for undiscounted problems
+                when V is the current value estimate (Schulmann et al., 2016)
 
-      2) GAE Family (\delta<\gamma) (w=1)
-          a) \gamma==1, (\delta, \lambda)-GAE estimator for undiscounted problems
-              when V is the current value estimate (Schulmann et al., 2016)
+            b) \gamma in (0,1], (\delta, \lambda)-GAE for \gamma-discounted
+                problems, when V is the current value estimate
 
-          b) \gamma in (0,1], (\delta, \lambda)-GAE for \gamma-discounted
-              problems, when V is the current value estimate
-
-      3) PDE (Performance Difference Estimate) Family (w = p(\pi') / p(\pi) ):
-          PDE builds an estimate of E_{d_\pi} (\nabla E_{\pi}) [ A_{\pi'} ]
-          where A_{\pi'} is the (dis)advantage function wrt \pi', in which
-          V is the value estimate of some arbitrary policy \pi', \lambda in [0,
-          1] and \delta in [0, \gamma] are bias-variance.
+        3) PDE (Performance Difference Estimate) Family (w = p(\pi') / p(\pi) ):
+            PDE builds an estimate of E_{d_\pi} (\nabla E_{\pi}) [ A_{\pi'} ]
+            where A_{\pi'} is the (dis)advantage function wrt \pi', in which
+            V is the value estimate of some arbitrary policy \pi', \lambda in [0,
+            1] and \delta in [0, \gamma] are bias-variance.
     """
 
     def __init__(self, gamma, lambd=0., delta=None):
@@ -119,10 +119,25 @@ class PerformanceEstimate(object):
         return w*(c[:-1] + self.delta*v_next) - v
 
     def adv(self, c, V, done, w=1., lambd=None, gamma=None):
-        # `c`, `V` are of the same length, including the value at the terminal state.
-        # If done is True, the last value of `c` is treated as the terminal
-        # cost.  Otherwise, the last value of V is used.
-        # w can be int, float, or np.ndarray with length equal to len(c)-1.
+        """ Compute A_t = \gamma^t (1-\lambda)  \sum_{k=0}^\infty \lambda^k  A_{k,t}.
+
+            In implementationn, A_t is computed as
+
+                A_t = x_t + (\lambda*\delta) * X_{t+1} + Y_t
+
+            where x_t =     c_t - v_t + \delta *    v_{t+1}
+                  X_t = (w*c)_t - v_t + \delta * (wv)_{t+1}
+                  Y_t = \sum_{k=2}^\infty (\lambda*\delta)^k * w_{t+1} * ... * w_{t+k-1} X_{t+k}
+
+            and the boundary condition is given by zero.
+
+            `c`, `V` are of the same length, including the value at the
+            terminal state.  If done is True, the last value of `c` is treated
+            as the terminal cost.  Otherwise, the last value of V is used.  w
+            can be int, float, or np.ndarray with length equal to len(c)-1.
+
+        """
+
         assert c.shape == V.shape
         assert type(done) is bool
         lambd = lambd or self.lambd

@@ -53,7 +53,7 @@ class tfPolicy(tfFuncApp, Policy):
         ts_p = tf.cast(tf.equal(self.ts_predict(ts_xs), ts_ys), dtype=tf_float)
         return tf.math.log(ts_p)
 
-    # Some useful functions
+    # Some useful functions TODO
     def ts_kl(self, other, xs, reversesd=False, **kwargs):
         """ Computes KL(self||other), where other is another object of the
             same policy class. If reversed is True, return KL(other||self).

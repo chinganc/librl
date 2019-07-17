@@ -31,7 +31,8 @@ class tfFuncApp(FunctionApproximator):
     @variable.setter
     def variable(self, val):
         vals = unflatten(val, shapes=self.var_shapes)
-        [var.assign(val) for var, val in zip(self.ts_variables, vals)]
+        self.ts_variables = vals
+        # [var.assign(val) for var, val in zip(self.ts_variables, vals)]
 
     @property
     def var_shapes(self):
@@ -48,6 +49,10 @@ class tfFuncApp(FunctionApproximator):
     @abstractmethod
     def ts_variables(self):
         """ Return a list of tf.Variables """
+
+    @ts_variables.setter
+    def ts_variables(self, ts_vals):
+        [var.assign(val) for var, val in zip(self.ts_variables, ts_vals)]
 
 
 class KerasFuncApp(tfFuncApp):
