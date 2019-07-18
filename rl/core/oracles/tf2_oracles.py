@@ -2,26 +2,25 @@ import numpy as np
 import tensorflow as tf
 from abc import abstractmethod
 from functools import wraps
-from rl.core.function_approximators.normalizers import NormalizerStd
+from rl.core.function_approximators.normalizers import NormalizerStd, Normalizer
 from rl.core.oracles.oracle import Oracle
-from rl.core.utils.tf2_utils import tf_float, ts_to_array, array_to_ts, var_assign
+from rl.core.utils.tf2_utils import tf_float, ts_to_array, array_to_ts, var_assign, none_to_zero
 from rl.core.utils.misc_utils import flatten
+
 
 class tfOracle(Oracle):
     """ A minimal wrapper of tensorflow functions. """
+
     def __init__(self, ts_fun, ts_var=None, **kwargs):
-        """ If ts_var is None, the input needs to be provided explicitly. """
+        """ If ts_var is None, the input needs to be provided explicitly to ts_fun. Otherwise,
+            ts_fun takes no input except for some keyword arguments. """
         self._ts_fun = ts_fun  # a function that returns tf.Tensor(s)
         self._ts_var = ts_var
 
     def fun(self, x, **kwargs):
-        """ If x is not provided, the cached value from the previous call of
-        `fun` or `grad` will be returned. """
         return ts_to_array(self.ts_fun(array_to_ts(x)), **kwargs)
 
     def grad(self, x, **kwargs):
-        """ If x is not provided, the cached value from the previous call of
-         `grad` will be returned. """
         return flatten(ts_to_array(self.ts_grad(array_to_ts(x), **kwargs)))
 
     def ts_fun(self, ts_x, **kwargs):
@@ -34,16 +33,11 @@ class tfOracle(Oracle):
     def ts_grad(self, ts_x, **kwargs):
         """ If x is not provided, the cached value from the previous call of
          `grad` will be returned. """
-        if self._ts_var is None:
-            with tf.GradientTape() as tape:
-                tape.watch(ts_x)
-                ts_loss = self.ts_fun(ts_x, **kwargs)
-            return tape.gradient(ts_loss, ts_x)
-        else:
-            with tf.GradientTape() as tape:
-                tape.watch(self._ts_var)
-                ts_loss = self.ts_fun(ts_x, **kwargs)
-            return tape.gradient(ts_loss, self._ts_var)
+        ts_var = self._ts_var or ts_x
+        with tf.GradientTape() as tape:
+            tape.watch(ts_var)
+            ts_loss = self.ts_fun(ts_x, **kwargs)
+        return tape.gradient(ts_loss, ts_var)
 
 
 class tfLikelihoodRatioOracle(tfOracle):
@@ -81,11 +75,11 @@ class tfLikelihoodRatioOracle(tfOracle):
             else:  # use a moving average
                 self._nor = NormalizerStd((1,), unscale=True, clip_thre=None, momentum=None)
         else:
+            assert isinstance(nor, Normalizer)
             self._nor = nor
-        self._ts_loss = None
-        super().__init__(self.ts_loss, ts_var)
+        super().__init__(self.ts_surrogate_loss, ts_var)
 
-    def ts_loss(self):
+    def ts_surrogate_loss(self):
         """ Return the loss function as tf.Tensor and a list of tf.plyeholders
         required to evaluate the loss function. """
         ts_f = self._ts_f
@@ -114,13 +108,13 @@ class tfLikelihoodRatioOracle(tfOracle):
             w_or_logq: importance weight or the log probability of the sampling distribution
             update_nor: whether to update the normalizer using the current sample
         """
-        if self._biased:  # always update
+        if self._biased:
             self._nor.update(f)
-        f_normalized = self._nor.normalize(f)  # np.ndarray
+        f_normalized = self._nor.normalize(f)  # cv
         if self._use_log_loss:  # ts_w_or_logq is w
             assert np.all(w_or_logq >= 0)
         # these are treated as constants
-        self._ts_f = tf.constant(f_normalized, dtype=tf_float)
-        self._ts_w_or_logq = tf.constant(w_or_logq, dtype=tf_float)
+        self._ts_f = array_to_ts(f_normalized)
+        self._ts_w_or_logq = array_to_ts(w_or_logq)
         if not self._biased and update_nor:
             self._nor.update(f)

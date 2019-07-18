@@ -106,6 +106,7 @@ class Tests(unittest.TestCase):
         test(functools.partial(FA.RobustKerasFuncApp, build_kmodel=build_kmodel2))
         test(lambda xsh, ysh: FA.RobustKerasFuncApp(xsh, ysh, build_kmodel=build_kmodel1(xsh, ysh)))
         test(FA.RobustKerasMLP)
+        test(FA.tfRobustMLP)
 
 if __name__ == '__main__':
     unittest.main()

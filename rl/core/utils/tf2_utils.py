@@ -5,6 +5,12 @@ from rl.core.utils.misc_utils import zipsame
 tf_float = tf.float32
 tf_int = tf.int32
 
+def none_to_zero(tensor, var):
+    if type(tensor) is list:
+        tensor = [tf.zeros_like(v) if t is None else t for v, t in zip(var, tensor)]
+    else:
+        tensor =  tf.zeros_like(var) if tensor is None else tensor
+    return tensor
 
 """ Conversion between tf.Tensor(s) and np.ndarray(s) """
 def ts_to_array(ts_x):

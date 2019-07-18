@@ -5,12 +5,14 @@ from rl.core.oracles.oracle import Oracle
 
 
 def online_compatible(f):
+    def to_batch(x):  # add an extra dimension
+        return  [xx[None,:] for xx in x] if isinstance(x, list) else x[None,:]
     @wraps(f)
     def decorated_f(self, x, *args, **kwargs):
         if x.shape==self.x_shape:  # single instance
-            x = [xx[None,:] for xx in x] if isinstance(x, list) else x[None,:]  # add an extra dimension
-            new_args =[[aa[None,:] for aa in a] if isinstance(a, list) else a[None,:] for a in args ]  # add an extra dimension
-            y = f(self, x, *new_args, **kwargs)
+            x = to_batch(x)
+            args =[to_batch(a) for a in args]
+            y = f(self, x, *args, **kwargs)
             y = [yy[0] for yy in y] if isinstance(y, list) else y[0]  # remove the extra dimension
         else:
             y = f(self, x, *args, **kwargs)
@@ -70,6 +72,7 @@ class FunctionApproximator(Oracle):
             This can include updating internal normalizers, etc.
             Return a report, in any.
         """
+
     @property
     @abstractmethod
     def variable(self):
@@ -81,10 +84,6 @@ class FunctionApproximator(Oracle):
         """ Set the variable as val, which is a np.ndarray in the same format as self.variable. """
 
     # utilities
-    def assign(self, other, excludes=()):
-        """ Set both the variables and the parameters as other. """
-        assert type(self)==type(other)
-        self.__dict__.update(copy.deepcopy(other).__dict__)
 
     def save(self, path):
         """ Save the instance in path. """

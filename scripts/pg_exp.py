@@ -7,7 +7,7 @@ from rl.configs import parser as ps
 from rl.core.utils import tf_utils as U
 
 from rl.algorithms.pg import PolicyGradient
-from rl.core.function_approximators.policies.tf2_policies import RobustKerasMLPGassian
+from rl.core.function_approximators.policies.tf2_policies import RobustKerasMLPGassian, tfRobustMLPGaussian
 from rl.core.function_approximators.supervised_learners import SuperRobustKerasMLP
 def main(c):
 
@@ -23,6 +23,11 @@ def main(c):
     policy = RobustKerasMLPGassian(ob_shape, ac_shape,
                                    init_lstd=0.1,
                                    units=(256, 256))
+
+    #policy = tfRobustMLPGaussian(ob_shape, ac_shape,
+    #                               init_lstd=0.1,
+    #                               units=(256, 256))
+
     vfn = SuperRobustKerasMLP(ob_shape, (1,))
     alg = PolicyGradient(policy, vfn)
 

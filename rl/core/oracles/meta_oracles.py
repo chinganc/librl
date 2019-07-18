@@ -13,25 +13,7 @@ class MetaOracle(Oracle):
         """It should have attribute base_oracle or base_oracles."""
 
 
-class DummyOracle(MetaOracle):
-
-    def __init__(self, base_oracle, *args, **kwargs):
-        self._base_oracle = copy.deepcopy(base_oracle)
-        self._g = 0.
-
-    def fun(self, x):
-        return 0.
-
-    def grad(self, x):
-        return self._g
-
-    def update(self, g=None, *args, **kwargs):
-        assert g is not None
-        self._base_oracle.update(*args, **kwargs)
-        self._g = np.copy(g)
-
-
-class LazyOracle(MetaOracle):
+class MvAvgOracle(MetaOracle):
     """Function-based oracle based on moving average."""
 
     def __init__(self, base_oracle, beta=0.):
@@ -52,7 +34,7 @@ class LazyOracle(MetaOracle):
         return self._g.val
 
 
-class AdversarialOracle(LazyOracle):
+class AdversarialOracle(MvAvgOracle):
     """For debugging purpose."""
 
     def __init__(self, base_oracle, beta):

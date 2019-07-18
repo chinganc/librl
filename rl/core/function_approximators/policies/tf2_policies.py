@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from rl.core.function_approximators.policies import Policy
 from rl.core.function_approximators.function_approximator import online_compatible
-from rl.core.function_approximators.tf2_function_approximators import tfFuncApp, RobustKerasMLP, KerasFuncApp, RobustKerasFuncApp
+from rl.core.function_approximators.tf2_function_approximators import tfFuncApp, RobustKerasMLP, KerasFuncApp, RobustKerasFuncApp, tfRobustMLP
 from rl.core.utils.misc_utils import zipsame
 from rl.core.utils.tf2_utils import tf_float, array_to_ts, ts_to_array
 from rl.core.utils.misc_utils import flatten, unflatten
@@ -128,6 +128,7 @@ class tfGaussianPolicy(tfPolicy):
     def ts_predict(self, ts_xs, stochastic=True, ts_noises=False, **kwargs):
         """ Define the tf operators for predict """
         ts_ms = super().ts_predict(ts_xs, **kwargs)
+        #ts_ms = tf.zeros([ts_xs.shape[0]]+list(self.x_shape))
         if stochastic:
             if tf.equal(ts_noises, False):
                 shape = [ts_xs.shape[0]]+list(self.y_shape)
@@ -177,4 +178,7 @@ class RobustKerasMLPGassian(tfGaussianPolicy, RobustKerasMLP):
     def __init__(self, x_shape, y_shape, name='robust_k_MLP_gaussian_policy', **kwargs):
         """ The user needs to provide init_lstd and optionally min_std. """
         super().__init__(x_shape, y_shape, name=name, **kwargs)
+
+class tfRobustMLPGaussian(tfGaussianPolicy, tfRobustMLP):
+    pass
 

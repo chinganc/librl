@@ -97,7 +97,6 @@ class Dataset:
                 else:
                     self._cache[key] = np.concatenate([b[key] for b in self._batches])
 
-
         return self._cache[key]
 
     def __iter__(self):

@@ -4,8 +4,8 @@ import tensorflow as tf
 from abc import abstractmethod
 from rl.core.function_approximators.function_approximator import FunctionApproximator
 from rl.core.function_approximators.normalizers import tfNormalizerMax
-from rl.core.utils.tf2_utils import array_to_ts
-from rl.core.utils.misc_utils import flatten, unflatten
+from rl.core.utils.tf2_utils import array_to_ts, tf_float
+from rl.core.utils.misc_utils import flatten, unflatten, zipsame
 
 # NOTE ts_* methods are in batch mode
 #      ts_variables is a list of tf.Variables
@@ -40,7 +40,7 @@ class tfFuncApp(FunctionApproximator):
 
     @variables.setter
     def variables(self, vals):  # vals can be a list of nd.array or tf.Tensor
-        [var.assign(val) for var, val in zip(self.ts_variables, vals)]
+        [var.assign(val) for var, val in zipsame(self.ts_variables, vals)]
 
     @property
     def var_shapes(self):
@@ -48,12 +48,12 @@ class tfFuncApp(FunctionApproximator):
             self._var_shapes = [var.shape.as_list() for var in self.ts_variables]
         return self._var_shapes
 
+    # required implementation
     @property
     @abstractmethod
     def ts_variables(self):
         """ Return a list of tf.Variables """
 
-    # required implementation
     @abstractmethod
     def ts_predict(self, ts_xs, **kwargs):
         """ Define the tf operators for predict """
@@ -71,7 +71,7 @@ class KerasFuncApp(tfFuncApp):
         When inheriting this class, users can choose to implement the
         `_build_kmodel` method, for ease of implementation. `build_kmodel` can be
         used to create necessary tf.keras.Layer or tf.Tensor to help defining
-        the kmodel. Note all attributes created, if any, should be deepcopy
+        the kmodel. Note all attributes created, if any, should be deepcopy/pickle
         compatible.
 
         Otherwise, a tf.keras.Model or a method, which shares the same
@@ -116,7 +116,7 @@ class KerasFuncApp(tfFuncApp):
     def ts_variables(self):
         return self.kmodel.trainable_variables
 
-    # utilities
+    # utilities (tf.keras.Model needs to be serialized)
     def __getstate__(self):
         if hasattr(super(), '__getstate__'):
             d = super().__getstate__()
@@ -161,11 +161,10 @@ class tfRobustFuncApp(tfFuncApp):
 
     def __init__(self, x_shape, y_shape, name='tf_robust_func_app',
                  x_nor=None, y_nor=None, **kwargs):
-
         self._x_nor = x_nor or tfNormalizerMax(x_shape, unscale=False, \
                                     unbias=False, clip_thre=5.0, rate=0., momentum=None)
         self._y_nor = y_nor or tfNormalizerMax(y_shape, unscale=True, \
-                                    unbias=True, clip_thre=5.0, rate=0., momentum=None)
+                                    unbias=True,  clip_thre=5.0, rate=0., momentum=None)
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
     def predict(self, xs, clip_y=True, **kwargs):
@@ -215,3 +214,39 @@ class RobustKerasMLP(RobustKerasFuncApp):
         kmodel = tf.keras.Model(ts_in, ts_out)
         return kmodel
 
+
+class tfMLP(tfFuncApp):
+
+    def __init__(self, x_shape, y_shape, name='robust_k_mlp', units=(),
+                 activation='tanh', **kwargs):
+        self.units, self.activation = units, activation
+        self.ts_w, self.ts_b = [], []
+        dims = [np.prod(x_shape)]+list(units)+[np.prod(y_shape)]
+        for i in range(1,len(dims)):
+            dim_in = dims[i-1]
+            dim_out = dims[i]
+            std = np.sqrt(2.0/(dim_in+dim_out))
+            self.ts_w.append(tf.Variable(np.random.normal(scale=std, size=(dim_in, dim_out)),dtype=tf_float))
+            self.ts_b.append(tf.Variable(np.random.normal(scale=std, size=(dim_out,)),dtype=tf_float))
+
+        super().__init__(x_shape, y_shape, **kwargs)
+
+    @property
+    def ts_variables(self):
+        return self.ts_w+self.ts_b
+
+    #@tf.function
+    def ts_predict(self, ts_xs):
+        ts_xs = tf.reshape(ts_xs,(-1,np.prod(self.x_shape)))
+        for i in range(len(self.ts_w)-1):
+            ts_w = self.ts_w[i]
+            ts_b = self.ts_b[i]
+            ts_xs = tf.tanh(tf.tensordot(ts_xs, ts_w, axes=1)+ts_b)
+        ts_w = self.ts_w[-1]
+        ts_b = self.ts_b[-1]
+        ts_ys = tf.tensordot(ts_xs, ts_w, axes=1)+ts_b
+        ts_ys = tf.reshape(ts_ys, np.array([-1]+list(self.y_shape)))
+        return ts_ys
+
+class tfRobustMLP(tfRobustFuncApp, tfMLP):
+    pass

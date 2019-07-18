@@ -19,7 +19,6 @@ def merge_two_dicts(x, y):
     z.update(y)    # modifies z with y's keys and values & returns None
     return z
 
-
 def deepcopy_from_list(old, new, attrs, excludes=()):
     [setattr(old, attr, copy.deepcopy(getattr(new, attr))) \
             for attr in attrs if not attr in excludes]
@@ -86,9 +85,9 @@ def check_required_params(params, required_params):
 
 
 def flatten(vs):
-    if type(vs) is list: 
+    if type(vs) is list:
         return np.concatenate([np.reshape(v, [-1]) for v in vs], axis=0)
-    else: 
+    else:
         return vs
 
 

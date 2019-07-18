@@ -1,5 +1,5 @@
 from .oracle import Oracle
-from .meta_oracles import MetaOracle, LazyOracle, AdversarialOracle, DummyOracle
+from .meta_oracles import MetaOracle, AdversarialOracle, MvAvgOracle
 
 import tensorflow as tf
 if tf.__version__[0]=='2':
