@@ -18,7 +18,8 @@ class MDP:
         # pi takes (ob, time) as input
         if logp is None:  # viewed as deterministic
             logp = lambda obs, acs: np.zeros((len(acs),1))
-        return  generate_rollout(pi, logp, self.env, v_end=self.v_end,
+        return generate_rollout(pi, logp, self.env, v_end=self.v_end,
+                              use_time_info=(self.horizon is not None),
                               min_n_samples=min_n_samples, max_n_rollouts=max_n_rollouts,
                               max_rollout_len=self.horizon, with_animation=with_animation)
 
@@ -30,8 +31,6 @@ class MDP:
     def ac_shape(self):
         return self.env.action_space.shape
 
-    def rw_bounds(self):  #TODO
-        raise NotImplementedErrort
 
 class Rollout(object):
     """ A container for storing statistics along a trajectory. """
@@ -72,7 +71,7 @@ class Rollout(object):
 
 
 def generate_rollout(pi, logp, env, v_end,
-                     full_obs=False,
+                     use_time_info=False,
                      min_n_samples=None, max_n_rollouts=None,
                      max_rollout_len=None,
                      with_animation=False):
@@ -106,22 +105,26 @@ def generate_rollout(pi, logp, env, v_end,
             get_state = lambda: env.env.state  # openai gym env, which is a TimeLimit object
     elif hasattr(env, 'state'):
         get_state = lambda: env.state
+    # whether to augment state/observation with time information
+    if use_time_info:
+        post_process = lambda x,t: np.concatenate([x.flatten(), (t,)])
+    else:
+        post_process = lambda x,t :x
 
     def step(ac, tm):
         ob, rw, dn, info = env.step(ac)  # current reward, next ob and dn
         st = get_state()
         if st is None:
             st = ob
- 
-        # ob = np.concatenate([ob.reshape([-1,1]), np.array((tm,))[:,None ]])
-        ob = np.concatenate([ob.reshape([-1]), np.array((tm,))])
-
+        ob = post_process(ob,tm)
+        st = post_process(st,tm)
         return st, ob, rw, dn, info
 
     def reset(tm):
         ob = env.reset()  # observation
         st = get_state()  # env state
-        ob = np.concatenate([ob.reshape([-1]), np.array((tm,))])
+        ob = post_process(ob,0)
+        st = post_process(st,0)
         return st, ob
 
     # start rollout

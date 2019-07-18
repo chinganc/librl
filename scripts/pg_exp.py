@@ -18,18 +18,23 @@ def main(c):
     # Create env and fix randomness
     env, envid, seed = ps.general_setup(c['general'])
 
-    env = MDP(env)
+
+    horizon = None
+    gamma=1.0
+    env = MDP(env, gamma=gamma, horizon=horizon)
 
     # Create objects for defining the algorithm
     ob_shape = env.ob_shape
     ac_shape = env.ac_shape
-    ob_shape = (5,)
-    policy = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
-                                   init_lstd=0.1,
-                                   units=(256, 256))
-    #policy = tfRobustMLPGaussian(ob_shape, ac_shape,
+    if horizon is not None: 
+        ob_shape = (np.prod(ob_shape)+1,)
+
+    #policy = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
     #                               init_lstd=0.1,
     #                               units=(256, 256))
+    policy = tfRobustMLPGaussian(ob_shape, ac_shape,
+                                   init_lstd=0.1,
+                                   units=(256, 256))
 
     vfn = SuperRobustKerasMLP(ob_shape, (1,), name='value function', 
                               units=(256,256))

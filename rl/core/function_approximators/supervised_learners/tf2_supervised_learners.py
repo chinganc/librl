@@ -17,21 +17,14 @@ def robust_keras_supervised_learner(cls):
         def update_funcapp(self, clip_y=False,
                             batch_size=128, n_steps=500,
                             epochs=None, **kwargs):  # for keras.Model.fit
-            """
-                `clip_y`: whether to clip the target
-                `callback`: a function to execute after training. It inputs
-                            (self, xs, ys, ws).
-            """
-
-
+            """ `clip_y`: whether to clip the targe """
             xs = self._x_nor(self._dataset['xs'])
             ys = self._dataset['ys']
             ws = self._dataset['ws']
             if clip_y:
                 ys = self._y_nor(ys)
-
             if epochs is None:
-                epochs = int(n_steps/(len(ys)/batch_size))
+                epochs = int(n_steps/max(1,len(ys)/batch_size))
             return self.kmodel.fit(xs, ys, sample_weight=ws, verbose=0,
                                    batch_size=batch_size, epochs=epochs,**kwargs)
 
