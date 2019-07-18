@@ -28,7 +28,7 @@ def main(c):
 
     # Let's do some experiments!
     exp = Exp.Experimenter(alg, env, c['experimenter']['rollout_kwargs'])
-    exp.run_alg(**c['experimenter']['run_alg_kwargs'])
+    exp.run(**c['experimenter']['run_alg_kwargs'])
 
 
 if __name__ == '__main__':
@@ -47,11 +47,11 @@ if __name__ == '__main__':
         'experimenter': {
             'run_alg_kwargs': {
                 'n_itrs': 100,
-                'pretrain': True,
+                'pretrain': False,
                 'final_eval': False,
             },
             'rollout_kwargs': {
-                'min_n_samples': 4000,
+                'min_n_samples': 2000,
                 'max_n_rollouts': None,
                 'max_rollout_len': None,  # the max length of rollouts in training
             },

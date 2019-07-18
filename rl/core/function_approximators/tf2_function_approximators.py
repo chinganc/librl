@@ -24,15 +24,23 @@ class tfFuncApp(FunctionApproximator):
     def predict(self, xs, **kwargs):
         return self.ts_predict(array_to_ts(xs), **kwargs).numpy()
 
+    # variables
     @property
     def variable(self):
-        return flatten([var.numpy() for var in self.ts_variables])
+        return flatten(self.variables)
 
     @variable.setter
     def variable(self, val):
         vals = unflatten(val, shapes=self.var_shapes)
-        self.ts_variables = vals
-        # [var.assign(val) for var, val in zip(self.ts_variables, vals)]
+        self.variables = vals
+
+    @property
+    def variables(self):
+        return [var.numpy() for var in self.ts_variables]
+
+    @variables.setter
+    def variables(self, vals):  # vals can be a list of nd.array or tf.Tensor
+        [var.assign(val) for var, val in zip(self.ts_variables, vals)]
 
     @property
     def var_shapes(self):
@@ -40,19 +48,15 @@ class tfFuncApp(FunctionApproximator):
             self._var_shapes = [var.shape.as_list() for var in self.ts_variables]
         return self._var_shapes
 
-    # required implementation
-    @abstractmethod
-    def ts_predict(self, ts_xs, **kwargs):
-        """ Define the tf operators for predict """
-
     @property
     @abstractmethod
     def ts_variables(self):
         """ Return a list of tf.Variables """
 
-    @ts_variables.setter
-    def ts_variables(self, ts_vals):
-        [var.assign(val) for var, val in zip(self.ts_variables, ts_vals)]
+    # required implementation
+    @abstractmethod
+    def ts_predict(self, ts_xs, **kwargs):
+        """ Define the tf operators for predict """
 
 
 class KerasFuncApp(tfFuncApp):
@@ -111,10 +115,6 @@ class KerasFuncApp(tfFuncApp):
     @property
     def ts_variables(self):
         return self.kmodel.trainable_variables
-
-    @ts_variables.setter
-    def ts_variables(self, ts_vals):
-        [var.assign(val) for var, val in zip(self.ts_variables, ts_vals)]
 
     # utilities
     def __getstate__(self):

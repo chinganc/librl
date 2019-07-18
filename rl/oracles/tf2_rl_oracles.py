@@ -23,11 +23,9 @@ class tfValueBasedPolicyGradient(rlOracle):
         # define the internal oracle
         assert isinstance(policy, tfPolicy)
         self._policy_t = copy.deepcopy(policy)  # just a template
-        def ts_logp_fun (ts_vars):
-            import pdb; pdb.set_trace()
-            self._policy_t.ts_variables = ts_vars  # just assign the variables
-            return self._policy_t.ts_logp(self._ro.obs, self._ro.acs)
-        self._or = tfLikelihoodRatioOracle(ts_logp_fun,
+        def ts_logp_fun():
+            return  self._policy_t.ts_logp(self._ro['obs_short'], self._ro['acs'])
+        self._or = tfLikelihoodRatioOracle(ts_logp_fun, self._policy_t.ts_variables,
                     nor=nor, biased=biased, # basic mvavg
                     use_log_loss=use_log_loss, normalized_is=normalized_is)
         # some configs for computing gradients
@@ -39,14 +37,15 @@ class tfValueBasedPolicyGradient(rlOracle):
         self._ro = None
 
     def fun(self, policy):
-        return self._or.fun(policy.ts_variables) * self._scale
+        return self._or.fun(policy.variables) * self._scale
 
     def grad(self, policy):
-        return flatten(ts_to_array(self._or.ts_grad(policy.ts_variables))) * self._scale
+        return self._or.grad(policy.variables) * self._scale
 
     def update(self, ro, policy):
         # sync policies' parameters
         self._policy_t.assign(policy)
+        self._or._ts_var = self._policy_t.ts_variables
         # Compute adv.
         self._ro = ro
         advs, vfns = self._ae.advs(self.ro, use_is=self._use_is)

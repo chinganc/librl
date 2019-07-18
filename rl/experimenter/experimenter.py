@@ -13,31 +13,31 @@ class Experimenter:
         """
         ro_kwargs is a dict with keys, 'min_n_samples', 'max_n_rollouts', 'max_rollout_len'
         """
-        self._alg = safe_assign(alg, Algorithm)
+        self.alg = safe_assign(alg, Algorithm)
         self._gen_ro = functools.partial(generate_rollout, env=env, **ro_kwargs)
-        self._ndata = 0  # number of data points seen
+        self._n_samples = 0  # number of data points seen
+        self._n_rollouts = 0
 
     def gen_ro(self, pi, logp=None, log_prefix='', to_log=False):
         ro = self._gen_ro(pi, logp)
-        self._ndata += ro.n_samples
+        self._n_rollouts += len(ro)
+        self._n_samples += ro.n_samples
         if to_log:
             log_rollout_info(ro, prefix=log_prefix)
-            logz.log_tabular(log_prefix + 'NumberOfDataPoints', self._ndata)
-
+            logz.log_tabular(log_prefix + 'NumberOfDataPoints', self._n_samples)
         return ro
 
-    def run_alg(self, n_itrs, pretrain=True, save_policy=False, save_freq=100, final_eval=False):
+    def run(self, n_itrs, pretrain=True, save_policy=False, save_freq=100, final_eval=False):
         start_time = time.time()
         if pretrain:  # algorithm-specific
-            self._alg.pretrain(functools.partial(self.gen_ro, to_log=False))
-
+            self.alg.pretrain(functools.partial(self.gen_ro, to_log=False))
         # Main loop
         for itr in range(n_itrs):
             logz.log_tabular("Time", time.time() - start_time)
             logz.log_tabular("Iteration", itr)
             with timed('Generate env rollouts'):
-                ro = self.gen_ro(self._alg.pi_ro, logp=self._alg.logp, to_log=True)
-            self._alg.update(ro)  # algorithm-specific
+                ro = self.gen_ro(self.alg.pi_ro, logp=self.alg.logp, to_log=True)
+            self.alg.update(ro)  # algorithm-specific
             logz.dump_tabular()  # dump log
 
 

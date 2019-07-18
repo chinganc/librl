@@ -2,33 +2,48 @@ import numpy as np
 import tensorflow as tf
 from abc import abstractmethod
 from functools import wraps
-from rl.core.utils.misc_utils import zipsame, flatten
 from rl.core.function_approximators.normalizers import NormalizerStd
 from rl.core.oracles.oracle import Oracle
-from rl.core.utils.tf2_utils import tf_float, ts_to_array, array_to_ts
+from rl.core.utils.tf2_utils import tf_float, ts_to_array, array_to_ts, var_assign
+from rl.core.utils.misc_utils import flatten
 
 class tfOracle(Oracle):
     """ A minimal wrapper of tensorflow functions. """
-    def __init__(self, ts_fun, **kwargs):
-        self.ts_fun = ts_fun  # a function that returns tf.Tensor(s)
+    def __init__(self, ts_fun, ts_var=None, **kwargs):
+        """ If ts_var is None, the input needs to be provided explicitly. """
+        self._ts_fun = ts_fun  # a function that returns tf.Tensor(s)
+        self._ts_var = ts_var
 
     def fun(self, x, **kwargs):
         """ If x is not provided, the cached value from the previous call of
         `fun` or `grad` will be returned. """
-        return ts_to_array(self.ts_fun(array_to_ts(x), **kwargs))
-
-    def ts_grad(self, ts_x, **kwargs):
-        """ If x is not provided, the cached value from the previous call of
-         `grad` will be returned. """
-        with tf.GradientTape() as tape:
-            tape.watch(ts_x)
-            self.ts_loss = self.ts_fun(ts_x, **kwargs)
-        return tape.gradient(self.ts_loss, ts_x)
+        return ts_to_array(self.ts_fun(array_to_ts(x)), **kwargs)
 
     def grad(self, x, **kwargs):
         """ If x is not provided, the cached value from the previous call of
          `grad` will be returned. """
-        return ts_to_array(self.ts_grad(array_to_ts(x), **kwargs))
+        return flatten(ts_to_array(self.ts_grad(array_to_ts(x), **kwargs)))
+
+    def ts_fun(self, ts_x, **kwargs):
+        if self._ts_var is None:
+            return self._ts_fun(ts_x, **kwargs)
+        else:
+            var_assign(self._ts_var, ts_x)
+            return self._ts_fun(**kwargs)
+
+    def ts_grad(self, ts_x, **kwargs):
+        """ If x is not provided, the cached value from the previous call of
+         `grad` will be returned. """
+        if self._ts_var is None:
+            with tf.GradientTape() as tape:
+                tape.watch(ts_x)
+                ts_loss = self.ts_fun(ts_x, **kwargs)
+            return tape.gradient(ts_loss, ts_x)
+        else:
+            with tf.GradientTape() as tape:
+                tape.watch(self._ts_var)
+                ts_loss = self.ts_fun(ts_x, **kwargs)
+            return tape.gradient(ts_loss, self._ts_var)
 
 
 class tfLikelihoodRatioOracle(tfOracle):
@@ -51,8 +66,10 @@ class tfLikelihoodRatioOracle(tfOracle):
     based on a normalizer, which can shift, rescale, or clip f.
 
     """
-    def __init__(self, ts_logp_fun, nor=None, biased=False,
+    def __init__(self, ts_logp_fun, ts_var,
+                 nor=None, biased=False,
                  use_log_loss=False, normalized_is=False):
+        # ts_var needs to be prvided.
         assert use_log_loss in (True, False, None)
         self._ts_logp_fun = ts_logp_fun
         self._biased = biased
@@ -66,12 +83,14 @@ class tfLikelihoodRatioOracle(tfOracle):
         else:
             self._nor = nor
         self._ts_loss = None
-        super().__init__(ts_fun=self.ts_loss)
+        super().__init__(self.ts_loss, ts_var)
 
-    def ts_loss(self, ts_x):
+    def ts_loss(self):
         """ Return the loss function as tf.Tensor and a list of tf.plyeholders
         required to evaluate the loss function. """
-        ts_logp = self._ts_logp_fun(ts_x)  # the function part
+        ts_f = self._ts_f
+        ts_w_or_logq = self._ts_w_or_logq
+        ts_logp = self._ts_logp_fun()  # the function part
         if tf.equal(self._use_log_loss, True):  # ts_w_or_logq is w
             ts_w = ts_w_or_logq
             ts_loss = tf.reduce_sum(ts_w * ts_f * ts_logp)
@@ -86,7 +105,7 @@ class tfLikelihoodRatioOracle(tfOracle):
         if self._normalized_is:  # normalized importance sampling
             return ts_loss / tf.reduce_sum(ts_w)
         else: # regular importance sampling
-            return ts_loss / tf.cast(ts_x.shape[0], tf_float)
+            return ts_loss / tf.cast(ts_f.shape[0], tf_float)
 
     def update(self, f, w_or_logq, update_nor=True):
         """ Update the function with Monte-Carlo samples.

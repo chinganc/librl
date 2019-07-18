@@ -49,14 +49,11 @@ class PolicyGradient(Algorithm):
             g = self.oracle.grad(self.policy)
 
         with timed('Policy update'):
-            self.learner.update(g, 'correct', **kwargs)
+            self.learner.update(g)
             self.policy.variable = self.learner.x
-
-        # end of round
-        self._itr += 1
 
         # log
         logz.log_tabular('stepsize', self.learner.stepsize)
-        logz.log_tabular('std', np.mean(self.policy.std))
+        logz.log_tabular('std', np.mean(np.exp(2.*self.policy.lstd)))
         logz.log_tabular('g_norm', np.linalg.norm(g))
 

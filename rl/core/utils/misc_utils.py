@@ -86,7 +86,10 @@ def check_required_params(params, required_params):
 
 
 def flatten(vs):
-    return np.concatenate([np.reshape(v, [-1]) for v in vs], axis=0)
+    if type(vs) is list: 
+        return np.concatenate([np.reshape(v, [-1]) for v in vs], axis=0)
+    else: 
+        return vs
 
 
 def unflatten(v, template=None, shapes=None):

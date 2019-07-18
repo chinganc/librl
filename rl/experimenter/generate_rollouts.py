@@ -80,23 +80,34 @@ def generate_rollout(pi, logp, env, v_end=None,
     max_rollout_len = min(env._max_episode_steps, max_rollout_len)
     n_samples = 0
     rollouts = []
-    while True:
-        animate_this_rollout = len(rollouts) == 0 and with_animation
+
+    def step(ac):
+        ob, rw, dn, info = env.step(ac)  # current reward, next ob and dn
+        st = get_state(env)
+        if st is None:
+            st = ob
+        return st, ob, rw, dn, info
+
+    def reset():
         ob = env.reset()  # observation
         st = get_state(env)  # env state
+        return st, ob
+
+    while True:
+        animate_this_rollout = len(rollouts) == 0 and with_animation
+        st, ob = reset()
         obs, acs, rws, sts = [], [], [], []
         steps = 0  # steps so far
         while True:
             if animate_this_rollout:
                 env.render()
                 time.sleep(0.05)
+            ac = pi(ob) # apply action and get to the next state
             obs.append(ob)
             sts.append(st)
-            ac = pi(ob) # apply action and get to the next state
             acs.append(ac)
-            ob, rw, dn, _ = env.step(ac)  # current reward, next ob and dn
+            st, ob, rw, dn, _ = step(ac)
             rws.append(rw)
-            st = get_state(env)
             steps += 1
             if dn or steps >= max_rollout_len:
                 break # due to steps limit or entering an absorbing state
