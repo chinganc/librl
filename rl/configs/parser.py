@@ -11,7 +11,7 @@ from rl import envs as Env
 from rl import oracles as Or
 from rl import algorithms as Alg
 from rl.adv_estimators import AdvantageEstimator
-from rl.experimenter.generate_rollouts import generate_rollout
+from rl.experimenter import generate_rollout
 from rl.online_learners import online_optimizer as OO
 from rl.core.function_approximators import normalizers as Nor
 from rl.core.function_approximators import supervised_learners as Sup

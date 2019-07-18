@@ -202,7 +202,7 @@ class RobustKerasMLP(RobustKerasFuncApp):
     def __init__(self, x_shape, y_shape, name='robust_k_mlp', units=(),
                  activation='tanh', **kwargs):
         self.units, self.activation = units, activation
-        super().__init__(x_shape, y_shape, **kwargs)
+        super().__init__(x_shape, y_shape, name=name, **kwargs)
 
     def _build_kmodel(self, x_shape, y_shape):
         ts_in = tf.keras.Input(x_shape)

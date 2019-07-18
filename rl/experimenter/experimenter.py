@@ -2,7 +2,6 @@ import functools
 import time
 import numpy as np
 from rl.algorithms import Algorithm
-from rl.experimenter.generate_rollouts import generate_rollout
 from rl.core.utils.misc_utils import safe_assign, timed
 from rl.core.utils import logz
 
@@ -11,10 +10,10 @@ class Experimenter:
 
     def __init__(self, alg, env, ro_kwargs):
         """
-        ro_kwargs is a dict with keys, 'min_n_samples', 'max_n_rollouts', 'max_rollout_len'
+        ro_kwargs is a dict with keys, 'min_n_samples', 'max_n_rollouts'
         """
         self.alg = safe_assign(alg, Algorithm)
-        self._gen_ro = functools.partial(generate_rollout, env=env, **ro_kwargs)
+        self._gen_ro = functools.partial(env.rollout, **ro_kwargs)
         self._n_samples = 0  # number of data points seen
         self._n_rollouts = 0
 

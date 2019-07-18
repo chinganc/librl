@@ -12,7 +12,7 @@ class PolicyGradient(Algorithm):
     """ Basic policy gradient method. """
 
     def __init__(self, policy, vfn, eta=1e-3,
-                 gamma=1.0, delta=0.98, lambd=0.98):
+                 gamma=1.0, delta=0.999, lambd=0.):
         self.vfn = vfn
         self.policy = policy
         # create online learner
@@ -23,10 +23,10 @@ class PolicyGradient(Algorithm):
         self.ae = ValueBasedAE(policy, vfn, gamma=gamma, delta=delta, lambd=lambd, v_target='monte-carlo')
         self.oracle =tfValueBasedPolicyGradient(policy, self.ae)
 
-    def pi(self, ob):
+    def pi(self, ob, t, done):
         return self.policy(ob)
 
-    def pi_ro(self, ob):
+    def pi_ro(self, ob, t, done):
         return self.policy(ob)
 
     def logp(self, obs, acs):

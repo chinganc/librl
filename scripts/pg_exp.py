@@ -6,6 +6,7 @@ from rl import experimenter as Exp
 from rl.configs import parser as ps
 from rl.core.utils import tf_utils as U
 
+from rl.experimenter import MDP
 from rl.algorithms.pg import PolicyGradient
 from rl.core.function_approximators.policies.tf2_policies import RobustKerasMLPGassian, tfRobustMLPGaussian
 from rl.core.function_approximators.supervised_learners import SuperRobustKerasMLP
@@ -17,18 +18,21 @@ def main(c):
     # Create env and fix randomness
     env, envid, seed = ps.general_setup(c['general'])
 
+    env = MDP(env)
+
     # Create objects for defining the algorithm
-    ob_shape = env.observation_space.shape
-    ac_shape = env.action_space.shape
-    policy = RobustKerasMLPGassian(ob_shape, ac_shape,
+    ob_shape = env.ob_shape
+    ac_shape = env.ac_shape
+    ob_shape = (5,)
+    policy = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
                                    init_lstd=0.1,
                                    units=(256, 256))
-
     #policy = tfRobustMLPGaussian(ob_shape, ac_shape,
     #                               init_lstd=0.1,
     #                               units=(256, 256))
 
-    vfn = SuperRobustKerasMLP(ob_shape, (1,))
+    vfn = SuperRobustKerasMLP(ob_shape, (1,), name='value function', 
+                              units=(256,256))
     alg = PolicyGradient(policy, vfn)
 
     # Let's do some experiments!
@@ -48,6 +52,7 @@ if __name__ == '__main__':
             'envid': 'DartCartPole-v1',
             'seed': 0,
             'exp_name': 'cp',
+            'horizon': None,  # the max length of rollouts in training
         },
         'experimenter': {
             'run_alg_kwargs': {
@@ -58,7 +63,6 @@ if __name__ == '__main__':
             'rollout_kwargs': {
                 'min_n_samples': 2000,
                 'max_n_rollouts': None,
-                'max_rollout_len': None,  # the max length of rollouts in training
             },
         }
     }
