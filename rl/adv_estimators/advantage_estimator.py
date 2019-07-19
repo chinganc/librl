@@ -16,7 +16,6 @@ class AdvantageEstimator(FunctionApproximator):
         and the new methods
             `advs`, `qfns`, `vfns`
     """
-
     # NOTE We overload the interfaces here to work with policies and rollouts.
     # This class can no longer use as a wrapper of usual `FunctionApproximator`.
     def __init__(self, ref_policy, name='advantage_func_app',
@@ -36,22 +35,16 @@ class AdvantageEstimator(FunctionApproximator):
 
     @abstractmethod
     def advs(self, ro, *args, **kwargs):  # advantage function
-        """ Return a list of nd.arrays, one for each rollout. """
+        """ Return a list of rank-1 nd.arrays, one for each rollout. """
 
     @abstractmethod
     def qfns(self, ro, *args, **kwargs):  # Q function
-        """ Return a list of nd.arrays, one for each rollout. """
+        """ Return a list of rank-1 nd.arrays, one for each rollout. """
 
     @abstractmethod
     def vfns(self, ro, *args, **kwargs):  # value function
-        """ Return a list of nd.arrays, one for each rollout. """
+        """ Return a list of rank-1 nd.arrays, one for each rollout. """
 
-   # helper functions
-    def weights(self, ro, policy=None):  # importance weight
-        # ro is a Dataset or list of rollouts
-        policy = policy or self._ref_policy
-        assert isinstance(policy, Policy)
-        return [np.exp(policy.logp(rollout.obs_short, rollout.acs) - rollout.lps) for rollout in ro]
 
     # _ref_policy should not be deepcopy or saved
     def __getstate__(self):
@@ -67,53 +60,46 @@ class AdvantageEstimator(FunctionApproximator):
 class ValueBasedAE(AdvantageEstimator):
     """ An estimator based on value function. """
 
-    def __init__(self, ref_policy,  # the reference ref_policy of this estimator
+    def __init__(self, ref_policy,  # the reference policy
                  vfn,  # value function estimator (SupervisedLearner)
-                 gamma,  # discount in the problem definition (e.g. 0. for undiscounted problem)
-                 delta,  # additional discount to make value function learning well-behave, or to reduce variance
-                 lambd,  # mixing rate of different K-step qfun estimates (e.g. 0 for actor-critic, 0.98 GAE)
-                 v_target,  # target of learning value function
-                 use_is_pe=False,  # for value function learning
-                 use_is=False,  # for value function learning
-                 n_updates=5,  # number of iterations in policy evaluation
+                 gamma,  # discount in the problem definition
+                 delta,  # discount in defining value function to make learning well-behave, or to reduce variance
+                 lambd,  # mixing rate of different K-step adv/Q estimates (e.g. 0 for actor-critic, 0.98 GAE)
+                 pe_lambd,  # lambda for policy evaluation in [0,1] or None
+                 n_pe_updates=5,  # number of iterations in policy evaluation
+                 use_is=False,  # 'one' or 'multi' or None
                  name='value_based_adv_func_app',
                  **kwargs):
         """ Create an advantage estimator wrt ref_policy. """
         self._ref_policy = ref_policy  # Policy object
-        # helper object to compute estimators for Bellman-like objects
-        self._pe = PE(gamma=gamma, lambd=lambd, delta=delta)
-        # importance sampling  #TODO
-        assert use_is in ['one', 'multi', False, None]
+        self._pe = PE(gamma=gamma, lambd=lambd, delta=delta) # a helper function
+        # importance sampling
+        assert use_is in ['one', 'multi', None]
         self.use_is = use_is
         # policy evaluation
-        if v_target == 'monte-carlo':
-            self.pe_lambd = 1.0  # using Monte-Carlo samples
-        elif v_target == 'td':
-            self.pe_lambd = 0.  # one-step td error
-        elif v_target == 'same':
-            self.pe_lambd = None  # default self.pe_lambda-weighted td error
-        elif type(v_target) is float:
-            self.pe_lambd = v_target  # user-defined self.pe_lambda-weighted td error
-        else:
-            raise ValueError('Unknown target {} for value function update.'.format(v_target))
-        if v_target == 'monte-carlo' or np.isclose(self.pe_lambd, 1.0):
-            n_updates = 1
-        assert n_updates >= 1, 'Policy evaluation needs at least one udpate.'
-        self._n_updates = n_updates
-        # SupervisedLearner for regressing the value function of ref_policy
+        assert 0<=pe_lambd<=1 or pe_lambd is None
+        self.pe_lambd = pe_lambd  # user-defined self.pe_lambda-weighted td error
+        if np.isclose(self.pe_lambd, 1.0):
+            n_pe_updates = 1
+        assert n_pe_updates >= 1, 'Policy evaluation needs at least one udpate.'
+        self._n_pe_updates = n_pe_updates
         assert isinstance(vfn, SupervisedLearner)
         self._vfn = vfn
-        self._vfn._dataset.max_n_samples=0
+        self._vfn._dataset.max_n_samples=0  # since we aggregate rollouts here
         self._vfn._dataset.max_n_batches=0
         super().__init__(ref_policy, name=name, **kwargs)
 
+    def weights(self, ro, policy=None):  # importance weight
+        # ro is a Dataset or list of rollouts
+        policy = policy or self._ref_policy
+        assert isinstance(policy, Policy)
+        return [np.exp(policy.logp(rollout.obs_short, rollout.acs) - rollout.lps) for rollout in ro]
+
     def update(self, ro):
         """ Policy evaluation """
-        # update the replay buffer
-        self.ro.extend(ro)
-        # compute the target for regression, the expected Q function wrt self._ref_polic
+        self.ro.extend(ro)  # update the replay buffer
         w = np.concatenate(self.weights(self.ro))[:,None] if self.use_is else 1.0
-        for i in range(self._n_updates):
+        for i in range(self._n_pe_updates):
             v_hat = w*np.concatenate(self.qfns(self.ro, self.pe_lambd)).reshape([-1, 1])  # target
             self._vfn.update(self.ro['obs_short'], v_hat)
 
@@ -144,8 +130,9 @@ class ValueBasedAE(AdvantageEstimator):
     def vfns(self, ro):  # value function
         return [np.squeeze(self._vfn.predict(rollout.obs)) for rollout in ro]
 
+    # Required methods of FunctionApproximator
     def predict(self, xs, **kwargs):
-        raise NotImplementedError
+        raise np.zeros((len(xs),1))
 
     @property
     def variable(self):
