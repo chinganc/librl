@@ -2,6 +2,7 @@ from abc import abstractmethod
 import numpy as np
 from rl.core.function_approximators.function_approximator import FunctionApproximator
 from rl.core.datasets import Dataset, data_namedtuple
+from rl.core.utils.math_utils import compute_explained_variance
 
 Data = data_namedtuple('Data', 'xs ys ws')
 class SupervisedLearner(FunctionApproximator):
@@ -26,8 +27,12 @@ class SupervisedLearner(FunctionApproximator):
         ws = np.ones(xs.shape[0])*ws if type(ws) is not np.ndarray else ws
         assert xs.shape[0] == ys.shape[0] == ws.shape[0]
         self._dataset.append(Data(xs=xs, ys=ys, ws=ws))
+
         # update function approximator
-        return self.update_funcapp(**kwargs)  # return logs, if any
+        ev0 = compute_explained_variance(self(xs), ys)
+        results = self.update_funcapp(**kwargs)  # return logs, if any
+        ev1 = compute_explained_variance(self(xs), ys)
+        return results, ev0, ev1
 
     @abstractmethod
     def update_funcapp(self, **kwargs):

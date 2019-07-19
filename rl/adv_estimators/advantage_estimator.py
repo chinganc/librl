@@ -101,7 +101,8 @@ class ValueBasedAE(AdvantageEstimator):
         w = np.concatenate(self.weights(self.ro))[:,None] if self.use_is else 1.0
         for i in range(self._n_pe_updates):
             v_hat = w*np.concatenate(self.qfns(self.ro, self.pe_lambd)).reshape([-1, 1])  # target
-            self._vfn.update(self.ro['obs_short'], v_hat)
+            results, ev0, ev1 = self._vfn.update(self.ro['obs_short'], v_hat)
+        return results, ev0, ev1
 
     def advs(self, ro, lambd=None, use_is=None, ref_policy=None):  # advantage function
         """ Compute adv (evaluated at ro) wrt to ref_policy.
