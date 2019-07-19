@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class PerformanceEstimate(object):
     """ A helper class for computing \lambda-weighted advantage/Q estimates.
 
@@ -138,8 +137,9 @@ class PerformanceEstimate(object):
         """
         assert c.shape == V.shape
         assert type(done) is bool
-        lambd = lambd or self.lambd
-        gamma = gamma or self.gamma
+        lambd = self.lambd if lambd is None else lambd
+        gamma = self.gamma if gamma is None else gamma
+
         delta_lambd = self.delta*lambd
         x = self.reshape_cost(c, V, done, w=1.0)
         X = self.reshape_cost(c, V, done, w=w)
