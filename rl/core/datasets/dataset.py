@@ -1,7 +1,7 @@
 import numpy as np
 import copy
 from collections import defaultdict, namedtuple
-
+import itertools
 
 def data_namedtuple(*args, **kwargs):
     CLS = namedtuple(*args, **kwargs)
@@ -83,19 +83,28 @@ class Dataset:
     def __add__(self, other):  # alias
         return self.join(other)
 
+    def __getattr__(self, name):
+        return self[name]
+
     def __getitem__(self, key):
-        """ Retrieve a dataset containing only samples with keys, ordered from old to new. """
+        """ Retrieve a dataset containing only samples with keys, ordered from old to new.  If `key`
+        is None, it will try to concatenate as an nd.array or join the contents as a new Dataset.
+        """
+        def safe_concat(item_list):
+            if isinstance(item_list[0], np.ndarray):
+                return np.concatenate(item_list)
+            else:
+                return Dataset(list(itertools.chain.from_iterable(item_list)))
+
         if self._cache.get(key, None) is None:
             if key is None:  # try to concatenate all of them
-                self._cache[key] = np.concatenate([b for b in self._batches])
+                item_list = self._batches
             else:
-                if type(key) is str:
-                    try:
-                        self._cache[key] = np.concatenate([getattr(b, key) for b in self._batches])
-                    except AttributeError:
-                        self._cache[key] = np.concatenate([b[key] for b in self._batches])
-                else:
-                    self._cache[key] = np.concatenate([b[key] for b in self._batches])
+                try:
+                    item_list = [getattr(b, key) for b in self._batches]
+                except AttributeError:
+                    item_list = [b[key] for b in self._batches]
+            self._cache[key] = safe_concat(item_list)
 
         return self._cache[key]
 

@@ -19,10 +19,11 @@ class AdvantageEstimator(FunctionApproximator):
     # NOTE We overload the interfaces here to work with policies and rollouts.
     # This class can no longer use as a wrapper of usual `FunctionApproximator`.
     def __init__(self, ref_policy, name='advantage_func_app',
-                 max_n_samples=0,  # number of samples to keep
-                 max_n_batches=0,  # number of batches (i.e. rollouts) to keep
+                 max_n_rollouts=float('Inf'),  # number of samples (i.e. rollouts) to keep
+                 max_n_batches=0,  # number of batches (i.e. iterations) to keep
                  **kwargs):
-        self.ro = Dataset(max_n_batches=max_n_batches, max_n_samples=max_n_samples)  # replay buffer
+        # replay buffer (the user should append ro)
+        self.buffer = Dataset(max_n_batches=max_n_batches, max_n_samples=max_n_rollouts)
         assert isinstance(ref_policy, Policy)
         self._ref_policy = ref_policy  # reference policy
         self._ob_shape = ref_policy.x_shape
@@ -44,7 +45,6 @@ class AdvantageEstimator(FunctionApproximator):
     @abstractmethod
     def vfns(self, ro, *args, **kwargs):  # value function
         """ Return a list of rank-1 nd.arrays, one for each rollout. """
-
 
     # _ref_policy should not be deepcopy or saved
     def __getstate__(self):
@@ -97,11 +97,16 @@ class ValueBasedAE(AdvantageEstimator):
 
     def update(self, ro):
         """ Policy evaluation """
-        self.ro.extend(ro)  # update the replay buffer
-        w = np.concatenate(self.weights(self.ro))[:,None] if self.use_is else 1.0
+        self.buffer.append(ro)  # update the replay buffer
+        print(len(self.buffer), len(ro), len(self.buffer[None]))
+        if self.use_is:
+            w = [np.concatenate(self.weights(ro)) for ro in self.buffer[None]]
+            w = np.concatenate(w)
+        else:
+            w = 1.0
         for i in range(self._n_pe_updates):
-            v_hat = w*np.concatenate(self.qfns(self.ro, self.pe_lambd)).reshape([-1, 1])  # target
-            results, ev0, ev1 = self._vfn.update(self.ro['obs_short'], v_hat)
+            v_hat = w*np.concatenate(self.qfns(self.buffer[None], self.pe_lambd)).reshape([-1, 1])  # target
+            results, ev0, ev1 = self._vfn.update(self.buffer[None]['obs_short'], v_hat)
         return results, ev0, ev1
 
     def advs(self, ro, lambd=None, use_is=None, ref_policy=None):  # advantage function
