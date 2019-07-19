@@ -11,16 +11,18 @@ from rl.core.utils import logz
 class PolicyGradient(Algorithm):
     """ Basic policy gradient method. """
 
-    def __init__(self, policy, vfn, eta=1e-3,
-                 gamma=1.0, delta=0.999, lambd=0.):
+    def __init__(self, policy, vfn, lr=1e-3,
+                 gamma=1.0, delta=None, lambd=0.99,
+                 max_n_batches=2):
         self.vfn = vfn
         self.policy = policy
         # create online learner
         x0 = self.policy.variable
-        scheduler = PowerScheduler(eta)
+        scheduler = PowerScheduler(lr)
         self.learner = BasicOnlineOptimizer(balg.Adam(x0, scheduler))
         # create oracle
-        self.ae = ValueBasedAE(policy, vfn, gamma=gamma, delta=delta, lambd=lambd, v_target='monte-carlo')
+        self.ae = ValueBasedAE(policy, vfn, gamma=gamma, delta=delta, lambd=lambd,
+                               use_is='one', max_n_batches=max_n_batches)
         self.oracle =tfValueBasedPolicyGradient(policy, self.ae)
 
     def pi(self, ob, t, done):
@@ -34,7 +36,7 @@ class PolicyGradient(Algorithm):
 
     def pretrain(self, gen_ro):
         with timed('Pretraining'):
-            ro = gen_ro(self.pi, logp=self.logp)
+            ro = gen_ro(self.pi_ro, logp=self.logp)
             self.oracle.update(ro, self.policy)
 
     def update(self, ro):
@@ -43,7 +45,7 @@ class PolicyGradient(Algorithm):
 
         # Correction Step (Model-free)
         with timed('Update oracle'):
-            self.oracle.update(ro, self.policy)
+            _, ev0, ev1 = self.oracle.update(ro, self.policy)
 
         with timed('Compute policy gradient'):
             g = self.oracle.grad(self.policy)
@@ -56,4 +58,5 @@ class PolicyGradient(Algorithm):
         logz.log_tabular('stepsize', self.learner.stepsize)
         logz.log_tabular('std', np.mean(np.exp(2.*self.policy.lstd)))
         logz.log_tabular('g_norm', np.linalg.norm(g))
-
+        logz.log_tabular('ExplainVarianceBefore(AE)', ev0)
+        logz.log_tabular('ExplainVarianceAfter(AE)', ev1)

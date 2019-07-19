@@ -1,10 +1,9 @@
 import numpy as np
 import tensorflow as tf
 from abc import abstractmethod
-from functools import wraps
 from rl.core.function_approximators.normalizers import NormalizerStd, Normalizer
 from rl.core.oracles.oracle import Oracle
-from rl.core.utils.tf2_utils import tf_float, ts_to_array, array_to_ts, var_assign, none_to_zero
+from rl.core.utils.tf2_utils import tf_float, ts_to_array, array_to_ts, var_assign
 from rl.core.utils.misc_utils import flatten
 
 
@@ -38,6 +37,12 @@ class tfOracle(Oracle):
             tape.watch(ts_var)
             ts_loss = self.ts_fun(ts_x, **kwargs)
         return tape.gradient(ts_loss, ts_var)
+
+    def update(self, ts_fun=None, ts_var=None, *args, **kwargs):
+        if ts_fun is not None:
+            self._ts_fun = ts_fun
+        if ts_var is not None:
+            self._ts_var = ts_var
 
 
 class tfLikelihoodRatioOracle(tfOracle):
@@ -101,13 +106,14 @@ class tfLikelihoodRatioOracle(tfOracle):
         else: # regular importance sampling
             return ts_loss / tf.cast(ts_f.shape[0], tf_float)
 
-    def update(self, f, w_or_logq, update_nor=True):
+    def update(self, f, w_or_logq, update_nor=True, **kwargs):
         """ Update the function with Monte-Carlo samples.
 
             f: sampled function values
             w_or_logq: importance weight or the log probability of the sampling distribution
             update_nor: whether to update the normalizer using the current sample
         """
+        super().update(**kwargs)
         if self._biased:
             self._nor.update(f)
         f_normalized = self._nor.normalize(f)  # cv

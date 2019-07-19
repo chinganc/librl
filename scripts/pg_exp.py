@@ -17,27 +17,23 @@ def main(c):
 
     # Create env and fix randomness
     env, envid, seed = ps.general_setup(c['general'])
-
-
     horizon = None
     gamma=1.0
     env = MDP(env, gamma=gamma, horizon=horizon)
 
-    # Create objects for defining the algorithm
+    # Create learnable objects
     ob_shape = env.ob_shape
     ac_shape = env.ac_shape
-    if horizon is not None: 
+    if horizon is not None:
         ob_shape = (np.prod(ob_shape)+1,)
 
-    #policy = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
-    #                               init_lstd=0.1,
-    #                               units=(256, 256))
-    policy = tfRobustMLPGaussian(ob_shape, ac_shape,
+    policy = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
                                    init_lstd=0.1,
                                    units=(256, 256))
 
-    vfn = SuperRobustKerasMLP(ob_shape, (1,), name='value function', 
-                              units=(256,256))
+    vfn = SuperRobustKerasMLP(ob_shape, (1,), name='value function',
+                                   units=(256,256))
+    # Create algorithm
     alg = PolicyGradient(policy, vfn)
 
     # Let's do some experiments!
@@ -55,7 +51,7 @@ if __name__ == '__main__':
         'general': {
             'top_log_dir': 'log',
             'envid': 'DartCartPole-v1',
-            'seed': 0,
+            'seed': 230,
             'exp_name': 'cp',
             'horizon': None,  # the max length of rollouts in training
         },
@@ -71,5 +67,4 @@ if __name__ == '__main__':
             },
         }
     }
-
     main(configs)

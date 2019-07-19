@@ -6,7 +6,7 @@ from rl.core.function_approximators.policies import Policy
 from rl.core.function_approximators import FunctionApproximator
 from rl.core.function_approximators.supervised_learners import SupervisedLearner
 from rl.core.datasets import Dataset
-
+from rl.core.utils.misc_utils import zipsame
 
 class AdvantageEstimator(FunctionApproximator):
     """ An abstract advantage function estimator based on replay buffer.
@@ -65,9 +65,9 @@ class ValueBasedAE(AdvantageEstimator):
                  gamma,  # discount in the problem definition
                  delta,  # discount in defining value function to make learning well-behave, or to reduce variance
                  lambd,  # mixing rate of different K-step adv/Q estimates (e.g. 0 for actor-critic, 0.98 GAE)
-                 pe_lambd,  # lambda for policy evaluation in [0,1] or None
+                 pe_lambd=1.0,  # lambda for policy evaluation in [0,1] or None
                  n_pe_updates=5,  # number of iterations in policy evaluation
-                 use_is=False,  # 'one' or 'multi' or None
+                 use_is='one',  # 'one' or 'multi' or None
                  name='value_based_adv_func_app',
                  **kwargs):
         """ Create an advantage estimator wrt ref_policy. """
@@ -98,15 +98,12 @@ class ValueBasedAE(AdvantageEstimator):
     def update(self, ro):
         """ Policy evaluation """
         self.buffer.append(ro)  # update the replay buffer
-        print(len(self.buffer), len(ro), len(self.buffer[None]))
-        if self.use_is:
-            w = [np.concatenate(self.weights(ro)) for ro in self.buffer[None]]
-            w = np.concatenate(w)
-        else:
-            w = 1.0
+        ro = self.buffer[None] # join all the ros in the replay buffer
+        print('Replay buffer: {} batches, {} rollouts'.format(len(self.buffer), len(ro)))
+        w = np.concatenate(self.weights(ro)) if self.use_is else 1.0
         for i in range(self._n_pe_updates):
-            v_hat = w*np.concatenate(self.qfns(self.buffer[None], self.pe_lambd)).reshape([-1, 1])  # target
-            results, ev0, ev1 = self._vfn.update(self.buffer[None]['obs_short'], v_hat)
+            v_hat = (w*np.concatenate(self.qfns(ro, self.pe_lambd))).reshape([-1, 1])  # target
+            results, ev0, ev1 = self._vfn.update(ro['obs_short'], v_hat)
         return results, ev0, ev1
 
     def advs(self, ro, lambd=None, use_is=None, ref_policy=None):  # advantage function
@@ -122,10 +119,10 @@ class ValueBasedAE(AdvantageEstimator):
         if use_is is 'multi':
             ws = self.weights(ro, ref_policy)  # importance weight
             advs = [self._pe.adv(rollout.rws, vf, rollout.done, w=w, lambd=lambd)
-                    for rollout, vf, w in zip(ro, vfns, ws)]
+                    for rollout, vf, w in zipsame(ro, vfns, ws)]
         else:
             advs = [self._pe.adv(rollout.rws, vf, rollout.done, w=1.0, lambd=lambd)
-                    for rollout, vf in zip(ro, vfns)]
+                    for rollout, vf in zipsame(ro, vfns)]
         return advs, vfns
 
     def qfns(self, ro, lambd=None, use_is=None, ref_policy=None):  # Q function

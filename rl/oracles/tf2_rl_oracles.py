@@ -17,19 +17,20 @@ class tfValueBasedPolicyGradient(rlOracle):
     """
     def __init__(self, policy, ae,
                  use_is='one', avg_type='avg',
-                 nor=None, biased=False, use_log_loss=False, normalized_is=False):
+                 biased=False, use_log_loss=False, normalized_is=False):
         assert isinstance(ae, ValueBasedAE)
         self._ae = ae
         # define the internal oracle
         assert isinstance(policy, tfPolicy)
         self._policy_t = copy.deepcopy(policy)  # just a template
         def ts_logp_fun():
-            return  self._policy_t.ts_logp(self._ro['obs_short'], self._ro['acs'])
-        self._or = tfLikelihoodRatioOracle(ts_logp_fun, self._policy_t.ts_variables,
-                    nor=nor, biased=biased, # basic mvavg
+            return  self._policy_t.ts_logp(self.ro['obs_short'], self.ro['acs'])
+        self._or = tfLikelihoodRatioOracle(
+                    ts_logp_fun, self._policy_t.ts_variables,
+                    biased=biased, # basic mvavg
                     use_log_loss=use_log_loss, normalized_is=normalized_is)
         # some configs for computing gradients
-        assert use_is in ['one', 'multi', None, False]
+        assert use_is in ['one', 'multi', None]
         self._use_is = use_is  # use importance sampling for polcy gradient
         assert avg_type in ['avg', 'sum']
         self._avg_type = avg_type
@@ -44,8 +45,7 @@ class tfValueBasedPolicyGradient(rlOracle):
 
     def update(self, ro, policy):
         # sync policies' parameters
-        self._policy_t.assign(policy)
-        self._or._ts_var = self._policy_t.ts_variables # !
+        self._policy_t.assign(policy) # NOTE new tf.Variables may be created in assign!!
         # Compute adv.
         self._ro = ro
         advs, vfns = self._ae.advs(self.ro, use_is=self._use_is)
@@ -63,9 +63,10 @@ class tfValueBasedPolicyGradient(rlOracle):
             assert self._use_is in ['one', 'multi']
             w_or_logq = ro['lps']
         # Update the tfLikelihoodRatioOracle.
-        self._or.update(-adv, w_or_logq, update_nor=True)  # loss is negative reward
+        self._or.update(-adv, w_or_logq, update_nor=True, # loss is negative reward
+                        ts_var=self._policy_t.ts_variables) # NOTE sync
         # Update the value function at the end, so it's unbiased.
-        self._ae.update(ro)
+        return self._ae.update(ro)
 
     @property
     def ro(self):

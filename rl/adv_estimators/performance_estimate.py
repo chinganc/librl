@@ -137,6 +137,8 @@ class PerformanceEstimate(object):
         """
         assert c.shape == V.shape
         assert type(done) is bool
+        if isinstance(w, np.ndarray):
+            assert (len(w)==len(c)-1) and  len(w.shape)<=1
         lambd = self.lambd if lambd is None else lambd
         gamma = self.gamma if gamma is None else gamma
 
