@@ -35,8 +35,10 @@ class Experimenter:
             logz.log_tabular("Time", time.time() - start_time)
             logz.log_tabular("Iteration", itr)
             with timed('Generate env rollouts'):
-                ro = self.gen_ro(self.alg.pi_ro, logp=self.alg.logp, to_log=True)
+                ro = self.gen_ro(self.alg.pi_ro, logp=self.alg.logp, to_log=False)
             self.alg.update(ro)  # algorithm-specific
+            with timed('Evaluate env rollouts'):
+                self.gen_ro(self.alg.pi, to_log=True)
             logz.dump_tabular()  # dump log
 
 

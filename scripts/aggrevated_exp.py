@@ -1,13 +1,13 @@
 import argparse
 import tensorflow as tf
 import numpy as np
+
 from scripts import configs as C
 from rl import experimenter as Exp
 from rl.configs import parser as ps
 from rl.core.utils import tf_utils as U
-
 from rl.experimenter import MDP
-from rl.algorithms.pg import PolicyGradient
+from rl.algorithms.aggrevated import AggreVaTeD
 from rl.core.function_approximators.policies.tf2_policies import RobustKerasMLPGassian, tfRobustMLPGaussian
 from rl.core.function_approximators.supervised_learners import SuperRobustKerasMLP
 def main(c):
@@ -27,19 +27,31 @@ def main(c):
     if np.isclose(gamma,1.0):
         ob_shape = (np.prod(ob_shape)+1,)
 
+    # define expert
+    expert = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
+                                   init_lstd=0.1,
+                                   units=(256, 256))
+    expert.restore('./experts')
+    expert.name = 'expert'
+   
+    # define the learner
     policy = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
                                    init_lstd=0.1,
                                    units=(256, 256))
 
     vfn = SuperRobustKerasMLP(ob_shape, (1,), name='value function',
                                    units=(256,256))
+
+   
     # Create algorithm
-    alg = PolicyGradient(policy, vfn)
+    alg = AggreVaTeD(policy, expert, vfn, horizon)
 
     # Let's do some experiments!
     exp = Exp.Experimenter(alg, env, c['experimenter']['rollout_kwargs'])
     exp.run(**c['experimenter']['run_alg_kwargs'])
-    policy.save('./experts')  # TODO find a good directory
+
+    import pdb; pdb.set_trace()
+
 
 if __name__ == '__main__':
     #parser = argparse.ArgumentParser()

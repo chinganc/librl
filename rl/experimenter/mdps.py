@@ -39,27 +39,30 @@ class Rollout(object):
         # obs, acs, rws, sts, lps are lists of vals
         # logp is a callable function
         assert len(obs) == len(sts) == len(rws)
-        assert len(obs) == len(acs) + 1
+        #assert len(obs) == len(acs) + 1
         self.obs = np.array(obs)
         self.acs = np.array(acs)
         self.rws = np.array(rws)
         self.sts = np.array(sts)
         self.dns = np.zeros((len(self)+1,))
         self.dns[-1] = float(done)
-        self.tms = np.arange(len(obs))  # for convenience
-        self.lps = logp(self.obs[:-1], self.acs)
+        if isinstance(logp, np.ndarray):
+            assert len(logp) == len(acs)
+            self.lps = logp
+        else:
+            self.lps = logp(self.obs[:-1], self.acs)
 
     @property
     def obs_short(self):
-        return self.obs[:-1,:]
+        return self.obs[:len(self),:]
 
     @property
     def sts_short(self):
-        return self.sts[:-1,:]
+        return self.sts[:len(self),:]
 
     @property
     def rws_short(self):
-        return self.rws[:-1,:]
+        return self.rws[:len(self),:]
 
     @property
     def done(self):
@@ -68,6 +71,13 @@ class Rollout(object):
     def __len__(self):
         return len(self.acs)
 
+    def __getitem__(self, key):
+        return Rollout(obs=self.obs[key],
+                       acs=self.acs[key],
+                       rws=self.rws[key],
+                       sts=self.sts[key],
+                       done=self.dns[key][-1],
+                       logp=self.lps[key])
 
 
 def generate_rollout(pi, logp, env, v_end,
@@ -82,7 +92,8 @@ def generate_rollout(pi, logp, env, v_end,
 
         Args:
             pi: a function that maps ob to ac
-            logp: either None or a function that maps (obs, acs) to log probabilities
+            logp: either None or a function that maps (obs, acs) to log
+                  probabilities (called at end of each rollout)
             env: a gym environment
             v_end: the terminal value when the episoide ends (a callable function of ob and done)
             max_rollout_len: the maximal length of a rollout (i.e. the problem's horizon)

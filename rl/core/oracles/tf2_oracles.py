@@ -120,6 +120,7 @@ class tfLikelihoodRatioOracle(tfOracle):
         if self._use_log_loss:  # ts_w_or_logq is w
             assert np.all(w_or_logq >= 0)
         # these are treated as constants
+        assert f_normalized.shape==w_or_logq.shape
         self._ts_f = array_to_ts(f_normalized)
         self._ts_w_or_logq = array_to_ts(w_or_logq)
         if not self._biased and update_nor:
