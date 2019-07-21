@@ -55,6 +55,20 @@ class FunctionApproximator(Oracle):
         self.x_shape = x_shape  # a nd.array or a list of nd.arrays
         self.y_shape = y_shape  # a nd.array or a list of nd.arrays
 
+    def fun(self, x, **kwargs):  # alias
+        return self(x, **kwargs)
+
+    # Users can choose to implement `grad`.
+
+    def update(self, *args, **kwargs):
+        """ Perform update the parameters.
+
+            This can include updating internal normalizers, etc.
+            Return a report, in any.
+        """
+        # callable, but does nothing by default
+
+    # New methods of FunctionApproximator
     @abstractmethod
     def predict(self, xs, **kwargs):
         """ Predict the values on batches of xs. """
@@ -62,16 +76,6 @@ class FunctionApproximator(Oracle):
     @online_compatible
     def __call__(self, xs, **kwargs):
         return self.predict(xs, **kwargs)
-
-    def fun(self, x, **kwargs):  # alias
-        return self(x, **kwargs)
-
-    def update(self, *args, **kwargs):  # needs to be callable
-        """ Perform update the parameters.
-
-            This can include updating internal normalizers, etc.
-            Return a report, in any.
-        """
 
     @property
     @abstractmethod
@@ -87,7 +91,7 @@ class FunctionApproximator(Oracle):
     def save(self, path, name=None):
         """ Save the instance in path. """
         if not os.path.exists(path):
-            os.makedirs(path) 
+            os.makedirs(path)
         name = name or self.name
         path = os.path.join(path, name)
         with open(path, 'wb') as pickle_file:

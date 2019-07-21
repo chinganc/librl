@@ -123,10 +123,5 @@ class Tests(unittest.TestCase):
        pol.fvp(xs, pol.variable)
 
 
-
-
-
-
-
 if __name__ == '__main__':
     unittest.main()

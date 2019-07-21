@@ -4,11 +4,13 @@ import tensorflow as tf
 from abc import abstractmethod
 from rl.core.function_approximators.function_approximator import FunctionApproximator
 from rl.core.function_approximators.normalizers import tfNormalizerMax
-from rl.core.utils.tf2_utils import array_to_ts, tf_float
+from rl.core.utils.tf2_utils import array_to_ts, tf_float, ts_to_array
 from rl.core.utils.misc_utils import flatten, unflatten, zipsame
 
 # NOTE ts_* methods are in batch mode
+#      python methods return a single nd.array
 #      ts_variables is a list of tf.Variables
+
 
 class tfFuncApp(FunctionApproximator):
     """ A minimal wrapper for tensorflow 2 operators.
@@ -24,7 +26,10 @@ class tfFuncApp(FunctionApproximator):
     def predict(self, xs, **kwargs):
         return self.ts_predict(array_to_ts(xs), **kwargs).numpy()
 
-    # variables
+    def grad(self, xs, **kwargs):
+        """ Derivative with respect to xs. """
+        return ts_to_array(self.ts_grad(array_to_ts(xs), **kwargs))
+
     @property
     def variable(self):
         return flatten(self.variables)
@@ -33,6 +38,16 @@ class tfFuncApp(FunctionApproximator):
     def variable(self, val):
         vals = unflatten(val, shapes=self.var_shapes)
         self.variables = vals
+
+    # Users can choose to implement `update`.
+
+    # New methods of tfFuncApp
+
+    def ts_grad(self, ts_xs, **kwargs):
+        with tf.GradientTape() as gt:
+            gt.watch(ts_xs)
+            ts_fun = self.ts_predict(ts_xs, **kwargs)
+        return gt.gradient(ts_fun, ts_xs)
 
     @property
     def variables(self):
@@ -79,12 +94,14 @@ class KerasFuncApp(tfFuncApp):
 
     """
     def __init__(self, x_shape, y_shape, name='keras_func_app',
-                 build_kmodel=None, **kwargs): # a keras.Model or a method that shares the signature of `_build_kmodel`
+                 build_kmodel=None, **kwargs):
+        """ Build an initialized tf.keras.Model as the function approximator
+
+            `build_kmodel` can be  keras.Model or a method that shares the
+            signature of `self._build_kmodel`.
+        """
         super().__init__(x_shape, y_shape, name=name, **kwargs)
         # decide how to build the kmodel
-        """ Build an initialized tf.keras.Model as the overall function
-            approximator.
-        """
         if isinstance(build_kmodel, tf.keras.Model):
             self.kmodel = build_kmodel
         else:
@@ -105,9 +122,6 @@ class KerasFuncApp(tfFuncApp):
         """
         raise NotImplementedError
 
-    def k_predict(self, xs, **kwargs):
-        return self.kmodel.predict(xs, **kwargs)
-
     # required methods of tfFuncApp
     def ts_predict(self, ts_xs, **kwargs):
         return self.kmodel(ts_xs)
@@ -115,6 +129,12 @@ class KerasFuncApp(tfFuncApp):
     @property
     def ts_variables(self):
         return self.kmodel.trainable_variables
+
+    # New methods of KerasFuncApp
+
+    def k_predict(self, xs, **kwargs):
+        """ Batch prediction using the keras implementation. """
+        return self.kmodel.predict(xs, **kwargs)
 
     # utilities (tf.keras.Model needs to be serialized)
     def __getstate__(self):
@@ -165,9 +185,10 @@ class tfRobustFuncApp(tfFuncApp):
                                     unbias=False, clip_thre=5.0, rate=0., momentum=None)
         self._y_nor = y_nor or tfNormalizerMax(y_shape, unscale=True, \
                                     unbias=True,  clip_thre=5.0, rate=0., momentum=None)
+        # Normalizers are created first, as __init__ might call `predict`.
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
-    def predict(self, xs, clip_y=True, **kwargs):
+    def predict(self, xs, clip_y=True, **kwargs):  # add a new keyword
         return super().predict(xs, clip_y=clip_y, **kwargs)
 
     def ts_predict(self, ts_xs, clip_y=True, **kwargs):
@@ -198,6 +219,7 @@ class RobustKerasFuncApp(tfRobustFuncApp, KerasFuncApp):
 
 # Some examples
 class RobustKerasMLP(RobustKerasFuncApp):
+    """ Basic MLP using tf.keras.layers """
 
     def __init__(self, x_shape, y_shape, name='robust_k_mlp', units=(),
                  activation='tanh', **kwargs):
@@ -205,6 +227,7 @@ class RobustKerasMLP(RobustKerasFuncApp):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
     def _build_kmodel(self, x_shape, y_shape):
+        # the last layer is linear
         ts_in = tf.keras.Input(x_shape)
         ts_xs = tf.keras.layers.Reshape((np.prod(x_shape),))(ts_in)
         for unit in self.units:
@@ -216,6 +239,7 @@ class RobustKerasMLP(RobustKerasFuncApp):
 
 
 class tfMLP(tfFuncApp):
+    """ Basic MLP using basic tensorflow operations. """
 
     def __init__(self, x_shape, y_shape, name='robust_k_mlp', units=(),
                  activation='tanh', **kwargs):
@@ -226,8 +250,10 @@ class tfMLP(tfFuncApp):
             dim_in = dims[i-1]
             dim_out = dims[i]
             std = np.sqrt(2.0/(dim_in+dim_out))
-            self.ts_w.append(tf.Variable(np.random.normal(scale=std, size=(dim_in, dim_out)),dtype=tf_float))
-            self.ts_b.append(tf.Variable(np.random.normal(scale=std, size=(dim_out,)),dtype=tf_float))
+            self.ts_w.append(tf.Variable(np.random.normal(scale=std,
+                             size=(dim_in, dim_out)),dtype=tf_float))
+            self.ts_b.append(tf.Variable(np.random.normal(scale=std,
+                             size=(dim_out,)),dtype=tf_float))
 
         super().__init__(x_shape, y_shape, **kwargs)
 
@@ -237,6 +263,7 @@ class tfMLP(tfFuncApp):
 
     #@tf.function
     def ts_predict(self, ts_xs):
+        # the last layer is linear
         ts_xs = tf.reshape(ts_xs,(-1,np.prod(self.x_shape)))
         for i in range(len(self.ts_w)-1):
             ts_w = self.ts_w[i]

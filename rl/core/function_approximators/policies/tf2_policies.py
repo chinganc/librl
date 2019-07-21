@@ -27,9 +27,16 @@ class tfPolicy(tfFuncApp, Policy):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
     # `predict` has been defined by tfFuncApp
+    # Users may choose to implement `exp_fun`, `exp_grad`, `noise`, `derandomize`.
+
     @online_compatible
     def logp(self, xs, ys, **kwargs):  # override
         return self.ts_logp(array_to_ts(xs), array_to_ts(ys), **kwargs).numpy()
+
+    def logp_grad(self, xs, ys, fs, **kwargs):
+        ts_grad = self.ts_logp_grad(array_to_ts(xs), array_to_ts(ys),
+                                 array_to_ts(fs), **kwargs)
+        return flatten([v.numpy() for v in ts_grad])
 
     def kl(self, other, xs, reversesd=False, **kwargs):
         """ Return the KL divergence for each data point in the batch xs. """
@@ -43,7 +50,7 @@ class tfPolicy(tfFuncApp, Policy):
         ts_fvp = self.ts_fvp(array_to_ts(xs), array_to_ts(gs), **kwargs)
         return flatten([v.numpy() for v in ts_fvp])
 
-    # required implementations
+    # New methods of tfPolicy
     def ts_predict(self, ts_xs, stochastic=True, **kwargs):
         """ Define the tf operators for predict """
         return super().ts_predict(ts_xs, stochastic=stochastic, **kwargs)
@@ -51,9 +58,16 @@ class tfPolicy(tfFuncApp, Policy):
     def ts_logp(self, ts_xs, ts_ys):
         """ Define the tf operators for logp """
         ts_p = tf.cast(tf.equal(self.ts_predict(ts_xs), ts_ys), dtype=tf_float)
-        return tf.math.log(ts_p)
+        return tf.math.log(ts_p)  # indicator
 
-    # Some useful functions TODO
+    def ts_logp_grad(self, ts_xs, ts_ys, ts_fs):
+        with tf.GradientTape() as gt:
+            gt.watch(self.ts_variables)
+            ts_logp = self.ts_logp(ts_xs, ts_ys)
+            ts_fun = tf.reduce_sum(ts_logp*ts_fs)
+        return gt.gradient(ts_fun, self.ts_variables)
+
+    # Some useful functions
     def ts_kl(self, other, xs, reversesd=False, **kwargs):
         """ Computes KL(self||other), where other is another object of the
             same policy class. If reversed is True, return KL(other||self).
@@ -91,10 +105,12 @@ def gaussian_kl(ms_1, lstds_1, ms_2, lstds_2):
     kls = tf.reduce_sum(kls, axis=axis)
     return kls
 
+def gaussian_exp(ms, vs, As, bs, cs, canonical, diagonal_A, diagonal_vs):
+    # TODO
+    raise NotImplementedError
 
 class tfGaussianPolicy(tfPolicy):
-    """ A wrapper for augmenting tfFuncApp with Gaussian noises.
-    """
+    """ A wrapper for augmenting tfFuncApp with diagonal Gaussian noises. """
     def __init__(self, x_shape, y_shape, name='tf_gaussian_policy',
                  init_lstd=None, min_std=0.0,  # new attribues
                  **kwargs):
@@ -105,19 +121,7 @@ class tfGaussianPolicy(tfPolicy):
         self._ts_min_lstd = tf.constant(np.log(min_std), dtype=tf_float)
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
-    @online_compatible
-    def noise(self, xs, ys):
-        return ys - self.mean(xs)
-
-    @online_compatible
-    def derandomize(self, xs, noises):
-        return self.mean(xs) + noises
-
-    # some conveniet properties
-    @property
-    def ts_variables(self):
-        return super().ts_variables + [self._ts_lstd]
-
+    # Some conveniet properties
     def mean(self, xs):
         return self(xs, stochastic=False)
 
@@ -132,23 +136,81 @@ class tfGaussianPolicy(tfPolicy):
     def ts_lstd(self):
         return tf.maximum(self._ts_lstd, self._ts_min_lstd)
 
+    # Methods of Policy
+    @online_compatible
+    def predict_w_noise(self, xs, stochastic=True, **kwargs):
+        ts_ys, ts_ns = self.ts_predict_w_noise(array_to_ts(xs), array_to_ts(ys),
+                                               stochastic=stochastic, **kwargs)
+        return ts_to_array(ts_ys), ts_to_array(ts_ns)
+
+    @online_compatible
+    def noise(self, xs, ys):
+        return (ys - self.mean(xs))/np.exp(self.lstd)
+
+    @online_compatible
+    def derandomize(self, xs, noises):
+        return self.mean(xs) + noises*np.exp(self.lstd)
+
+    @online_compatible
+    def exp_fun(self, xs, As, bs, cs, canonical=True, diagonal_A=True):
+        """
+            If canonical is True, computes
+                E[ 0.5 y'*A*y + b'y + c]
+            Else computes
+                E[ 0.5 (y-m)'*A*(y-m) + b'*y + c]
+        """
+        return self.ts_exp_fun(array_to_ts(xs), array_to_ts(As),
+                               array_to_ts(bs), array_to_ts(cs),
+                               canonical, diagonal_A).numpy()
+
+    def exp_grad(self, xs, As, bs, cs, canonical=True, diagonal_A=True):
+        """ See exp_fun. """
+        ts_grad = self.ts_exp_grad(array_to_ts(xs), array_to_ts(As),
+                                   array_to_ts(bs), array_to_ts(cs),
+                                   canonical, diagonal_A)
+        return flatten([v.numpy() for v in ts_grad])
+
+    # Methods of tfPolicy/tfFuncApp
+    @property
+    def ts_variables(self):
+        return super().ts_variables + [self._ts_lstd]
+
     # ts_predict, ts_logp, ts_fvp, ts_kl
-    def ts_predict(self, ts_xs, stochastic=True, ts_noises=False, **kwargs):
+    def ts_predict(self, ts_xs, stochastic=True, **kwargs):
+        """ Define the tf operators for predict """
+        ts_ys, _ = self.ts_predict_w_noise(ts_xs, stochastic=stochastic, **kwargs)
+        return ts_ys
+
+    def ts_predict_w_noise(self, ts_xs, stochastic=True, **kwargs):
         """ Define the tf operators for predict """
         ts_ms = super().ts_predict(ts_xs, **kwargs)
-        #ts_ms = tf.zeros([ts_xs.shape[0]]+list(self.x_shape))
+        shape = [ts_xs.shape[0]]+list(self.y_shape)
         if stochastic:
-            if tf.equal(ts_noises, False):
-                shape = [ts_xs.shape[0]]+list(self.y_shape)
-                ts_noises = tf.random.normal(shape)
-            return ts_ms + tf.exp(self.ts_lstd) * ts_noises
+            ts_noises = tf.random.normal(shape)
+            ts_ys = ts_ms + tf.exp(self.ts_lstd) * ts_noises
+            return ts_ys, ts_noises
         else:
-            return ts_ms
+            ts_noises = tf.zeros(shape)
+            return ts_ms, ts_noises
 
     def ts_logp(self, ts_xs, ts_ys):  # overwrite
         ts_ms = self.ts_mean(ts_xs)
         ts_lstds = tf.broadcast_to(self.ts_lstd, ts_ms.shape)
         return gaussian_logp(ts_ys, ts_ms, ts_lstds)
+
+    def ts_exp_fun(self, ts_xs, ts_As, ts_bs, ts_cs, canonical=True, diagonal_A=True):
+        ts_ms = self.ts_mean(ts_xs)
+        ts_vs= tf.exp(2.0*self.ts_lstd)
+        ts_vs = tf.broadcast_to(ts_vs, ts_ms.shape)
+        ts_fun = gaussian_exp(ts_ms, ts_vs, ts_As, ts_bs, ts_cs,
+                              canonical=canonical, diagonal_A=diagonal_A)
+        return ts_fun
+
+    def ts_exp_grad(self, ts_xs, ts_As, ts_bs, ts_cs, canonical=True, diagonal_A=True):
+        with tf.GradientTape() as gt:
+            gt.watch(self.ts_variables)
+            ts_fun = self.ts_exp_fun(ts_xs, ts_As, ts_bs, ts_cs, canonical, diagonal_A)
+        return gt.gradient(ts_fun, self.ts_variables)
 
     def ts_kl(self, other, ts_xs, reversesd=False, p1_sg=False, p2_sg=False):
         """ Computes KL(self||other), where other is another object of the
