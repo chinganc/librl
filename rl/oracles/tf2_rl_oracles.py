@@ -16,7 +16,7 @@ class tfValueBasedPolicyGradient(rlOracle):
         where \pi' is specified in ae.
     """
     def __init__(self, policy, ae,
-                 use_is='one', avg_type='avg',
+                 use_is='one', avg_type='sum',
                  biased=False, use_log_loss=False, normalized_is=False):
         assert isinstance(ae, ValueBasedAE)
         self._ae = ae
@@ -89,34 +89,36 @@ class tfValueBasedExpertGradient(rlOracle):
         assert isinstance(policy, tfPolicy)
         self._policy_t = copy.deepcopy(policy)  # just a template
         def ts_logp_fun_exp():
-            return  self._policy_t.ts_logp(self.ro_exp['obs_short'], self.ro_exp['acs'])
+            return  self._policy_t.ts_logp(self._ro_or['obs_short'], self._ro_or['acs'])
         self._or = tfLikelihoodRatioOracle(
                     ts_logp_fun_exp, self._policy_t.ts_variables,
                     biased=False, # basic mvavg
                     use_log_loss=False, normalized_is=normalized_is)
         # another oracle for control variate's bias
         def ts_logp_fun_pol():
-            return  self._policy_t.ts_logp(self.ro_pol['obs_short'], self.ro_pol['acs'])
+            return  self._policy_t.ts_logp(self._ro_cv['obs_short'], self._ro_cv['acs'])
         self._cv = tfLikelihoodRatioOracle(
                     ts_logp_fun_pol, self._policy_t.ts_variables,
                     biased=False, # basic mvavg
                     use_log_loss=False, normalized_is=normalized_is)
         # some configs for computing gradients
-        assert use_is in ['one', 'multi']
+        assert use_is in ['one'] #, 'multi']
         self._use_is = use_is  # use importance sampling for polcy gradient
-        self._or_scale = None
-        self._cv_scale = None
-        self.ro_exp = None
-        self.ro_pol = None
+        self._scale_or = 0.
+        self._scale_cv = 0.
+        self._ro_or = None
+        self._ro_cv = None
 
     def fun(self, policy):
-        return self._or.fun(policy.variables)*self._or_scale + self._cv.fun(policy.variables)*self._cv_scale
+        f1 = 0. if self._ro_exp is None else self._or.fun(policy.variables)*self._scale_or
+        f2 = 0. if self._ro_pol is None else self._cv.fun(policy.variables)*self._scale_cv
+        return f1+f2
 
     def grad(self, policy):
-        #import pdb; pdb.set_trace()
-        print(self.ro_exp.n_samples,self.ro_pol.n_samples)
-        g1= self._or.grad(policy.variables)*self._or_scale
-        g2= self._cv.grad(policy.variables)*self._cv_scale
+        g1 = np.zeros_like(policy.variable) if self._ro_or is None \
+                else self._or.grad(policy.variables)*self._scale_or
+        g2 = np.zeros_like(policy.variable) if self._ro_cv is None \
+                else self._cv.grad(policy.variables)*self._scale_cv
         return g1+g2
 
     def update(self, ro_exp=None, ro_pol=None, policy=None):
@@ -137,47 +139,45 @@ class tfValueBasedExpertGradient(rlOracle):
 
         # Sync policies' parameters.
         self._policy_t.assign(policy) # NOTE new tf.Variables may be created in assign!!
-
         # Update the oracles
+        n_rollouts = len(ro_exp) if ro_pol is None else len(ro_pol)
+        self._ro_or = None
         if ro_exp is not None:
             # compute adv
             if len(ro_exp)>0:
                 advs, _ = self._ae.advs(ro_exp, use_is=self._use_is)
-                advs = [a[0:1]*s for a, s in zipsame(advs, ro_exp['scale'])]
+                advs = [a[0:1] for a in advs]
                 adv = np.concatenate(advs)
-                self.ro_exp = Dataset([r[0:1] for r in ro_exp])  # NOTE needs for defning logp
                 if ro_pol is not None:  # compute the control variate
                     advs_cv, _ = self._ae.advs(ro_exp, use_is=self._use_is, lambd=0.)
-                    advs_cv = [a[0:1]*s for a, s in zipsame(advs_cv, ro_exp['scale'])]
+                    advs_cv = [a[0:1] for a in advs_cv]
                     adv -= np.concatenate(advs_cv)
-                logqs = [r.lps[0:1] for r in ro_exp]
-                logq = np.concatenate(logqs)
+                adv *= ro_exp['scale'][0]  # account for random switching
+                logq = np.concatenate([r.lps[0:1] for r in ro_exp])
                 # update noisy oracle
-                self._or_scale = len(adv)/len(advs)
+                self._scale_or = len(adv)/n_rollouts
                 self._or.update(-adv, logq, update_nor=True, # loss is negative reward
                                 ts_var=self._policy_t.ts_variables) # NOTE sync
-            else:
-                self._or._ts_var = self._policy_t.ts_variables
-                self._or_scale = 0.
+                self._ro_or = Dataset([r[0:1] for r in ro_exp])  # for defining logp
 
+        self._ro_cv = None
         if ro_pol is not None:
             # update biased oracle
             advs, _ = self._ae.advs(ro_pol, use_is=self._use_is, lambd=0.)
             adv = np.concatenate(advs)
-            self._cv_scale = len(adv)/len(advs)
+            self._scale_cv = len(adv)/n_rollouts
             logq = ro_pol['lps']
+
             self._cv.update(-adv, logq, update_nor=True, # loss is negative reward
                             ts_var=self._policy_t.ts_variables) # NOTE sync
-            self.ro_pol = ro_pol
+            self._ro_cv = ro_pol  # for defining logp
 
         # Update the value function at the end, so it's unbiased.
         if ro_exp is not None:
-            if len(ro_exp)>0:
-                return self._ae.update(ro_exp)
-            return None, None, None
+            return self._ae.update(ro_exp)
         else:  # when biased gradient is used
             return self._ae.update(ro_pol)
 
     @property
     def ro(self):
-        return self.ro_exp + self.ro_pol
+        return self._ro_or + self._ro_cv

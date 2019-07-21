@@ -8,12 +8,13 @@ from rl.core.utils import logz
 
 class Experimenter:
 
-    def __init__(self, alg, env, ro_kwargs):
+    def __init__(self, alg, mdp, ro_kwargs):
         """
         ro_kwargs is a dict with keys, 'min_n_samples', 'max_n_rollouts'
         """
         self.alg = safe_assign(alg, Algorithm)
-        self._gen_ro = functools.partial(env.rollout, **ro_kwargs)
+        self._mdp = mdp
+        self._gen_ro = functools.partial(mdp.rollout, **ro_kwargs)
         self._n_samples = 0  # number of data points seen
         self._n_rollouts = 0
 
@@ -24,7 +25,8 @@ class Experimenter:
             self._n_samples += ro.n_samples
         if to_log:
             # current ro
-            sum_of_rewards = [rollout.rws.sum() for rollout in ro]
+            gamma = self._mdp.gamma
+            sum_of_rewards = [ ((gamma**np.arange(len(r.rws)))*r.rws).sum() for r in ro]
             rollout_lens = [len(rollout) for rollout in ro]
             n_samples = sum(rollout_lens)
             logz.log_tabular(prefix + "NumSamples", n_samples)
@@ -41,7 +43,8 @@ class Experimenter:
         return ro
 
     def run(self, n_itrs, pretrain=True,
-            save_freq=None, eval_freq=None, final_eval=False):
+            save_freq=None, eval_freq=None, final_eval=False, final_save=True):
+        # TODO save best
 
         eval_policy = eval_freq is not None
         save_policy = save_freq is not None
@@ -57,7 +60,7 @@ class Experimenter:
 
             if eval_policy:
                 if itr % eval_freq == 0:
-                    with timed('Evaluate env rollouts'):
+                    with timed('Evaluate policy performance'):
                         self.gen_ro(self.alg.pi, to_log=True, eval_mode=True)
 
             with timed('Generate env rollouts'):
@@ -71,7 +74,8 @@ class Experimenter:
             logz.dump_tabular()
 
         # save final policy
-        self._save_policy(n_itrs)
+        if final_save:
+            self._save_policy(n_itrs)
         if final_eval:
             self.gen_ro(self.alg.pi, to_log=True, eval_mode=True)
             logz.dump_tabular()

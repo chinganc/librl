@@ -105,6 +105,14 @@ class tfGaussianPolicy(tfPolicy):
         self._ts_min_lstd = tf.constant(np.log(min_std), dtype=tf_float)
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
+    @online_compatible
+    def noise(self, xs, ys):
+        return ys - self.mean(xs)
+
+    @online_compatible
+    def derandomize(self, xs, noises):
+        return self.mean(xs) + noises
+
     # some conveniet properties
     @property
     def ts_variables(self):

@@ -17,6 +17,17 @@ class Policy(FunctionApproximator):
         return super().predict(ts_xs, stochastic=stochastic, **kwargs)
 
     @online_compatible
+    def noise(self, xs, ys):
+        """ Return the noises used to generate ys given xs, so that the same ys
+        can be computed when callling teh `derandomize` method. """
+        raise NotImplementedError
+
+    @online_compatible
+    def derandomize(self, xs, noises):
+        """ The inverse of `noises`. """
+        raise NotImplementedError
+
+    @online_compatible
     def logp(self, xs, ys, **kwargs):
         """ Compute the log probabilities on batches of (xs, ys)."""
         return np.log(self.predict(xs, **kwargs)==ys)  # default behavior

@@ -8,13 +8,16 @@ from rl.core.online_learners.scheduler import PowerScheduler
 from rl.core.utils.misc_utils import timed, zipsame
 from rl.core.utils import logz
 from rl.core.datasets import Dataset
+
+
 class AggreVaTeD(Algorithm):
     """ Basic policy gradient method. """
 
     def __init__(self, policy, expert, expert_vfn, horizon,
                  lr=1e-3,
-                 gamma=1.0, delta=None, lambd=0.99,
-                 max_n_batches=2):
+                 gamma=1.0, delta=None, lambd=0.9,
+                 max_n_batches=1000,
+                 n_pretrain_interactions=4):
         self.policy = policy
         self.expert = expert
         self.expert_vfn = expert_vfn
@@ -28,50 +31,73 @@ class AggreVaTeD(Algorithm):
                                use_is='one', max_n_batches=max_n_batches)
         self.oracle = tfValueBasedExpertGradient(policy, self.ae)
 
+        self._n_pretrain_interactions = n_pretrain_interactions
+
         # for sampling
         if horizon is None: horizon=float('Inf')
+        assert horizon<float('Inf') or gamma<1.
         self._horizon = horizon
         self._gamma = gamma
-        self._reset_pi_ro()
+        self._reset_pi_ro()  # should be called for each iteration
 
     def _reset_pi_ro(self):
-        self._sample=True
-        self._ro_for_cv = False
-        self._t_switch = []
-        self._s_switch = []
+        self._sample=True  #  randomly sample a switching time step
+        self._ro_for_cv = False  # in the phase of cv rollout
+        self._t_switch = []  # switching time
+        self._scale = None  # extra scaling factor due to switching
+        self._noises = []  # noises used in the
 
     def pi(self, ob, t, done):
         return self.policy(ob)
 
+    # It alternates between two phases
+    #   1) roll-in learner and roll-out expert for unbiased gradient
+    #   2) roll fully the learner for control variate
+    #
+    # NOTE The below implementation assume that `logp` is called "ONLY ONCE" at
+    # the end of each rollout.
+
     def pi_ro(self, ob, t, done):
-        # TODO share randomness
-        if self._ro_for_cv:
-            return self.policy(ob)
+        if self._ro_for_cv:  # just run the learner
+            if len(self._noises)>0:
+                ns = self._noises[0]
+                del self._noises[0]
+                return self.policy.derandomize(ob, ns)
+            else:
+                return self.policy(ob)
         else:  # roll-in policy and roll-out expert
             if t==0:
                 assert self._sample
+                # At the begining of the two-phased rollouts
+                # sample t_switch in [1, horizon]
                 if self._horizon < float('Inf'):
                     p0 = self._gamma**np.arange(self._horizon)
                     sump0 = np.sum(p0)
                     p = p0/sump0
                     ind = np.random.multinomial(1,p)
-                    self._t_switch.append(np.where(ind==1)[0][0])
-                    self._s_switch.append(sump0)
+                    self._t_switch.append(np.where(ind==1)[0][0]+1)
+                    self._scale=sump0
                 else:
-                    self._t_switch.append(np.random.geometric(p=1-self._gamma)[0]-1)
-                    self._s_switch.append(1/(1-self._gamma))
+                    self._t_switch.append(np.random.geometric(p=1-self._gamma)[0])
+                    self._scale=1/(1-self._gamma)
                 self._sample=False
+                self._noises = []
+
             if t<self._t_switch[-1]:  # roll-in
-                return self.policy(ob)
+                ac = self.policy(ob)
+                ns = self.policy.noise(ob, ac)
+                self._noises.append(ns)
+                return ac
             else:
                 return self.expert(ob)
 
     def logp(self, obs, acs):
         if self._ro_for_cv:
             self._ro_for_cv = False
-            return self.policy.logp(obs,acs)
-        else:
-            self._ro_for_cv = True
+            return self.policy.logp(obs, acs)
+        else: # roll-in policy and roll-out expert
+            assert len(self._noises)<=self._t_switch[-1]
+            self._ro_for_cv = True  # do cv rollout the next time
             self._sample = True
             t_switch = self._t_switch[-1]
             logp0 = self.policy.logp(obs[:t_switch], acs[:t_switch])
@@ -79,36 +105,33 @@ class AggreVaTeD(Algorithm):
             return np.concatenate([logp0, logp1])
 
     def pretrain(self, gen_ro):
+        pi_exp = lambda ob, t, done: self.expert(ob)
         with timed('Pretraining'):
-            ro = gen_ro(self.expert, logp=self.expert.logp)
-            self.oracle.update(ro_pol=ro, policy=policy)
+            for _ in range(self._n_pretrain_interactions):
+                ro = gen_ro(pi_exp, logp=self.expert.logp)
+                self.oracle.update(ro_pol=ro, policy=self.policy)
+                # maybe also update policy
+        self._reset_pi_ro()
 
     def update(self, ro):
         # Update input normalizer for whitening
         self.policy.update(ro['obs_short'])
 
-        # Correction Step (Model-free)
+        # Mirror descent
         with timed('Update oracle'):
-            # split ro
-            rollouts = ro.to_list()
-            ro_mix = rollouts[0:][::2]
-            #[setattr(r,'scale',s) for r, s in zipsame(ro_mix, self._s_switch)]
-            #ro_exp = [r[t:] for r,t in zipsame(ro_mix, self._t_switch) if len(r)>t]
-
-            ro_exp = []
-            try: 
-                for r,t,s in zipsame(ro_mix, self._t_switch, self._s_switch):
-                    if len(r)>t:
-                        r = r[t:]
-                        r.scale=s
-                        ro_exp.append(r)
-            except: 
-                import pdb; pdb.set_trace()
+            # Split ro into two phases
+            rollouts = ro.to_list()[:int(len(ro)/2)*2]  # even length
+            ro_mix = rollouts[0:][::2]  # ro with random switch
+            assert len(ro_mix)==len(self._t_switch) or len(ro_mix)==len(self._t_switch)-1
+            # if a rollout too short, it is treated as zero
+            ro_exp = [r[t-1:] for r, t in zip(ro_mix, self._t_switch) if len(r)>=t]
+            [ setattr(r,'scale',self._scale) for r in ro_exp ]
             ro_exp = Dataset(ro_exp)
             ro_pol = Dataset(rollouts[1:][::2])
-            _, ev0, ev1 = self.oracle.update(ro_exp=ro_exp, ro_pol=ro_pol,
+
+            _, ev0, ev1 = self.oracle.update(ro_exp=ro_exp,
+                                             ro_pol=ro_pol,
                                              policy=self.policy)
-            self._reset_pi_ro()
 
         with timed('Compute policy gradient'):
             g = self.oracle.grad(self.policy)
@@ -123,3 +146,9 @@ class AggreVaTeD(Algorithm):
         logz.log_tabular('g_norm', np.linalg.norm(g))
         logz.log_tabular('ExplainVarianceBefore(AE)', ev0)
         logz.log_tabular('ExplainVarianceAfter(AE)', ev1)
+        logz.log_tabular('NumberOfRandomRollouts', len(ro_exp))
+        logz.log_tabular('NumberOfCVRollouts', len(ro_pol))
+
+        # reset
+        self._reset_pi_ro()
+

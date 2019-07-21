@@ -97,14 +97,18 @@ class ValueBasedAE(AdvantageEstimator):
 
     def update(self, ro):
         """ Policy evaluation """
-        self.buffer.append(ro)  # update the replay buffer
+        if len(ro)>0:
+            self.buffer.append(ro)  # update the replay buffer
         ro = self.buffer[None] # join all the ros in the replay buffer
-        print('Replay buffer: {} batches, {} rollouts'.format(len(self.buffer), len(ro)))
-        w = np.concatenate(self.weights(ro)) if self.use_is else 1.0
-        for i in range(self._n_pe_updates):
-            v_hat = (w*np.concatenate(self.qfns(ro, self.pe_lambd))).reshape([-1, 1])  # target
-            results, ev0, ev1 = self._vfn.update(ro['obs_short'], v_hat)
-        return results, ev0, ev1
+        if len(ro)>0:
+            print('Replay buffer: {} batches, {} rollouts, {} samples'.format(len(self.buffer), len(ro), ro.n_samples))
+            w = np.concatenate(self.weights(ro)) if self.use_is else 1.0
+            for i in range(self._n_pe_updates):
+                v_hat = (w*np.concatenate(self.qfns(ro, self.pe_lambd))).reshape([-1, 1])  # target
+                results, ev0, ev1 = self._vfn.update(ro['obs_short'], v_hat)
+            return results, ev0, ev1
+        else:
+            return None, None, None
 
     def advs(self, ro, lambd=None, use_is=None, ref_policy=None):  # advantage function
         """ Compute adv (evaluated at ro) wrt to ref_policy.

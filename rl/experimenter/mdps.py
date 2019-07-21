@@ -5,14 +5,16 @@ from rl.core.datasets import Dataset
 
 class MDP:
     """ A wrapper for gym env. """
-
-    def __init__(self, env, gamma=1.0, horizon=None, v_end=None):
+    def __init__(self, env, gamma=1.0, horizon=None, use_time_info=None, v_end=None):
         self.env = env
         self.gamma = gamma
         if horizon is None:
             horizon = float('Inf')
         self.horizon = horizon
         self.v_end = v_end or (lambda ob, done : 0.)  # terminal reward
+        if use_time_info is None:
+            use_time_info = np.isclose(gamma, 1.0)
+        self.use_time_info = use_time_info
 
     @property
     def ob_shape(self):
@@ -29,7 +31,7 @@ class MDP:
         if logp is None:  # viewed as deterministic
             logp = lambda obs, acs: np.zeros((len(acs),1))
         return generate_rollout(pi, logp, self.env, v_end=self.v_end,
-                                use_time_info=(self.horizon<float('Inf')),
+                                use_time_info=self.use_time_info,
                                 min_n_samples=min_n_samples,
                                 max_n_rollouts=max_n_rollouts,
                                 max_rollout_len=self.horizon,
