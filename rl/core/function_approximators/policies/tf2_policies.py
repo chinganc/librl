@@ -145,11 +145,11 @@ class tfGaussianPolicy(tfPolicy):
 
     @online_compatible
     def noise(self, xs, ys):
-        return (ys - self.mean(xs))/np.exp(self.lstd)
+        return  ts_to_array(self.ts_noise(array_to_ts(xs), array_to_ts(ys)))
 
     @online_compatible
     def derandomize(self, xs, noises):
-        return self.mean(xs) + noises*np.exp(self.lstd)
+        return  ts_to_array(self.ts_derandomize(array_to_ts(xs), array_to_ts(noises)))
 
     @online_compatible
     def exp_fun(self, xs, As, bs, cs, canonical=True, diagonal_A=True):
@@ -186,12 +186,18 @@ class tfGaussianPolicy(tfPolicy):
         ts_ms = super().ts_predict(ts_xs, **kwargs)
         shape = [ts_xs.shape[0]]+list(self.y_shape)
         if stochastic:
-            ts_noises = tf.random.normal(shape)
-            ts_ys = ts_ms + tf.exp(self.ts_lstd) * ts_noises
+            ts_noises = tf.exp(self.ts_lstd) * tf.random.normal(shape)
+            ts_ys = ts_ms +  ts_noises  # more stable
             return ts_ys, ts_noises
         else:
             ts_noises = tf.zeros(shape)
             return ts_ms, ts_noises
+
+    def ts_noise(self, ts_xs, ts_ys):
+        return ts_ys - self.ts_mean(ts_xs)
+
+    def ts_derandomize(self, ts_xs, ts_noises):
+        return self.ts_mean(ts_xs) + ts_noises
 
     def ts_logp(self, ts_xs, ts_ys):  # overwrite
         ts_ms = self.ts_mean(ts_xs)
