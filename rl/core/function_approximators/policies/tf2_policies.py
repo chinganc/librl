@@ -109,6 +109,7 @@ def gaussian_exp(ms, vs, As, bs, cs, canonical, diagonal_A, diagonal_vs):
     # TODO
     raise NotImplementedError
 
+
 class tfGaussianPolicy(tfPolicy):
     """ A wrapper for augmenting tfFuncApp with diagonal Gaussian noises. """
     def __init__(self, x_shape, y_shape, name='tf_gaussian_policy',
@@ -139,17 +140,19 @@ class tfGaussianPolicy(tfPolicy):
     # Methods of Policy
     @online_compatible
     def predict_w_noise(self, xs, stochastic=True, **kwargs):
-        ts_ys, ts_ns = self.ts_predict_w_noise(array_to_ts(xs), array_to_ts(ys),
-                                               stochastic=stochastic, **kwargs)
-        return ts_to_array(ts_ys), ts_to_array(ts_ns)
+        ts_ys, ts_ms, _ = self.ts_predict_all(array_to_ts(xs),
+                                              stochastic=stochastic, **kwargs)
+        ys, ms = ts_to_array(ts_ys), ts_to_array(ts_ms)
+        ns = ys - ms
+        return ys, ms
 
     @online_compatible
     def noise(self, xs, ys):
-        return  ts_to_array(self.ts_noise(array_to_ts(xs), array_to_ts(ys)))
+        return ys - self.mean(xs)
 
     @online_compatible
     def derandomize(self, xs, noises):
-        return  ts_to_array(self.ts_derandomize(array_to_ts(xs), array_to_ts(noises)))
+        return self.mean(xs) + noises
 
     @online_compatible
     def exp_fun(self, xs, As, bs, cs, canonical=True, diagonal_A=True):
@@ -178,21 +181,22 @@ class tfGaussianPolicy(tfPolicy):
     # ts_predict, ts_logp, ts_fvp, ts_kl
     def ts_predict(self, ts_xs, stochastic=True, **kwargs):
         """ Define the tf operators for predict """
-        ts_ys, _ = self.ts_predict_w_noise(ts_xs, stochastic=stochastic, **kwargs)
+        ts_ys, _, _ = self.ts_predict_all(ts_xs, stochastic=stochastic, **kwargs)
         return ts_ys
 
-    def ts_predict_w_noise(self, ts_xs, stochastic=True, **kwargs):
+    def ts_predict_all(self, ts_xs, stochastic=True, **kwargs):
         """ Define the tf operators for predict """
         ts_ms = super().ts_predict(ts_xs, **kwargs)
         shape = [ts_xs.shape[0]]+list(self.y_shape)
         if stochastic:
             ts_noises = tf.exp(self.ts_lstd) * tf.random.normal(shape)
             ts_ys = ts_ms +  ts_noises  # more stable
-            return ts_ys, ts_noises
+            return ts_ys, ts_ms, ts_noises
         else:
             ts_noises = tf.zeros(shape)
-            return ts_ms, ts_noises
+            return ts_ms, ts_ms, ts_noises
 
+    # `ts_noise` and `ts_derandomize` should only be used within tf operations
     def ts_noise(self, ts_xs, ts_ys):
         return ts_ys - self.ts_mean(ts_xs)
 

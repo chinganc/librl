@@ -1,19 +1,23 @@
 from abc import abstractmethod
 from functools import wraps
 import os, pickle, copy
+from collections import Iterable
 from rl.core.oracles.oracle import Oracle
+
 
 
 def online_compatible(f):
     def to_batch(x):  # add an extra dimension
-        return  [xx[None,:] for xx in x] if isinstance(x, list) else x[None,:]
+        return  [xx[None,:] for xx in x] if isinstance(x, list) or isinstance(x, tuple)\
+                else x[None,:]
     @wraps(f)
     def decorated_f(self, x, *args, **kwargs):
         if x.shape==self.x_shape:  # single instance
             x = to_batch(x)
             args =[to_batch(a) for a in args]
             y = f(self, x, *args, **kwargs)
-            y = [yy[0] for yy in y] if isinstance(y, list) else y[0]  # remove the extra dimension
+            y = [yy[0] for yy in y] if isinstance(y, list) or isinstance(y, tuple)\
+                else y[0]  # remove the extra dimension
         else:
             y = f(self, x, *args, **kwargs)
         return y
