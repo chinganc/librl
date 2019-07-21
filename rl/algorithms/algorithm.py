@@ -3,6 +3,12 @@ from abc import ABC, abstractmethod
 
 class Algorithm(ABC):
 
+
+    @property
+    @abstractmethod
+    def policy(self):
+        """ Return a policy object """
+
     @abstractmethod
     def pretrain(self, gen_ro):
         """ Pretraining. """
@@ -23,3 +29,5 @@ class Algorithm(ABC):
     def logp(self, obs, acs):
         """ Log probability of the behavior policy.
             Need to support batch querying. """
+
+

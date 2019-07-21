@@ -15,7 +15,7 @@ class PolicyGradient(Algorithm):
                  gamma=1.0, delta=None, lambd=0.99,
                  max_n_batches=2):
         self.vfn = vfn
-        self.policy = policy
+        self._policy = policy
         # create online learner
         x0 = self.policy.variable
         scheduler = PowerScheduler(lr)
@@ -24,6 +24,10 @@ class PolicyGradient(Algorithm):
         self.ae = ValueBasedAE(policy, vfn, gamma=gamma, delta=delta, lambd=lambd,
                                use_is='one', max_n_batches=max_n_batches)
         self.oracle =tfValueBasedPolicyGradient(policy, self.ae)
+
+    @property
+    def policy(self):
+        return self._policy
 
     def pi(self, ob, t, done):
         return self.policy(ob)

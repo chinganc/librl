@@ -18,7 +18,7 @@ class AggreVaTeD(Algorithm):
                  gamma=1.0, delta=None, lambd=0.9,
                  max_n_batches=1000,
                  n_pretrain_interactions=4):
-        self.policy = policy
+        self._policy = policy
         self.expert = expert
         self.expert_vfn = expert_vfn
         # create online learner
@@ -46,6 +46,10 @@ class AggreVaTeD(Algorithm):
         self._t_switch = []  # switching time
         self._scale = None  # extra scaling factor due to switching
         self._noises = []  # noises used in the
+
+    @property
+    def policy(self):
+        return self._policy
 
     def pi(self, ob, t, done):
         return self.policy(ob)
