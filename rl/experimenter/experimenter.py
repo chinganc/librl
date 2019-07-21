@@ -1,5 +1,5 @@
 import functools
-import time
+import time, os
 import numpy as np
 from rl.algorithms import Algorithm
 from rl.core.utils.misc_utils import safe_assign, timed
@@ -17,48 +17,69 @@ class Experimenter:
         self._n_samples = 0  # number of data points seen
         self._n_rollouts = 0
 
-    def gen_ro(self, pi, logp=None, log_prefix='', to_log=False):
+    def gen_ro(self, pi, logp=None, prefix='', to_log=False, eval_mode=False):
         ro = self._gen_ro(pi, logp)
-        self._n_rollouts += len(ro)
-        self._n_samples += ro.n_samples
+        if not eval_mode:
+            self._n_rollouts += len(ro)
+            self._n_samples += ro.n_samples
         if to_log:
-            log_rollout_info(ro, prefix=log_prefix)
-            logz.log_tabular(log_prefix + 'NumberOfDataPoints', self._n_samples)
+            # current ro
+            sum_of_rewards = [rollout.rws.sum() for rollout in ro]
+            rollout_lens = [len(rollout) for rollout in ro]
+            n_samples = sum(rollout_lens)
+            logz.log_tabular(prefix + "NumSamples", n_samples)
+            logz.log_tabular(prefix + "NumberOfRollouts", len(ro))
+            logz.log_tabular(prefix + "MeanSumOfRewards", np.mean(sum_of_rewards))
+            logz.log_tabular(prefix + "StdSumOfRewards", np.std(sum_of_rewards))
+            logz.log_tabular(prefix + "MaxSumOfRewards", np.max(sum_of_rewards))
+            logz.log_tabular(prefix + "MinSumOfRewards", np.min(sum_of_rewards))
+            logz.log_tabular(prefix + "MeanRolloutLens", np.mean(rollout_lens))
+            logz.log_tabular(prefix + "StdRolloutLens", np.std(rollout_lens))
+            # total
+            logz.log_tabular(prefix + 'TotalNumberOfSamples', self._n_samples)
+            logz.log_tabular(prefix + 'TotalNumberOfRollouts', self._n_rollouts)
         return ro
 
-    def run(self, n_itrs, pretrain=True, save_policy=False, save_freq=100, final_eval=False):
+    def run(self, n_itrs, pretrain=True,
+            save_freq=None, eval_freq=None, final_eval=False):
+
+        eval_policy = eval_freq is not None
+        save_policy = save_freq is not None
+
         start_time = time.time()
-        if pretrain:  # algorithm-specific
+        if pretrain:
             self.alg.pretrain(functools.partial(self.gen_ro, to_log=False))
+
         # Main loop
         for itr in range(n_itrs):
             logz.log_tabular("Time", time.time() - start_time)
             logz.log_tabular("Iteration", itr)
+
+            if eval_policy:
+                if itr % eval_freq == 0:
+                    with timed('Evaluate env rollouts'):
+                        self.gen_ro(self.alg.pi, to_log=True, eval_mode=True)
+
             with timed('Generate env rollouts'):
-                ro = self.gen_ro(self.alg.pi_ro, logp=self.alg.logp, to_log=False)
-            self.alg.update(ro)  # algorithm-specific
-            with timed('Evaluate env rollouts'):
-                self.gen_ro(self.alg.pi, to_log=True)
-            logz.dump_tabular()  # dump log
+                ro = self.gen_ro(self.alg.pi_ro, logp=self.alg.logp, to_log=not eval_policy)
+            self.alg.update(ro)
+
+            if save_policy:
+                if itr % save_freq == 0:
+                    self._save_policy(itr)
+            # dump log
+            logz.dump_tabular()
+
+        # save final policy
+        self._save_policy(n_itrs)
+        if final_eval:
+            self.gen_ro(self.alg.pi, to_log=True, eval_mode=True)
+            logz.dump_tabular()
 
 
-def log_rollout_info(ro, prefix=''):
-    # print('Logging rollout info')
-    if not hasattr(log_rollout_info, "total_n_samples"):
-        log_rollout_info.total_n_samples = {}  # static variable
-    if prefix not in log_rollout_info.total_n_samples:
-        log_rollout_info.total_n_samples[prefix] = 0
-    sum_of_rewards = [rollout.rws.sum() for rollout in ro]
-    rollout_lens = [len(rollout) for rollout in ro]
-    n_samples = sum(rollout_lens)
-    log_rollout_info.total_n_samples[prefix] += n_samples
-    logz.log_tabular(prefix + "NumSamplesThisBatch", n_samples)
-    logz.log_tabular(prefix + "NumberOfRollouts", len(ro))
-    logz.log_tabular(prefix + "TotalNumSamples", log_rollout_info.total_n_samples[prefix])
-    logz.log_tabular(prefix + "MeanSumOfRewards", np.mean(sum_of_rewards))
-    logz.log_tabular(prefix + "StdSumOfRewards", np.std(sum_of_rewards))
-    logz.log_tabular(prefix + "MaxSumOfRewards", np.max(sum_of_rewards))
-    logz.log_tabular(prefix + "MinSumOfRewards", np.min(sum_of_rewards))
-    logz.log_tabular(prefix + "MeanRolloutLens", np.mean(rollout_lens))
-    logz.log_tabular(prefix + "StdRolloutLens", np.std(rollout_lens))
-    logz.log_tabular(prefix + "MeanOfRewards", np.sum(sum_of_rewards) / (n_samples + len(sum_of_rewards)))
+    def _save_policy(self, itr):
+        path =os.path.join(logz.LOG.output_dir,'saved_policies')
+        name = self.alg.policy.name+'_'+str(itr)
+        self.alg.policy.save(path, name=name)
+
+

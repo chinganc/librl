@@ -84,16 +84,19 @@ class FunctionApproximator(Oracle):
         """ Set the variable as val, which is a np.ndarray in the same format as self.variable. """
 
     # utilities
-
-    def save(self, path):
+    def save(self, path, name=None):
         """ Save the instance in path. """
-        path = os.path.join(path, self.name)
+        if not os.path.exists(path):
+            os.makedirs(path) 
+        name = name or self.name
+        path = os.path.join(path, name)
         with open(path, 'wb') as pickle_file:
             pickle.dump(self, pickle_file)
 
-    def restore(self, path):
+    def restore(self, path, name=None):
         """ restore the saved instance in path. """
-        path = os.path.join(path, self.name)
+        name = name or self.name
+        path = os.path.join(path, name)
         with open(path, 'rb') as pickle_file:
             saved = pickle.load(pickle_file)
         self.assign(saved)
