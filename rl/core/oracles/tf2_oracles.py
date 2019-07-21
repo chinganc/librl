@@ -95,11 +95,9 @@ class tfLikelihoodRatioOracle(tfOracle):
             ts_loss = tf.reduce_sum(ts_w * ts_f * ts_logp)
         elif tf.equal(self._use_log_loss, False): # ts_w_or_logq is logq
             ts_w = tf.exp(ts_logp - ts_w_or_logq)
-            w = ts_w.numpy()
             ts_loss = tf.reduce_sum(ts_w*ts_f)
         else:  # ts_w_or_logq is logq
-            # The function value is pointwise as self._use_log_loss==False, but
-            # its gradient behaves like self._use_log_loss==True.
+            # Another implementation of `self._use_log_loss==False`
             ts_w = tf.stop_gradient(tf.exp(ts_logp - ts_w_or_logq))
             ts_loss = tf.reduce_sum(ts_w * ts_f * ts_logp)
         if self._normalized_is:  # normalized importance sampling

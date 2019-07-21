@@ -1,4 +1,5 @@
 from .oracle import Oracle
+from .oracles import LikelihoodRatioOracle
 from .meta_oracles import MetaOracle, AdversarialOracle, MvAvgOracle
 
 import tensorflow as tf

@@ -1,7 +1,7 @@
 import numpy as np
 from rl.algorithms.algorithm import Algorithm
 from rl.adv_estimators.advantage_estimator import ValueBasedAE
-from rl.oracles.tf2_rl_oracles import tfValueBasedPolicyGradient
+from rl.oracles.rl_oracles import ValueBasedPolicyGradient
 from rl.core.online_learners import base_algorithms as balg
 from rl.core.online_learners import BasicOnlineOptimizer
 from rl.core.online_learners.scheduler import PowerScheduler
@@ -23,7 +23,7 @@ class PolicyGradient(Algorithm):
         # create oracle
         self.ae = ValueBasedAE(policy, vfn, gamma=gamma, delta=delta, lambd=lambd,
                                use_is='one', max_n_batches=max_n_batches)
-        self.oracle =tfValueBasedPolicyGradient(policy, self.ae)
+        self.oracle = ValueBasedPolicyGradient(policy, self.ae)
 
     @property
     def policy(self):

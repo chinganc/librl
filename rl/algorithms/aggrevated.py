@@ -1,7 +1,8 @@
 import numpy as np
 from rl.algorithms.algorithm import Algorithm
 from rl.adv_estimators.advantage_estimator import ValueBasedAE
-from rl.oracles.tf2_rl_oracles import tfValueBasedExpertGradient
+from rl.oracles.rl_oracles import ValueBasedExpertGradient
+from rl.core.function_approximators.policies import Policy
 from rl.core.online_learners import base_algorithms as balg
 from rl.core.online_learners import BasicOnlineOptimizer
 from rl.core.online_learners.scheduler import PowerScheduler
@@ -18,6 +19,7 @@ class AggreVaTeD(Algorithm):
                  gamma=1.0, delta=None, lambd=0.9,
                  max_n_batches=1000,
                  n_pretrain_interactions=4):
+        assert isinstance(policy, Policy)
         self._policy = policy
         self.expert = expert
         self.expert_vfn = expert_vfn
@@ -29,7 +31,7 @@ class AggreVaTeD(Algorithm):
         self.ae = ValueBasedAE(expert, expert_vfn,  # wrt expert
                                gamma=gamma, delta=delta, lambd=lambd,
                                use_is='one', max_n_batches=max_n_batches)
-        self.oracle = tfValueBasedExpertGradient(policy, self.ae)
+        self.oracle = ValueBasedExpertGradient(policy, self.ae)
 
         self._n_pretrain_interactions = n_pretrain_interactions
 
@@ -38,14 +40,47 @@ class AggreVaTeD(Algorithm):
         assert horizon<float('Inf') or gamma<1.
         self._horizon = horizon
         self._gamma = gamma
-        self._reset_pi_ro()  # should be called for each iteration
+        self._noise_cache = self.NoiseCache(self._horizon)
+        self._reset_pi_ro()
 
     def _reset_pi_ro(self):
+        # NOTE Should be called for each iteration
         self._sample=True  #  randomly sample a switching time step
         self._ro_for_cv = False  # in the phase of cv rollout
         self._t_switch = []  # switching time
         self._scale = None  # extra scaling factor due to switching
-        self._noises = []  # noises used in the
+        self._noise_cache.reset()
+
+    class NoiseCache:
+        """ Caching randomness in actions for defining pi_ro """
+        def __init__(self, horizon):
+            self._horizon = horizon
+            self.reset()
+
+        def reset(self):
+            if self._horizon < float('Inf'):  # faster
+                self._noises = [None for _ in range(self._horizon)]
+            else:
+                self._noises = []  # noises used in the cv
+            self._ind_ns = 0
+            self._ro_len = 0
+
+        def get(self):
+            """ Return ns or None """
+            ns = self._noises[self._ind_ns] \
+                 if self._ind_ns<len(self._noises) else None
+            self._ind_ns +=1
+            return ns
+
+        def update(self,ns):
+            if self._horizon<float('Inf'):
+                self._noises[self._ro_len]=ns
+            else:
+                self._noises.append(ns)
+            self._ro_len+=1
+
+        def __len__(self):
+            return self._ro_len
 
     @property
     def policy(self):
@@ -63,12 +98,11 @@ class AggreVaTeD(Algorithm):
 
     def pi_ro(self, ob, t, done):
         if self._ro_for_cv:  # just run the learner
-            if len(self._noises)>0:
-                ns = self._noises[0]
-                del self._noises[0]
-                return self.policy.derandomize(ob, ns)
-            else:
+            ns = self._noise_cache.get()
+            if ns is None:
                 return self.policy(ob)
+            else:
+                return self.policy.derandomize(ob, ns)
         else:  # roll-in policy and roll-out expert
             if t==0:
                 assert self._sample
@@ -85,12 +119,11 @@ class AggreVaTeD(Algorithm):
                     self._t_switch.append(np.random.geometric(p=1-self._gamma)[0])
                     self._scale=1/(1-self._gamma)
                 self._sample=False
-                self._noises = []
+                self._noise_cache.reset()
 
             if t<self._t_switch[-1]:  # roll-in
-                ac = self.policy(ob)
-                ns = self.policy.noise(ob, ac)
-                self._noises.append(ns)
+                ac, ns = self.policy.predict_w_noise(ob)
+                self._noise_cache.update(ns)
                 return ac
             else:
                 return self.expert(ob)
@@ -100,7 +133,7 @@ class AggreVaTeD(Algorithm):
             self._ro_for_cv = False
             return self.policy.logp(obs, acs)
         else: # roll-in policy and roll-out expert
-            assert len(self._noises)<=self._t_switch[-1]
+            assert len(self._noise_cache)<=self._t_switch[-1]
             self._ro_for_cv = True  # do cv rollout the next time
             self._sample = True
             t_switch = self._t_switch[-1]

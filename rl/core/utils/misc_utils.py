@@ -7,11 +7,9 @@ import tensorflow as tf
 from contextlib import contextmanager
 
 
-#
 def safe_assign(obj, *args):
     assert any([isinstance(obj, cls) for cls in args])
     return obj
-
 
 # To be compatible with python3.4.
 def merge_two_dicts(x, y):
