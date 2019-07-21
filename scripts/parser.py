@@ -7,6 +7,7 @@ import tensorflow as tf
 import numpy as np
 #from rl import policies as Pol
 from rl.core.function_approximators import policies as Pol
+from rl.experimenter import MDP
 from rl import envs as Env
 from rl import oracles as Or
 from rl import algorithms as Alg
@@ -57,7 +58,8 @@ def general_setup(c):
     else:
         tf.set_random_seed(seed)  # graph-level seed
     np.random.seed(seed)
-    return env, envid, seed
+    mdp = MDP(env, gamma=c['gamma'], horizon=c['horizon'])   
+    return mdp
 
 
 def create_policy(env, seed, c, name='learner_policy'):
