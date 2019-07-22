@@ -67,7 +67,10 @@ class LikelihoodRatioOracle(Oracle):
         else: # w_or_logq is logq
             logp = self._logp_fun(x)
             w = np.exp(logp - w_or_logq)
-        grad = self._logp_grad(x, w*f)  # sum
+        wf = w*f
+        print('w',  w.min(), w.max(), w.mean())
+        print('wf', wf.min(), wf.max(), wf.mean())
+        grad = self._logp_grad(x, wf)  # sum
         if self._normalized_is:  # normalized importance sampling
             return grad / np.sum(w)
         else: # regular importance sampling

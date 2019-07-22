@@ -25,16 +25,16 @@ def main(c):
     expert = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
                                    init_lstd=-1,
                                    units=(64,))
-    expert.restore('./experts', name='mlp_policy_64_at_50_iter_seed_9')
+    expert.restore('./experts', name='cp1000_mlp_policy_64_seed_9')
     expert.name = 'expert'
 
     # define the learner
     policy = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
                                    init_lstd=-1,
-                                   units=(64, 64))
+                                   units=(128,128))
 
     vfn = SuperRobustKerasMLP(ob_shape, (1,), name='expert value function',
-                                   units=(128,128))
+                                   units=(256,256))
 
     # Create algorithm
     alg = AggreVaTeD(policy, expert, vfn,
@@ -68,11 +68,12 @@ CONFIGS = {
         },
     },
     'algorithm': {
-        'lr':1e-3,
+        'lr': 1e-3,
         'delta':None,
         'lambd':0.5,
-        'max_n_batches':1000,
-        'n_pretrain_interactions':4,
+        'max_n_batches':100,
+        'n_pretrain_itrs':5,
+        'n_warm_up_itrs':0,
     },
 }
 

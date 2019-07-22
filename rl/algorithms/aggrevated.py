@@ -18,7 +18,8 @@ class AggreVaTeD(Algorithm):
                  lr=1e-3,
                  gamma=1.0, delta=None, lambd=0.9,
                  max_n_batches=1000,
-                 n_pretrain_interactions=4):
+                 n_warm_up_itrs=None,
+                 n_pretrain_itrs=5):
         assert isinstance(policy, Policy)
         self._policy = policy
         self.expert = expert
@@ -33,14 +34,18 @@ class AggreVaTeD(Algorithm):
                                use_is='one', max_n_batches=max_n_batches)
         self.oracle = ValueBasedExpertGradient(policy, self.ae)
 
-        self._n_pretrain_interactions = n_pretrain_interactions
+        self._n_pretrain_itrs = n_pretrain_itrs
+        if n_warm_up_itrs is None:
+            n_warm_up_itrs = float('Inf')
+        self._n_warm_up_itrs =n_warm_up_itrs
+        self._itr = 0
 
         # for sampling
         if horizon is None: horizon=float('Inf')
         assert horizon<float('Inf') or gamma<1.
         self._horizon = horizon
         self._gamma = gamma
-        self._noise_cache = self.NoiseCache(self._horizon)
+        self._noise_cache = self.NoiseCache()
         self._reset_pi_ro()
 
     def _reset_pi_ro(self):
@@ -53,34 +58,25 @@ class AggreVaTeD(Algorithm):
 
     class NoiseCache:
         """ Caching randomness in actions for defining pi_ro """
-        def __init__(self, horizon):
-            self._horizon = horizon
+        def __init__(self):
             self.reset()
 
         def reset(self):
-            if self._horizon < float('Inf'):  # faster
-                self._noises = [None for _ in range(self._horizon)]
-            else:
-                self._noises = []  # noises used in the cv
+            self._noises = []  # noises used in the cv
             self._ind_ns = 0
-            self._ro_len = 0
 
         def get(self):
             """ Return ns or None """
             ns = self._noises[self._ind_ns] \
-                 if self._ind_ns<len(self._noises) else None
+                 if self._ind_ns<len(self) else None
             self._ind_ns +=1
             return ns
 
-        def update(self,ns):
-            if self._horizon<float('Inf'):
-                self._noises[self._ro_len]=ns
-            else:
-                self._noises.append(ns)
-            self._ro_len+=1
+        def append(self,ns):
+            self._noises.append(ns)
 
         def __len__(self):
-            return self._ro_len
+            return len(self._noises)
 
     @property
     def policy(self):
@@ -123,7 +119,7 @@ class AggreVaTeD(Algorithm):
 
             if t<self._t_switch[-1]:  # roll-in
                 ac, ns = self.policy.predict_w_noise(ob)
-                self._noise_cache.update(ns)
+                self._noise_cache.append(ns)
                 return ac
             else:
                 return self.expert(ob)
@@ -144,15 +140,17 @@ class AggreVaTeD(Algorithm):
     def pretrain(self, gen_ro):
         pi_exp = lambda ob, t, done: self.expert(ob)
         with timed('Pretraining'):
-            for _ in range(self._n_pretrain_interactions):
+            for _ in range(self._n_pretrain_itrs):
                 ro = gen_ro(pi_exp, logp=self.expert.logp)
-                self.oracle.update(ro_pol=ro, policy=self.policy)
+                self.oracle.update(ro_pol=ro, policy=self.policy, update_nor=False)
+                self.policy.update(ro['obs_short'])
                 # maybe also update policy
         self._reset_pi_ro()
 
     def update(self, ro):
         # Update input normalizer for whitening
-        self.policy.update(ro['obs_short'])
+        if self._itr < self._n_warm_up_itrs:
+            self.policy.update(xs=ro['obs_short'])
 
         # Mirror descent
         with timed('Update oracle'):
@@ -165,10 +163,10 @@ class AggreVaTeD(Algorithm):
             [ setattr(r,'scale',self._scale) for r in ro_exp ]
             ro_exp = Dataset(ro_exp)
             ro_pol = Dataset(rollouts[1:][::2])
-
             _, ev0, ev1 = self.oracle.update(ro_exp=ro_exp,
                                              ro_pol=ro_pol,
-                                             policy=self.policy)
+                                             policy=self.policy,
+                                             update_nor=True)
 
         with timed('Compute policy gradient'):
             g = self.oracle.grad(self.policy)
@@ -188,4 +186,4 @@ class AggreVaTeD(Algorithm):
 
         # reset
         self._reset_pi_ro()
-
+        self._itr+=1

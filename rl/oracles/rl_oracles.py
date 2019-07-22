@@ -50,7 +50,7 @@ class ValueBasedPolicyGradient(rlOracle):
     def grad(self, policy):
         return self._or.grad(policy.variable) * self._scale
 
-    def update(self, ro, policy):
+    def update(self, ro, policy, update_nor=True):
         # Sync policies' parameters.
         self._policy_t.assign(policy) # NOTE sync BOTH variables and parameters
         # Compute adv.
@@ -70,7 +70,7 @@ class ValueBasedPolicyGradient(rlOracle):
             assert self._use_is in ['one', 'multi']
             w_or_logq = ro['lps']
         # Update the LikelihoodRatioOracle.
-        self._or.update(-adv, w_or_logq, update_nor=True) # loss is negative reward
+        self._or.update(-adv, w_or_logq, update_nor=update_nor) # loss is negative reward
         # Update the value function at the end, so it's unbiased.
         return self._ae.update(ro)
 
@@ -130,9 +130,10 @@ class ValueBasedExpertGradient(rlOracle):
                 else self._or.grad(policy.variable)*self._scale_or
         g2 = np.zeros_like(policy.variable) if self._ro_cv is None \
                 else self._cv.grad(policy.variable)*self._scale_cv
+        print('noisy grad', np.linalg.norm(g1), 'cv grad', np.linalg.norm(g2))
         return g1+g2
 
-    def update(self, ro_exp=None, ro_pol=None, policy=None):
+    def update(self, ro_exp=None, ro_pol=None, policy=None, update_nor=True):
         """ Need to provide either `ro_exp` or `ro_pol`, and `policy`.
 
             `ro_exp` is used to compute an unbiased but noisy estimate of
@@ -163,11 +164,10 @@ class ValueBasedExpertGradient(rlOracle):
                     advs_cv, _ = self._ae.advs(ro_exp, use_is=self._use_is, lambd=0.)
                     advs_cv = [a[0:1] for a in advs_cv]
                     adv -= np.concatenate(advs_cv)
-                adv *= ro_exp['scale'][0]  # account for random switching
                 logq = np.concatenate([r.lps[0:1] for r in ro_exp])
                 # update noisy oracle
-                self._scale_or = len(adv)/n_rollouts
-                self._or.update(-adv, logq, update_nor=True) # loss is negative reward
+                self._scale_or = len(adv)/n_rollouts * ro_exp['scale'][0]
+                self._or.update(-adv, logq, update_nor=update_nor) # loss is negative reward
                 self._ro_or = Dataset([r[0:1] for r in ro_exp])  # for defining logp
 
         self._ro_cv = None
@@ -177,8 +177,7 @@ class ValueBasedExpertGradient(rlOracle):
             adv = np.concatenate(advs)
             self._scale_cv = len(adv)/n_rollouts
             logq = ro_pol['lps']
-
-            self._cv.update(-adv, logq, update_nor=True) # loss is negative reward
+            self._cv.update(-adv, logq, update_nor=update_nor) # loss is negative reward
             self._ro_cv = ro_pol  # for defining logp
 
         # Update the value function at the end, so it's unbiased.

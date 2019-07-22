@@ -14,8 +14,8 @@ class PolicyGradient(Algorithm):
     def __init__(self, policy, vfn, lr=1e-3,
                  gamma=1.0, delta=None, lambd=0.99,
                  max_n_batches=2,
-                 warm_up_itrs=None,
-                 n_pretrain_interactions=1):
+                 n_warm_up_itrs=None,
+                 n_pretrain_itrs=1):
         self.vfn = vfn
         self._policy = policy
         # create online learner
@@ -27,10 +27,10 @@ class PolicyGradient(Algorithm):
                                use_is='one', max_n_batches=max_n_batches)
         self.oracle = ValueBasedPolicyGradient(policy, self.ae)
 
-        self._n_pretrain_interactions = n_pretrain_interactions
-        if warm_up_itrs is None:
-            warm_up_itrs = float('Inf')
-        self._warm_up_itrs =warm_up_itrs
+        self._n_pretrain_itrs = n_pretrain_itrs
+        if n_warm_up_itrs is None:
+            n_warm_up_itrs = float('Inf')
+        self._n_warm_up_itrs =n_warm_up_itrs
         self._itr = 0
 
     @property
@@ -48,14 +48,14 @@ class PolicyGradient(Algorithm):
 
     def pretrain(self, gen_ro):
         with timed('Pretraining'):
-            for _ in range(self._n_pretrain_interactions):
+            for _ in range(self._n_pretrain_itrs):
                 ro = gen_ro(self.pi_ro, logp=self.logp)
                 self.oracle.update(ro, self.policy)
                 self.policy.update(xs=ro['obs_short'])
 
     def update(self, ro):
         # Update input normalizer for whitening
-        if self._itr < self._warm_up_itrs:
+        if self._itr < self._n_warm_up_itrs:
             self.policy.update(xs=ro['obs_short'])
 
         # Correction Step (Model-free)
