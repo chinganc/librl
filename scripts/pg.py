@@ -39,7 +39,7 @@ CONFIGS = {
         'envid': 'DartCartPole-v1',
         'seed': 9,
         'exp_name': 'cp',
-        'horizon': None,  # the max length of rollouts in training
+        'horizon': 1000,  # the max length of rollouts in training
         'gamma': 1.0,
     },
     'experimenter': {
