@@ -12,9 +12,7 @@ class MDP:
             horizon = float('Inf')
         self.horizon = horizon
         self.v_end = v_end or (lambda ob, done : 0.)  # terminal reward
-        if use_time_info is None:
-            use_time_info = np.isclose(gamma, 1.0)
-        self.use_time_info = use_time_info
+        self.use_time_info = lambda t: t/self.horizon
 
     @property
     def ob_shape(self):
@@ -95,7 +93,7 @@ class Rollout(object):
 
 
 def generate_rollout(pi, logp, env, v_end,
-                     use_time_info=False,
+                     use_time_info=None,
                      min_n_samples=None, max_n_rollouts=None,
                      max_rollout_len=None,
                      with_animation=False):
@@ -112,6 +110,7 @@ def generate_rollout(pi, logp, env, v_end,
                   probabilities (called at end of each rollout)
             `env`: a gym environment
             `v_end`: the terminal value when the episoide ends (a callable function of ob and done)
+            `use_time_info`: a function that maps time to desired features
             `max_rollout_len`: the maximal length of a rollout (i.e. the problem's horizon)
             `min_n_sample`s: the minimal number of samples to collect
             `max_n_rollouts`: the maximal number of rollouts
@@ -133,8 +132,8 @@ def generate_rollout(pi, logp, env, v_end,
     elif hasattr(env, 'state'):
         get_state = lambda: env.state
     # whether to augment state/observation with time information
-    if use_time_info:
-        post_process = lambda x,t: np.concatenate([x.flatten(), (t,)])
+    if use_time_info is not None:
+        post_process = lambda x,t: np.concatenate([x.flatten(), (use_time_info(t),)])
     else:
         post_process = lambda x,t :x
 

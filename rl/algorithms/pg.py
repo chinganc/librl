@@ -13,7 +13,9 @@ class PolicyGradient(Algorithm):
 
     def __init__(self, policy, vfn, lr=1e-3,
                  gamma=1.0, delta=None, lambd=0.99,
-                 max_n_batches=2):
+                 max_n_batches=2,
+                 warm_up_itrs=None,
+                 n_pretrain_interactions=1):
         self.vfn = vfn
         self._policy = policy
         # create online learner
@@ -24,6 +26,12 @@ class PolicyGradient(Algorithm):
         self.ae = ValueBasedAE(policy, vfn, gamma=gamma, delta=delta, lambd=lambd,
                                use_is='one', max_n_batches=max_n_batches)
         self.oracle = ValueBasedPolicyGradient(policy, self.ae)
+
+        self._n_pretrain_interactions = n_pretrain_interactions
+        if warm_up_itrs is None:
+            warm_up_itrs = float('Inf')
+        self._warm_up_itrs =warm_up_itrs
+        self._itr = 0
 
     @property
     def policy(self):
@@ -40,12 +48,15 @@ class PolicyGradient(Algorithm):
 
     def pretrain(self, gen_ro):
         with timed('Pretraining'):
-            ro = gen_ro(self.pi_ro, logp=self.logp)
-            self.oracle.update(ro, self.policy)
+            for _ in range(self._n_pretrain_interactions):
+                ro = gen_ro(self.pi_ro, logp=self.logp)
+                self.oracle.update(ro, self.policy)
+                self.policy.update(xs=ro['obs_short'])
 
     def update(self, ro):
         # Update input normalizer for whitening
-        self.policy.update(ro['obs_short'])
+        if self._itr < self._warm_up_itrs:
+            self.policy.update(xs=ro['obs_short'])
 
         # Correction Step (Model-free)
         with timed('Update oracle'):
@@ -64,3 +75,5 @@ class PolicyGradient(Algorithm):
         logz.log_tabular('g_norm', np.linalg.norm(g))
         logz.log_tabular('ExplainVarianceBefore(AE)', ev0)
         logz.log_tabular('ExplainVarianceAfter(AE)', ev1)
+
+        self._itr +=1
