@@ -182,7 +182,7 @@ class tfRobustFuncApp(tfFuncApp):
     def __init__(self, x_shape, y_shape, name='tf_robust_func_app',
                  x_nor=None, y_nor=None, **kwargs):
         self._x_nor = x_nor or tfNormalizerMax(x_shape, unscale=False, \
-                                    unbias=False, clip_thre=5.0, rate=0., momentum=None)
+                                    unbias=False, clip_thre=None, rate=0., momentum=None)
         self._y_nor = y_nor or tfNormalizerMax(y_shape, unscale=True, \
                                     unbias=True,  clip_thre=5.0, rate=0., momentum=None)
         # Normalizers are created first, as __init__ might call `predict`.
