@@ -63,6 +63,7 @@ class Oracle(ABC):
         """ __deepcopy__ but with an exclusion list
             excludes is a list of attribute names (string) that is to be shallow copied.
         """
+        assert isinstance(memo, dict)
         new = copy.copy(self)
         memo[id(self)] = new  # prevent loop
         if hasattr(self,'__getstate__'):

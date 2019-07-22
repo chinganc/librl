@@ -11,7 +11,9 @@ def robust_keras_supervised_learner(cls):
                      lr=0.001, loss='mse', metrics=('mae','mse'), **kwargs):
             super().__init__(x_shape, y_shape, name=name, **kwargs)
             self._lr =lr
-            self.kmodel.compile(optimizer=tf.keras.optimizers.Adam(self._lr),
+            self._loss = loss
+            self._metrics = metrics
+            self.kmodel.compile(optimizer=tf.keras.optimizers.Adam(lr),
                                 loss=loss, metrics=list(metrics))
 
         def update_funcapp(self, clip_y=False,
@@ -28,6 +30,11 @@ def robust_keras_supervised_learner(cls):
             return self.kmodel.fit(xs, ys, sample_weight=ws, verbose=0,
                                    batch_size=batch_size, epochs=epochs,**kwargs)
 
+
+        def __setstate__(self, d):
+            super().__setstate__(d)
+            self.kmodel.compile(optimizer=tf.keras.optimizers.Adam(self._lr),
+                                loss=self._loss, metrics=list(self._metrics))
 
     # to make them look the same as intended
     decorated_cls.__name__ = cls.__name__

@@ -51,7 +51,6 @@ class Dataset:
                 self._batches = data
             else:
                 self._batches = [data]
-
         self.max_n_batches = max_n_batches
         self.max_n_samples = max_n_samples
         self._cache ={}
@@ -88,8 +87,8 @@ class Dataset:
     def __add__(self, other):  # alias
         return self.join(other)
 
-    def __getattr__(self, name):
-        return self[name]
+    #def __getattr__(self, name):
+    #    return self[name]
 
     def __getitem__(self, key):
         """ Retrieve a dataset containing only samples with keys, ordered from
