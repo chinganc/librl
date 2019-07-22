@@ -61,6 +61,7 @@ class tfPolicy(tfFuncApp, Policy):
         return tf.math.log(ts_p)  # indicator
 
     def ts_logp_grad(self, ts_xs, ts_ys, ts_fs):
+        """ Sum over samples. """
         with tf.GradientTape() as gt:
             gt.watch(self.ts_variables)
             ts_logp = self.ts_logp(ts_xs, ts_ys)

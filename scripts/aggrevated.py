@@ -72,6 +72,7 @@ CONFIGS = {
         'delta':None,
         'lambd':0.5,
         'max_n_batches':1000,
+        'n_pretrain_interactions':4,
     },
 }
 

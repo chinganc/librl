@@ -1,5 +1,5 @@
 import numpy as np
-from rl.core.function_approximators.normalizers import NormalizerStd
+from rl.core.function_approximators.normalizers import NormalizerStd, Normalizer
 from rl.core.oracles import Oracle
 
 
@@ -31,7 +31,7 @@ class LikelihoodRatioOracle(Oracle):
             logp_grad: variable, f -> E[ f \nabla logp]
         """
         self._logp_fun = logp_fun
-        self._logp_grad = logp_grad
+        self._logp_grad = logp_grad  # sum
         self._biased = biased
         self._use_log_loss = use_log_loss
         self._normalized_is = normalized_is  # normalized importance sampling
@@ -67,8 +67,7 @@ class LikelihoodRatioOracle(Oracle):
         else: # w_or_logq is logq
             logp = self._logp_fun(x)
             w = np.exp(logp - w_or_logq)
-        grad = self._logp_grad(x, w*f)
-
+        grad = self._logp_grad(x, w*f)  # sum
         if self._normalized_is:  # normalized importance sampling
             return grad / np.sum(w)
         else: # regular importance sampling
