@@ -1,7 +1,7 @@
 import numpy as np
 from rl.algorithms.algorithm import Algorithm
 from rl.adv_estimators.advantage_estimator import ValueBasedAE
-from rl.oracles.rl_oracles import ValueBasedExpertGradient
+from rl.oracles.rl_oracles import ValueBasedExpertGradientByRandomTimeSampling as Oracle
 from rl.core.function_approximators.policies import Policy
 from rl.core.online_learners import base_algorithms as balg
 from rl.core.online_learners import BasicOnlineOptimizer
@@ -36,7 +36,7 @@ class AggreVaTeD(Algorithm):
         self.ae = ValueBasedAE(expert, expert_vfn,  # wrt expert
                                gamma=gamma, delta=delta, lambd=lambd,
                                use_is='one', max_n_batches=max_n_batches)
-        self.oracle = ValueBasedExpertGradient(policy, self.ae)
+        self.oracle = Oracle(policy, self.ae)
 
         self._n_pretrain_itrs = n_pretrain_itrs
         if n_warm_up_itrs is None:
@@ -118,45 +118,7 @@ class AggreVaTeD(Algorithm):
                 assert self._sample
                 # At the begining of the two-phased rollouts
                 # sample t_switch in [1, horizon]
-
-                # Define t_swich and scale
-                if self._sampling_rule=='cyclic':
-                    assert self._horizon < float('Inf')
-                    t_switch = (int(self._cyclic_rate*self._itr)%self._horizon)+1
-                    scale = self._horizon
-                elif self._sampling_rule=='exponential':
-                    beta = self._avg_n_steps.val
-                    t_switch = int(np.ceil(np.random.exponential(beta)))
-                    p = 1/beta*np.exp(-t_switch/beta)
-                    scale.append(self._gamma/p)
-                    print('exponential', t_switch, beta, p)
-                elif self._sampling_rule=='uniform':
-
-                else:
-                    if self._horizon < float('Inf'):
-                        p0 = self._gamma**np.arange(self._horizon)
-                        sump0 = np.sum(p0)
-                        p0 = p0/sump0
-                        ind = np.random.multinomial(1,p0)
-                        t_switch =  np.where(ind==1)[0][0]+1
-                        self._t_switch.append(t_switch)
-                        p = p0[t_switch-1]
-                        self._scale.append(1/p)
-                    else:
-                        self._t_switch.append(np.random.geometric(p=1-self._gamma)[0])
-                        self._scale.append(1/(1-self._gamma))
-                    # 
-                    p0 = self._gamma**np.arange(self._horizon)
-                    sump0 = np.sum(p0)
-                    p0 = p0/sump0
-                    p = p0[t_switch-1]
-                    scale *= p*sump0
-
-
-
-                    self._t_switch.append(t_switch)
-                    self._scale.append(scale)
-
+                self._sample_t_switch() # update self._t_switch & self._scale
                 self._sample=False
                 self._noise_cache.reset()
 
@@ -180,14 +142,49 @@ class AggreVaTeD(Algorithm):
             logp1 = self.expert.logp(obs[t_switch:], acs[t_switch:])
             return np.concatenate([logp0, logp1])
 
+    def _sample_t_switch(self):
+        # Define t_swich and p
+        if self._sampling_rule=='cyclic':
+            assert self._horizon < float('Inf')
+            t_switch = (int(self._cyclic_rate*self._itr)%self._horizon)+1
+            p = 1./self._horizon
+        elif self._sampling_rule=='exponential':
+            beta = self._avg_n_steps.val
+            t_switch = int(np.ceil(np.random.exponential(beta)))
+            p = 1./beta*np.exp(-t_switch/beta)
+            print('exponential', t_switch, beta, p)
+        else:
+            if self._horizon < float('Inf'):
+                p0 = self._gamma**np.arange(self._horizon)
+                sump0 = np.sum(p0)
+                p0 = p0/sump0
+                ind = np.random.multinomial(1,p0)
+                t_switch =  np.where(ind==1)[0][0]+1
+                p = p0[t_switch-1]
+            else:
+                t_switch = np.random.geometric(p=1-self._gamma)[0]
+                p = self._gamma**t_switch*(1-self._gamma)
+        # correct for potential discount factor
+        if self._horizon < float('Inf'):
+            p0 = self._gamma**np.arange(self._horizon)
+            sump0 = np.sum(p0)
+            p0 = p0/sump0
+            pp = p0[t_switch-1]
+        else:
+            sump0 = 1/(1-self._gamma)
+            pp = self._gamma**t_switch*(1-self._gamma)
+        scale = (pp/p)*sump0
+        self._t_switch.append(t_switch)
+        self._scale.append(scale)
+
     def pretrain(self, gen_ro):
         pi_exp = lambda ob, t, done: self.expert(ob)
         with timed('Pretraining'):
             for _ in range(self._n_pretrain_itrs):
                 ro = gen_ro(pi_exp, logp=self.expert.logp)
                 self.oracle.update(ro_pol=ro, policy=self.policy, update_nor=False)
-                # self.policy.update(ro['obs_short'])
-                # maybe also update policy
+                self.policy.update(ro['obs_short'])
+
         self._reset_pi_ro()
 
     def update(self, ro):
@@ -210,24 +207,17 @@ class AggreVaTeD(Algorithm):
                         r = r[t-1:]
                         r.scale = s
                         ro_exp.append(r)
-
-                print('expert rws', [ np.mean(r.rws)*1000 for  r in ro_exp])
-
                 ro_exp = Dataset(ro_exp)
                 ro_pol = Dataset(rollouts[1:][::2])
                 _, ev0, ev1 = self.oracle.update(ro_exp=ro_exp,
                                                  ro_pol=ro_pol,
-                                                 policy=self.policy,
-                                                 update_nor=True)
-
-
+                                                 policy=self.policy)
+                # for adaptive sampling
                 self._avg_n_steps.update(np.mean([len(r) for r in ro_pol]))
             else:
-                [ setattr(r,'scale',self._scale) for r in ro ]
+                [setattr(r,'scale',s) for r,s in zip(ro, self._scale)]
                 _, ev0, ev1 = self.oracle.update(ro_exp=ro,
-                                                 policy=self.policy,
-                                                 update_nor=True)
-
+                                                 policy=self.policy)
 
         with timed('Compute policy gradient'):
             g = self.oracle.grad(self.policy)

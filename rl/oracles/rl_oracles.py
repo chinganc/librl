@@ -7,6 +7,7 @@ from rl.core.oracles import LikelihoodRatioOracle
 from rl.core.function_approximators.policies import Policy
 from rl.core.datasets import Dataset
 
+
 class ValueBasedPolicyGradient(rlOracle):
     """ A wrapper of LikelihoodRatioOracle for computing policy gradient of the type
 
@@ -75,8 +76,7 @@ class ValueBasedPolicyGradient(rlOracle):
         return self._ae.update(ro)
 
 
-
-class ValueBasedExpertGradient(rlOracle):
+class ValueBasedExpertGradientByRandomTimeSampling(rlOracle):
     """ A wrapper of LikelihoodRatioOracle for computing policy gradient of the type
 
             E_{d_\pi} (\nabla E_{\pi}) [ A_{\pi'} ]
