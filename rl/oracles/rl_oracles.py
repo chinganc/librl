@@ -51,7 +51,7 @@ class ValueBasedPolicyGradient(rlOracle):
     def grad(self, policy):
         return self._or.grad(policy.variable) * self._scale
 
-    def update(self, ro, policy, update_nor=True):
+    def update(self, ro, policy, update_nor=True, update_vfn=True):
         # Sync policies' parameters.
         self._policy_t.assign(policy) # NOTE sync BOTH variables and parameters
         # Compute adv.
@@ -73,6 +73,10 @@ class ValueBasedPolicyGradient(rlOracle):
         # Update the LikelihoodRatioOracle.
         self._or.update(-adv, w_or_logq, update_nor=update_nor) # loss is negative reward
         # Update the value function at the end, so it's unbiased.
+        if update_vfn:
+            return self.update_vfn(ro)
+
+    def update_vfn(self, ro):
         return self._ae.update(ro)
 
 

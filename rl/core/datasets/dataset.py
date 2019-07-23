@@ -13,6 +13,36 @@ def data_namedtuple(*args, **kwargs):
     return CLS
 
 
+class OneTimeCache:
+    """ Caching randomness in actions for defining pi_ro """
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self._c = []  # noises used in the cv
+        self._ind = 0
+
+    def get(self):
+        """ Return ns or None """
+        ns = self._c[self._ind] \
+             if self._ind<len(self) else None
+        self._ind +=1
+        return ns
+
+    def append(self,ns):
+        self._c.append(ns)
+
+    def __iter__(self):
+        for v in self._c:
+            yield v
+
+    def __getitem__(self, key):
+        return self._c[key]
+
+    def __len__(self):
+        return len(self._c)
+
+
 class Dataset:
     """ A collection of batch data where each batch contains a set of samples.
 

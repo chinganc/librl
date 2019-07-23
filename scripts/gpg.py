@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 from scripts.utils import parser as ps
 from rl import experimenter as Exp
-from rl.algorithms import AggreVaTeD
+from rl.algorithms import GeneralizedPolicyGradient as Algorithm
 from rl.core.function_approximators.policies.tf2_policies import RobustKerasMLPGassian
 from rl.core.function_approximators.supervised_learners import SuperRobustKerasMLP
 
@@ -37,7 +37,7 @@ def main(c):
                                    units=(256,256))
 
     # Create algorithm
-    alg = AggreVaTeD(policy, expert, vfn,
+    alg = Algorithm(policy, expert, vfn,
                      horizon=mdp.horizon, gamma=mdp.gamma,
                      **c['algorithm'])
 
@@ -70,9 +70,9 @@ CONFIGS = {
     'algorithm': {
         'lr': 1e-3,
         'delta':None,
-        'lambd':0.01,
+        'lambd':0.1,
         'max_n_batches':100,
-        'n_pretrain_itrs':5,
+        'n_pretrain_itrs': 5,
         'n_warm_up_itrs':None,
     },
 }
