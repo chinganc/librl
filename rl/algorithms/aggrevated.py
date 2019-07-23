@@ -21,8 +21,8 @@ class AggreVaTeD(Algorithm):
                  max_n_batches=1000,
                  n_warm_up_itrs=None,
                  n_pretrain_itrs=5,
-                 sampling_rule='geometric', # define how random switching time is generated
-                 use_cv=True  # use control variate to account for the random switching time
+                 sampling_rule='exponential', # define how random switching time is generated
+                 use_cv=True,  # use control variate to account for the random switching time
                  cyclic_rate=2): # the rate of forward training, relative to the number of iterations
         assert isinstance(policy, Policy)
         self._policy = policy
