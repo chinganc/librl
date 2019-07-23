@@ -50,7 +50,7 @@ CONFIGS = {
     'general': {
         'top_log_dir': 'log',
         'envid': 'DartCartPole-v1',
-        'seed': 0,
+        'seed': 1230,
         'exp_name': 'cp',
         'horizon': 1000,  # the max length of rollouts in training
         'gamma': 1.0,
@@ -73,7 +73,7 @@ CONFIGS = {
         'lambd':0.5,
         'max_n_batches':100,
         'n_pretrain_itrs':5,
-        'n_warm_up_itrs':0,
+        'n_warm_up_itrs':None,
     },
 }
 

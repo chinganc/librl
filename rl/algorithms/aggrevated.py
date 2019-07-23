@@ -9,6 +9,7 @@ from rl.core.online_learners.scheduler import PowerScheduler
 from rl.core.utils.misc_utils import timed, zipsame
 from rl.core.utils import logz
 from rl.core.datasets import Dataset
+from rl.core.utils.mvavg import PolMvAvg, ExpMvAvg
 
 
 class AggreVaTeD(Algorithm):
@@ -19,7 +20,10 @@ class AggreVaTeD(Algorithm):
                  gamma=1.0, delta=None, lambd=0.9,
                  max_n_batches=1000,
                  n_warm_up_itrs=None,
-                 n_pretrain_itrs=5):
+                 n_pretrain_itrs=5,
+                 sampling_rule='geometric', # define how random switching time is generated
+                 use_cv=True  # use control variate to account for the random switching time
+                 cyclic_rate=2): # the rate of forward training, relative to the number of iterations
         assert isinstance(policy, Policy)
         self._policy = policy
         self.expert = expert
@@ -40,12 +44,19 @@ class AggreVaTeD(Algorithm):
         self._n_warm_up_itrs =n_warm_up_itrs
         self._itr = 0
 
-        # for sampling
+        # for sampling random switching time
         if horizon is None: horizon=float('Inf')
         assert horizon<float('Inf') or gamma<1.
         self._horizon = horizon
-        self._gamma = gamma
+        self._gamma = gamma  # discount factor of the original problem
         self._noise_cache = self.NoiseCache()
+        assert sampling_rule in ['exponential','cyclic','uniform']
+        self._sampling_rule = sampling_rule
+        if self._sampling_rule=='cyclic':
+            use_cv=False
+        self._use_cv = use_cv
+        self._cyclic_rate = cyclic_rate
+        self._avg_n_steps = PolMvAvg(1,weight=1)  # the number of steps that the policy can survive so far
         self._reset_pi_ro()
 
     def _reset_pi_ro(self):
@@ -53,7 +64,7 @@ class AggreVaTeD(Algorithm):
         self._sample=True  #  randomly sample a switching time step
         self._ro_for_cv = False  # in the phase of cv rollout
         self._t_switch = []  # switching time
-        self._scale = None  # extra scaling factor due to switching
+        self._scale = []  # extra scaling factor due to switching
         self._noise_cache.reset()
 
     class NoiseCache:
@@ -93,8 +104,11 @@ class AggreVaTeD(Algorithm):
     # the end of each rollout.
 
     def pi_ro(self, ob, t, done):
+        if not self._use_cv:
+            self._ro_for_cv = False
+
         if self._ro_for_cv:  # just run the learner
-            ns = self._noise_cache.get()
+            ns = self._noise_cache.get()  # use the cached action randomness
             if ns is None:
                 return self.policy(ob)
             else:
@@ -104,16 +118,45 @@ class AggreVaTeD(Algorithm):
                 assert self._sample
                 # At the begining of the two-phased rollouts
                 # sample t_switch in [1, horizon]
-                if self._horizon < float('Inf'):
+
+                # Define t_swich and scale
+                if self._sampling_rule=='cyclic':
+                    assert self._horizon < float('Inf')
+                    t_switch = (int(self._cyclic_rate*self._itr)%self._horizon)+1
+                    scale = self._horizon
+                elif self._sampling_rule=='exponential':
+                    beta = self._avg_n_steps.val
+                    t_switch = int(np.ceil(np.random.exponential(beta)))
+                    p = 1/beta*np.exp(-t_switch/beta)
+                    scale.append(self._gamma/p)
+                    print('exponential', t_switch, beta, p)
+                elif self._sampling_rule=='uniform':
+
+                else:
+                    if self._horizon < float('Inf'):
+                        p0 = self._gamma**np.arange(self._horizon)
+                        sump0 = np.sum(p0)
+                        p0 = p0/sump0
+                        ind = np.random.multinomial(1,p0)
+                        t_switch =  np.where(ind==1)[0][0]+1
+                        self._t_switch.append(t_switch)
+                        p = p0[t_switch-1]
+                        self._scale.append(1/p)
+                    else:
+                        self._t_switch.append(np.random.geometric(p=1-self._gamma)[0])
+                        self._scale.append(1/(1-self._gamma))
+                    # 
                     p0 = self._gamma**np.arange(self._horizon)
                     sump0 = np.sum(p0)
-                    p = p0/sump0
-                    ind = np.random.multinomial(1,p)
-                    self._t_switch.append(np.where(ind==1)[0][0]+1)
-                    self._scale=sump0
-                else:
-                    self._t_switch.append(np.random.geometric(p=1-self._gamma)[0])
-                    self._scale=1/(1-self._gamma)
+                    p0 = p0/sump0
+                    p = p0[t_switch-1]
+                    scale *= p*sump0
+
+
+
+                    self._t_switch.append(t_switch)
+                    self._scale.append(scale)
+
                 self._sample=False
                 self._noise_cache.reset()
 
@@ -143,7 +186,7 @@ class AggreVaTeD(Algorithm):
             for _ in range(self._n_pretrain_itrs):
                 ro = gen_ro(pi_exp, logp=self.expert.logp)
                 self.oracle.update(ro_pol=ro, policy=self.policy, update_nor=False)
-                self.policy.update(ro['obs_short'])
+                # self.policy.update(ro['obs_short'])
                 # maybe also update policy
         self._reset_pi_ro()
 
@@ -154,19 +197,37 @@ class AggreVaTeD(Algorithm):
 
         # Mirror descent
         with timed('Update oracle'):
-            # Split ro into two phases
-            rollouts = ro.to_list()[:int(len(ro)/2)*2]  # even length
-            ro_mix = rollouts[0:][::2]  # ro with random switch
-            assert len(ro_mix)==len(self._t_switch) or len(ro_mix)==len(self._t_switch)-1
-            # if a rollout too short, it is treated as zero
-            ro_exp = [r[t-1:] for r, t in zip(ro_mix, self._t_switch) if len(r)>=t]
-            [ setattr(r,'scale',self._scale) for r in ro_exp ]
-            ro_exp = Dataset(ro_exp)
-            ro_pol = Dataset(rollouts[1:][::2])
-            _, ev0, ev1 = self.oracle.update(ro_exp=ro_exp,
-                                             ro_pol=ro_pol,
-                                             policy=self.policy,
-                                             update_nor=True)
+
+            if self._use_cv:
+                # Split ro into two phases
+                rollouts = ro.to_list()[:int(len(ro)/2)*2]  # even length
+                ro_mix = rollouts[0:][::2]  # ro with random switch
+                assert len(ro_mix)==len(self._t_switch) or len(ro_mix)==len(self._t_switch)-1
+                # if a rollout too short, it is treated as zero
+                ro_exp = []
+                for r, t, s in zip(ro_mix, self._t_switch, self._scale):
+                    if len(r)>=t:
+                        r = r[t-1:]
+                        r.scale = s
+                        ro_exp.append(r)
+
+                print('expert rws', [ np.mean(r.rws)*1000 for  r in ro_exp])
+
+                ro_exp = Dataset(ro_exp)
+                ro_pol = Dataset(rollouts[1:][::2])
+                _, ev0, ev1 = self.oracle.update(ro_exp=ro_exp,
+                                                 ro_pol=ro_pol,
+                                                 policy=self.policy,
+                                                 update_nor=True)
+
+
+                self._avg_n_steps.update(np.mean([len(r) for r in ro_pol]))
+            else:
+                [ setattr(r,'scale',self._scale) for r in ro ]
+                _, ev0, ev1 = self.oracle.update(ro_exp=ro,
+                                                 policy=self.policy,
+                                                 update_nor=True)
+
 
         with timed('Compute policy gradient'):
             g = self.oracle.grad(self.policy)
@@ -181,8 +242,12 @@ class AggreVaTeD(Algorithm):
         logz.log_tabular('g_norm', np.linalg.norm(g))
         logz.log_tabular('ExplainVarianceBefore(AE)', ev0)
         logz.log_tabular('ExplainVarianceAfter(AE)', ev1)
-        logz.log_tabular('NumberOfRandomRollouts', len(ro_exp))
-        logz.log_tabular('NumberOfCVRollouts', len(ro_pol))
+        if self._use_cv:
+            logz.log_tabular('NumberOfExpertRollouts', len(ro_exp))
+            logz.log_tabular('NumberOfLearnerRollouts', len(ro_pol))
+        else:
+            logz.log_tabular('NumberOfExpertRollouts', len(ro))
+
 
         # reset
         self._reset_pi_ro()

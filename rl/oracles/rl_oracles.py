@@ -158,15 +158,15 @@ class ValueBasedExpertGradient(rlOracle):
             # compute adv
             if len(ro_exp)>0:
                 advs, _ = self._ae.advs(ro_exp, use_is=self._use_is)
-                advs = [a[0:1] for a in advs]
+                advs = [a[0:1]*r.scale for a, r in zip(advs, ro_exp)]
                 adv = np.concatenate(advs)
                 if ro_pol is not None:  # compute the control variate
                     advs_cv, _ = self._ae.advs(ro_exp, use_is=self._use_is, lambd=0.)
-                    advs_cv = [a[0:1] for a in advs_cv]
+                    advs_cv = [a[0:1]*r.scale for a,r  in zip(advs_cv, ro_exp)]
                     adv -= np.concatenate(advs_cv)
                 logq = np.concatenate([r.lps[0:1] for r in ro_exp])
                 # update noisy oracle
-                self._scale_or = len(adv)/n_rollouts * ro_exp['scale'][0]
+                self._scale_or = len(adv)/n_rollouts
                 self._or.update(-adv, logq, update_nor=update_nor) # loss is negative reward
                 self._ro_or = Dataset([r[0:1] for r in ro_exp])  # for defining logp
 
