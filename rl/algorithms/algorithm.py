@@ -7,7 +7,7 @@ class Algorithm(ABC):
     @property
     @abstractmethod
     def policy(self):
-        """ Return a policy object """
+        """ Return a Policy object """
 
     @abstractmethod
     def pretrain(self, gen_ro):
