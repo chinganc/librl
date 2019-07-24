@@ -233,7 +233,7 @@ class PolicyImprovementFromExperts(Algorithm):
         if self._ro_with_policy:
             logp = treat_as_ro_pol()
         else: # roll-in policy and roll-out expert
-            if len(obs)<self._t_switch[-1]:
+            if len(obs)-1<self._t_switch[-1]:
                 # the mixing did not really happen
                 del self._k_star[-1]
                 del self._t_switch[-1]
@@ -265,6 +265,7 @@ class PolicyImprovementFromExperts(Algorithm):
             rollouts = ro.to_list()
             ro_mix = [rollouts[i] for i in self._ind_ro_mix]
             ro_pol = [rollouts[i] for i in self._ind_ro_pol]
+            assert (len(ro_mix)+len(ro_pol))==len(rollouts)
             ro_exps = [ [] for _ in range(len(self.experts))]
             for r, t, s, k in zipsame(ro_mix, self._t_switch, self._scale, self._k_star):
                 assert len(r)>=t  # t >= 1
