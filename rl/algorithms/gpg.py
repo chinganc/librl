@@ -163,7 +163,7 @@ class GeneralizedPolicyGradient(Algorithm):
             ro_exp = []
             for r, t, s in zip(ro_mix, self._t_switch, self._scale):
                 if len(r)>=t:
-                    r = r[t-1:]
+                    r = r[t:]
                     r.scale = s
                     ro_exp.append(r)
             ro_exp = Dataset(ro_exp)
