@@ -95,7 +95,7 @@ class ValueBasedAE(AdvantageEstimator):
         assert isinstance(policy, Policy)
         return [np.exp(policy.logp(rollout.obs_short, rollout.acs) - rollout.lps) for rollout in ro]
 
-    def update(self, ro):
+    def update(self, ro, **kwargs):
         """ Policy evaluation """
         if len(ro)>0:
             self.buffer.append(ro)  # update the replay buffer
@@ -105,7 +105,7 @@ class ValueBasedAE(AdvantageEstimator):
             w = np.concatenate(self.weights(ro)) if self.use_is else 1.0
             for i in range(self._n_pe_updates):
                 v_hat = (w*np.concatenate(self.qfns(ro, self.pe_lambd))).reshape([-1, 1])  # target
-                results, ev0, ev1 = self._vfn.update(ro['obs_short'], v_hat)
+                results, ev0, ev1 = self._vfn.update(ro['obs_short'], v_hat, **kwargs)
             return results, ev0, ev1
         else:
             return None, None, None

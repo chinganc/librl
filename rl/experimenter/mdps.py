@@ -22,9 +22,9 @@ class MDP:
     def ac_shape(self):
         return self.env.action_space.shape
 
-    def rollout(self, pi, logp=None,
-                min_n_samples=None, max_n_rollouts=None,
-                with_animation=False):
+    def run(self, pi, logp=None,
+                  min_n_samples=None, max_n_rollouts=None,
+                  with_animation=False):
         """ `pi` takes (ob, time, done) as input"""
         if logp is None:  # viewed as deterministic
             logp = lambda obs, acs: np.zeros((len(acs),1))

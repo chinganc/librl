@@ -14,7 +14,7 @@ class Experimenter:
         """
         self.alg = safe_assign(alg, Algorithm)
         self._mdp = mdp
-        self._gen_ro = functools.partial(mdp.rollout, **ro_kwargs)
+        self._gen_ro = functools.partial(mdp.run, **ro_kwargs)
         self._n_samples = 0  # number of data points seen
         self._n_rollouts = 0
         self.best_policy = None

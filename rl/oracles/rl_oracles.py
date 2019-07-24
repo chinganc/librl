@@ -51,7 +51,7 @@ class ValueBasedPolicyGradient(rlOracle):
     def grad(self, policy):
         return self._or.grad(policy.variable) * self._scale
 
-    def update(self, ro, policy, update_nor=True, update_vfn=True):
+    def update(self, ro, policy, update_nor=True, update_vfn=True, **kwargs):
         # Sync policies' parameters.
         self._policy_t.assign(policy) # NOTE sync BOTH variables and parameters
         # Compute adv.
@@ -74,10 +74,10 @@ class ValueBasedPolicyGradient(rlOracle):
         self._or.update(-adv, w_or_logq, update_nor=update_nor) # loss is negative reward
         # Update the value function at the end, so it's unbiased.
         if update_vfn:
-            return self.update_vfn(ro)
+            return self.update_vfn(ro, **kwargs)
 
-    def update_vfn(self, ro):
-        return self._ae.update(ro)
+    def update_vfn(self, ro, **kwargs):
+        return self._ae.update(ro, **kwargs)
 
 
 class ValueBasedExpertGradientByRandomTimeSampling(rlOracle):
@@ -137,7 +137,7 @@ class ValueBasedExpertGradientByRandomTimeSampling(rlOracle):
         print('noisy grad', np.linalg.norm(g1), 'cv grad', np.linalg.norm(g2))
         return g1+g2
 
-    def update(self, ro_exp=None, ro_pol=None, policy=None, update_nor=True):
+    def update(self, ro_exp=None, ro_pol=None, policy=None, update_nor=True, **kwargs):
         """ Need to provide either `ro_exp` or `ro_pol`, and `policy`.
 
             `ro_exp` is used to compute an unbiased but noisy estimate of
@@ -186,8 +186,8 @@ class ValueBasedExpertGradientByRandomTimeSampling(rlOracle):
 
         # Update the value function at the end, so it's unbiased.
         if ro_exp is not None:
-            return self._ae.update(ro_exp)
+            return self._ae.update(ro_exp, **kwargs)
         else:  # when biased gradient is used
-            return self._ae.update(ro_pol)
+            return self._ae.update(ro_pol, **kwargs)
 
 

@@ -38,5 +38,6 @@ class SupervisedLearner(FunctionApproximator):
     def update_funcapp(self, **kwargs):
         """ Update the function approximator based on the aggregated dataset.
 
-            Logs of the training results can be returned.
+            The data can be accessed by `self._dataset`. Logs of the training
+            results can be returned.
         """
