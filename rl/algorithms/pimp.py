@@ -269,7 +269,8 @@ class PolicyImprovementFromExperts(Algorithm):
             ro_exps = [ [] for _ in range(len(self.experts))]
             for r, t, s, k in zipsame(ro_mix, self._t_switch, self._scale, self._k_star):
                 assert len(r)>=t  # t >= 1
-                r = r[t-1:] # we take one more time step
+                if not self._use_policy_as_expert or k<len(self.experts)-1:
+                    r = r[t-1:] # we take one more time step
                 r.scale = s
                 ro_exps[k].append(r)
             if self._use_policy_as_expert:

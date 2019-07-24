@@ -8,8 +8,6 @@ import itercore
 import copy
 from rl.core.utils.misc_utils import zipsame
 
-import importlib
-
 
 def func(tp):
     print(tp['general']['exp_name'], tp['general']['seed'])
@@ -32,21 +30,12 @@ def get_valcombs_and_keys(ranges):
     return combs, keys
 
 
-def main(env, script_name, range_names, base_algorithms, n_processes, 
-         configs_name=None
-        ):
+def main(env, template_name, range_names, base_algorithms, n_processes):
     # Set to the number of workers you want (it defaults to the cpu count of your machine)
     if n_processes == -1:
         n_processes = None
     print('# of CPU (threads): {}'.format(multiprocessing.cpu_count()))
-
-    script = importlib.import_module('scripts.'+script_name)
-    configs_name = 'CONFIGS' or configs_name
-
-
-
-
-    template = getattr(script, configs_name)
+    template = getattr(T, template_name)
     tps = []
     for range_name in range_names:
         ranges = R.get_ranges(env, range_name, base_algorithms)
@@ -82,12 +71,11 @@ def main(env, script_name, range_names, base_algorithms, n_processes,
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Change this to 'cp', 'hopper', snake', 'walker3d', or 'default', to use the stepsize setting for your env.
-    parser.add_argument('script_name')
     parser.add_argument('env')
+    parser.add_argument('template_name')
     parser.add_argument('-r', '--range_names', nargs='+')
+    parser.add_argument('-a', '--base_algorithms', nargs='+')
     parser.add_argument('--n_processes', type=int, default=-1)
-    parser.add_argument('--configs', type=str, default=None)
-   
     args = parser.parse_args()
 
-    main(args.script_name,  args.env, args.range_names, args.base_algorithms, args.n_processes)
+    main(args.env, args.template_name, args.range_names, args.base_algorithms, args.n_processes)
