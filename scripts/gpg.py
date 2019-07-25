@@ -37,8 +37,14 @@ def main(c):
                                    units=(256,256))
 
     # Create algorithm
+    if not c['use_experts']:
+        experts = None
+    else:
+        experts = [expert]
+
+
     alg = Algorithm(policy, vfn,
-                    experts=[expert],
+                    experts=experts
                     horizon=mdp.horizon, gamma=mdp.gamma,
                     **c['algorithm'])
 
@@ -62,6 +68,7 @@ CONFIG = {
             'pretrain': True,
             'final_eval': False,
             'eval_freq': 1,
+            'save_freq': 5,
         },
         'rollout_kwargs': {
             'min_n_samples': 2000,
@@ -78,6 +85,7 @@ CONFIG = {
         'n_pretrain_itrs': 2,
         'n_warm_up_itrs':None,
     },
+    'use_experts':True,
 }
 
 if __name__ == '__main__':
