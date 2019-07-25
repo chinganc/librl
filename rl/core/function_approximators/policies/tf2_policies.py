@@ -114,7 +114,7 @@ def gaussian_exp(ms, vs, As, bs, cs, canonical, diagonal_A, diagonal_vs):
 class tfGaussianPolicy(tfPolicy):
     """ A wrapper for augmenting tfFuncApp with diagonal Gaussian noises. """
     def __init__(self, x_shape, y_shape, name='tf_gaussian_policy',
-                 init_lstd=None, min_std=0.0,  # new attribues
+                 init_lstd=None, min_std=1e-12,  # new attribues
                  **kwargs):
         """ The user needs to provide init_lstd. """
         assert init_lstd is not None

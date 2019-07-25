@@ -13,7 +13,7 @@ def main(c):
     ps.configure_log(c)
 
     # Create mdp and fix randomness
-    mdp = ps.general_setup(c['general'])
+    mdp = ps.setup_mdp(c['mdp'], c['seed'])
 
     # Create learnable objects
     ob_shape = mdp.ob_shape
@@ -33,12 +33,12 @@ def main(c):
     exp.run(**c['experimenter']['run_kwargs'])
 
 
-CONFIGS = {
-    'general': {
-        'top_log_dir': 'log',
+CONFIG = {
+    'top_log_dir': 'log_pg',
+    'exp_name': 'cp',
+    'seed': 9,
+    'mdp': {
         'envid': 'DartCartPole-v1',
-        'seed': 9,
-        'exp_name': 'cp',
         'horizon': 1000,  # the max length of rollouts in training
         'gamma': 1.0,
     },
@@ -63,4 +63,4 @@ CONFIGS = {
 
 
 if __name__ == '__main__':
-    main(CONFIGS)
+    main(CONFIG)

@@ -4,7 +4,7 @@ from multiprocessing import Pool
 from scripts import configs as T
 from scripts import ranges as R
 from scripts.rl_exp import main as main_func
-import itercore
+import itertools
 import copy
 from rl.core.utils.misc_utils import zipsame
 
@@ -19,7 +19,7 @@ def get_valcombs_and_keys(ranges):
     for r in ranges:
         keys += r[::2]
     values = [list(zipsame(*r[1::2])) for r in ranges]
-    cs = itercore.product(*values)
+    cs = itertools.product(*values)
     combs = []
     for c in cs:
         comb = []

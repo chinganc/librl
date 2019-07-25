@@ -1,34 +1,20 @@
 import os
 import time
-import functools
-import copy
 import git
 import tensorflow as tf
 import numpy as np
-#from rl import policies as Pol
-from rl.core.function_approximators import policies as Pol
 from rl.experimenter import MDP
-from rl import envs as Env
-from rl import oracles as Or
-from rl import algorithms as Alg
-from rl.adv_estimators import AdvantageEstimator
-from rl.experimenter import generate_rollout
-from rl.online_learners import online_optimizer as OO
-from rl.core.function_approximators import normalizers as Nor
-from rl.core.function_approximators import supervised_learners as Sup
-from rl.core.online_learners.scheduler import PowerScheduler
-from rl.core.online_learners import base_algorithms as bAlg
+from rl import envs
 from rl.core.utils import logz
 
 
-def configure_log(configs, unique_log_dir=False):
+def configure_log(config, unique_log_dir=False):
     """ Configure output directory for logging. """
 
-    # parse configs to get log_dir
-    c = configs['general']
-    top_log_dir = c['top_log_dir']
-    log_dir = c['exp_name']
-    seed = c['seed']
+    # parse config to get log_dir
+    top_log_dir = config['top_log_dir']
+    log_dir = config['exp_name']
+    seed = config['seed']
 
     # create dirs
     os.makedirs(top_log_dir, exist_ok=True)
@@ -42,124 +28,24 @@ def configure_log(configs, unique_log_dir=False):
     # Log commit number.
     repo = git.Repo(search_parent_directories=True)
     sha = repo.head.object.hexsha
-    configs['git_commit_sha'] = sha
+    config['git_commit_sha'] = sha
 
-    # save configs
+    # save config
     logz.configure_output_dir(log_dir)
-    logz.save_params(configs)
+    logz.save_params(config)
 
 
-def general_setup(c):
-    envid, seed = c['envid'], c['seed'],
-    env = Env.create_env(envid, seed)
+def setup_mdp(c, seed):
+    """ Set seed and then create an MDP. """
+    envid = c['envid']
+    env = envs.create_env(envid, seed)
     # fix randomness
     if tf.__version__[0]=='2':
         tf.random.set_seed(seed)
     else:
         tf.set_random_seed(seed)  # graph-level seed
     np.random.seed(seed)
-    mdp = MDP(env, gamma=c['gamma'], horizon=c['horizon'])   
+    mdp = MDP(env, gamma=c['gamma'], horizon=c['horizon'])
     return mdp
 
 
-def create_policy(env, seed, c, name='learner_policy'):
-    pol_cls = getattr(Pol, c['policy_cls'])
-    ob_dim = env.observation_space.shape[0]
-    ac_dim = env.action_space.shape[0]
-    build_nor = Nor.create_build_nor_from_str(c['nor_cls'], c['nor_kwargs'])
-    policy = pol_cls(ob_dim, ac_dim, name=name, seed=seed,
-                     build_nor=build_nor, **c['pol_kwargs'])
-    return policy
-
-
-def create_advantage_estimator(policy, adv_configs, name='value_function_approximator'):
-    adv_configs = copy.deepcopy(adv_configs)
-    # create the value function SupervisedLearner
-    c = adv_configs['vfn_params']
-    build_nor = Nor.create_build_nor_from_str(c['nor_cls'], c['nor_kwargs'])
-    vfn_cls = getattr(Sup, c['fun_class'])
-    vfn = vfn_cls(policy.ob_dim, 1, name=name, build_nor=build_nor, **c['fun_kwargs'])
-    # create the adv object
-    adv_configs.pop('vfn_params')
-    adv_configs['vfn'] = vfn
-    ae = AdvantageEstimator(policy, **adv_configs)
-    return ae
-
-
-def create_oracle(policy, ae, c):
-    assert c['loss_type'] == 'rl'
-    nor = Nor.NormalizerStd(None, **c['nor_kwargs'])
-    oracle = Or.tfPolicyGradient(policy, ae, nor, **c['or_kwargs'])
-    return oracle
-
-
-def create_model_oracle(oracle, env, envid, seed, c):
-    mor_cls = getattr(Or, c['mor_cls'])
-    if mor_cls is Or.SimulationOracle:
-        et = c['env_type']
-        seed = seed + 1
-        if et == 'true':
-            sim_env = Env.create_env(envid, seed)
-        elif et == 'mlp':
-            sim_env = Env.create_sim_env(env, seed, dyn_configs=c['dynamics'])
-        else:
-            assert isinstance(et, float) and et >= 0.0 and et < 1.0
-            sim_env = Env.create_sim_env(env, seed, inaccuracy=et)
-        gen_ro = functools.partial(generate_rollout, env=sim_env, **c['rollout_kwargs'])
-        model_oracle = mor_cls(oracle, sim_env, gen_ro)
-    elif (mor_cls is Or.LazyOracle) or (mor_cls is Or.AdversarialOracle):
-        model_oracle = mor_cls(oracle, **c['lazyor_kwargs'])
-    elif mor_cls is Or.AggregatedOracle:
-        model_oracle = mor_cls(Or.LazyOracle(oracle, **c['lazyor_kwargs']), **c['aggor_kwargs'])
-    elif mor_cls is Or.DummyOracle:
-        model_oracle = mor_cls(oracle)
-
-    else:
-        raise ValueError('Unknown model oracle type.')
-
-    return model_oracle
-
-
-def create_algorithm(policy, oracle, c, **kwargs):
-    alg_cls = getattr(Alg, c['alg_cls'])
-    if alg_cls is Alg.PredictiveRL:
-        # create piccolo
-        scheduler = PowerScheduler(**c['learning_rate'])
-        x0 = policy.variable
-        # create base_alg
-        if c['base_alg'] == 'adam':
-            base_alg = bAlg.Adam(x0, scheduler, beta1=c['adam_beta1'])
-        elif c['base_alg'] == 'adagrad':
-            base_alg = bAlg.Adagrad(x0, scheduler, rate=c['adagrad_rate'])
-        elif c['base_alg'] == 'natgrad':
-            base_alg = bAlg.AdaptiveSecondOrderUpdate(x0, scheduler)
-        elif c['base_alg'] == 'trpo':
-            base_alg = bAlg.TrustRegionSecondOrderUpdate(x0, scheduler)
-
-        else:
-            raise ValueError('Unknown base_alg')
-        # create piccolo
-        if c['n_model_steps'] is None:  # the very basic piccolo
-            if c['base_alg'] in ['trpo', 'natgrad']:  # use Fisher information matrix
-                pcl = OO.PiccoloFisherReg(policy, base_alg, p=c['learning_rate']['p'], use_shift=c['use_shift'],
-                                          damping=c['reg_damping'])
-            else:
-                pcl = OO.Piccolo(policy, base_alg, p=c['learning_rate']['p'])
-        else:  # multiple-step version
-            assert c['n_model_steps'] >= 0
-            if c['base_alg'] in ['trpo', 'natgrad']:  # use Fisher information matrix
-                method = c['model_step_learning_rate']
-                pcl = OO.PiccoloOptBasicFisherReg(policy, base_alg,
-                                                  p=c['learning_rate']['p'], n_steps=c['n_model_steps'],
-                                                  method=method, use_shift=c['use_shift'],
-                                                  damping=c['reg_damping'])
-            else:
-                pcl = OO.PiccoloOptBasic(policy, base_alg,
-                                         p=c['learning_rate']['p'], n_steps=c['n_model_steps'],
-                                         method=c['model_step_learning_rate'])
-
-        # create algorithm
-        alg = alg_cls(pcl, oracle, policy, model_oracle=kwargs['model_oracle'], **c['alg_kwargs'])
-    else:
-        raise ValueError('Unknown algorithm type.')
-    return alg
