@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 from scripts.utils import parser as ps
 from rl import experimenter as Exp
-from rl.algorithms import GeneralizedPolicyGradient as Algorithm
+from rl.algorithms.pimp import PolicyImprovementFromExperts as Algorithm
 from rl.core.function_approximators.policies.tf2_policies import RobustKerasMLPGassian
 from rl.core.function_approximators.supervised_learners import SuperRobustKerasMLP
 
@@ -37,9 +37,10 @@ def main(c):
                                    units=(256,256))
 
     # Create algorithm
-    alg = Algorithm(policy, expert, vfn,
-                     horizon=mdp.horizon, gamma=mdp.gamma,
-                     **c['algorithm'])
+    alg = Algorithm(policy, vfn,
+                    experts=[expert],
+                    horizon=mdp.horizon, gamma=mdp.gamma,
+                    **c['algorithm'])
 
     # Let's do some experiments!
     exp = Exp.Experimenter(alg, mdp, c['experimenter']['rollout_kwargs'])
@@ -49,7 +50,7 @@ def main(c):
 CONFIG = {
     'top_log_dir': 'log_gpg',
     'exp_name': 'cp',
-    'seed': 0,
+    'seed': 1234,
     'mdp': {
         'envid': 'DartCartPole-v1',
         'horizon': 1000,  # the max length of rollouts in training
@@ -57,7 +58,7 @@ CONFIG = {
     },
     'experimenter': {
         'run_kwargs': {
-            'n_itrs': 50,
+            'n_itrs': 100,
             'pretrain': True,
             'final_eval': False,
             'eval_freq': 1,
@@ -71,8 +72,10 @@ CONFIG = {
         'lr': 1e-3,
         'delta':None,
         'lambd':0.1,
-        'max_n_batches':100,
-        'n_pretrain_itrs': 5,
+        'use_policy_as_expert': True,
+        'max_n_batches':2,
+        'max_n_batches_experts':100,
+        'n_pretrain_itrs': 2,
         'n_warm_up_itrs':None,
     },
 }

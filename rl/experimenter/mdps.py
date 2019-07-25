@@ -105,16 +105,28 @@ def generate_rollout(pi, logp, env, v_end,
         max_rollout_len is reached.
 
         Args:
-            `pi`: a function that maps ob to ac
+            `pi`: the behavior policy, which takes (observation, time, done)
+                  and returns the action or None. If None is returned, the rollout
+                  terminates. done, here, is treated as special symbol of state.
+
             `logp`: either None or a function that maps (obs, acs) to log
-                  probabilities (called at end of each rollout)
-            `env`: a gym environment
-            `v_end`: the terminal value when the episoide ends (a callable function of ob and done)
+                    probabilities (called at end of each rollout)
+
+            `env`: a gym-like environment
+
+            `v_end`: the terminal value when the episoide ends (a callable
+                     function of observation and done)
+
             `use_time_info`: a function that maps time to desired features
+
             `max_rollout_len`: the maximal length of a rollout (i.e. the problem's horizon)
+
             `min_n_sample`s: the minimal number of samples to collect
+
             `max_n_rollouts`: the maximal number of rollouts
+
             `with_animation`: display animiation of the first rollout
+
     """
 
     assert (min_n_samples is not None) or (max_n_rollouts is not None)  # so we can stop
@@ -124,14 +136,16 @@ def generate_rollout(pi, logp, env, v_end,
     max_rollout_len = min(env._max_episode_steps, max_rollout_len)
     n_samples = 0
     rollouts = []
-    # try to retrieve the underlying state, if available
+
+    # Try to retrieve the underlying state, if available.
     get_state = None
     if hasattr(env, 'env'):
         if hasattr(env.env, 'state'):
             get_state = lambda: env.env.state  # openai gym env, which is a TimeLimit object
     elif hasattr(env, 'state'):
         get_state = lambda: env.state
-    # whether to augment state/observation with time information
+
+    # Augment state/observation with time information, if needed.
     if use_time_info is not None:
         post_process = lambda x,t: np.concatenate([x.flatten(), (use_time_info(t),)])
     else:
@@ -152,7 +166,7 @@ def generate_rollout(pi, logp, env, v_end,
         st = post_process(st, tm)
         return st, ob
 
-    # start rollout
+    # Start trajectory-wise rollouts.
     while True:
         animate_this_rollout = len(rollouts) == 0 and with_animation
         obs, acs, rws, sts = [], [], [], []
@@ -165,6 +179,10 @@ def generate_rollout(pi, logp, env, v_end,
                 env.render()
                 time.sleep(0.05)
             ac = pi(ob, tm, dn) # apply action and get to the next state
+            if ac is None:
+                dn = False  # the learner decides to stop collecting data
+                break
+            # ob, st, ac, rw are at tm
             obs.append(ob)
             sts.append(st)
             acs.append(ac)

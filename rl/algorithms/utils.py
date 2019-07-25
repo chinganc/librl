@@ -9,6 +9,7 @@ def natural_t(horizon, gamma):
         t_switch =  np.where(ind==1)[0][0]+1
         p = p0[t_switch-1]
     else:
+        gamma = min(gamma, 0.999999)
         t_switch = np.random.geometric(p=1-gamma)[0]
         p = gamma**t_switch*(1-gamma)
     return  _normalize_sampling(t_switch, p, horizon, gamma)

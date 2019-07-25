@@ -1,7 +1,24 @@
 import argparse, copy, importlib
 import multiprocessing as mp
 import itertools
+
+try: # Restrict TensorFlow to use limited memory
+    import tensorflow as tf
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+        except RuntimeError as e:
+            # Virtual devices must be set before GPUs have been initialized
+            print(e)
+except:
+    pass
+
 from rl.core.utils.misc_utils import zipsame
+
 
 def get_combs_and_keys(ranges):
     keys = []
@@ -46,10 +63,16 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
 
     script = importlib.import_module('scripts.'+script_name)
     try:
+        script_configs = importlib.import_module('scripts.'+script_name+'_configs')
+        template = getattr(script_configs, 'CONFIG' or config_name)
+    except:
+        template = getattr(script, 'CONFIG' or config_name)
+
+    try:
         script_ranges = importlib.import_module('scripts.'+script_name+'_ranges')
     except:
         script_ranges = importlib.import_module('scripts.ranges')
-    template = getattr(script, 'CONFIG' or config_name)
+
     # Create the configs for all the experiments.
     tps = []
     for range_name in range_names:
@@ -83,7 +106,7 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
     # Launch the experiments.
     with mp.Pool(processes=n_processes, maxtasksperchild=1) as p:
         p.map(script.main, tps, chunksize=1)
-        #p.map(func, tps, chunksize=1)
+        #mp.map(func, tps, chunksize=1)
 
 
 def func(tp):
@@ -97,7 +120,7 @@ if __name__ == '__main__':
     parser.add_argument('script_name')
     parser.add_argument('-r', '--range_names', nargs='+')
     parser.add_argument('-c', '--config_name', type=str)
-    parser.add_argument('--n_processes', type=int, default=-1)
+    parser.add_argument('-n', '--n_processes', type=int, default=-1)
     args = parser.parse_args()
     main(args.script_name, args.range_names,
          n_processes=args.n_processes, config_name=args.config_name)

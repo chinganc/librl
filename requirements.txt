@@ -4,5 +4,5 @@ matplotlib
 scikit-learn
 joblib
 GitPython
-
+pyqt5
 
