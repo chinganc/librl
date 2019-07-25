@@ -57,7 +57,7 @@ CONFIG = {
     },
     'experimenter': {
         'run_kwargs': {
-            'n_itrs': 50,
+            'n_itrs': 100,
             'pretrain': True,
             'final_eval': False,
             'eval_freq': 1,
