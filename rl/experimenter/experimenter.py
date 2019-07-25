@@ -17,7 +17,7 @@ class Experimenter:
         self._gen_ro = functools.partial(mdp.run, **ro_kwargs)
         self._n_samples = 0  # number of data points seen
         self._n_rollouts = 0
-        self.best_policy = None
+        self.best_policy = copy.deepcopy(self.alg.policy)
         self.best_performance = -float('Inf')
 
     def gen_ro(self, pi, logp=None, prefix='', to_log=False, eval_mode=False):

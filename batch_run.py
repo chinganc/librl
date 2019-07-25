@@ -17,10 +17,11 @@ try: # Restrict TensorFlow to use limited memory
 except:
     pass
 
-from rl.core.utils.misc_utils import zipsame
+from rl.core.utils.misc_utils import zipsame, dict_update
 
 
 def get_combs_and_keys(ranges):
+
     keys = []
     values = []
     for r in ranges:
@@ -35,6 +36,39 @@ def get_combs_and_keys(ranges):
         # print(comb)
         combs.append(comb)
     return combs, keys
+
+
+def load_config(script_name, config_name):
+    """ Load config template by names. """
+    def load_attr(module_name, attr_name):
+        module = importlib.import_module(module_name)
+        return getattr(module, attr_name)
+
+    def get_CONFIG(script_name):
+        try:
+            CONFIG = load_attr('scripts.'+script_name+'_configs','CONFIG')
+        except:
+            CONFIG = load_attr('scripts.'+script_name, 'CONFIG')
+        return CONFIG
+
+    if config_name is None:  # use the default one
+        return get_CONFIG(script_name)
+
+    config_name = 'config_'+config_name
+    try:  # try the user-provided version
+        config = load_attr('scripts.'+script_name+'_configs', config_name)
+    except:
+        try:  # try the default ones
+            config = load_attr('scripts.'+script_name, config_name)
+        except:
+            try:  # try to compose one
+                config = copy.deepcopy(get_CONFIG(script_name))
+                config_part = load_attr('scripts.configs', config_name)
+                dict_update(config, config_part)
+            except:
+                print('Fails to create configs from config_name.')
+                raise ValueError
+    return config
 
 
 def main(script_name, range_names, n_processes=-1, config_name=None):
@@ -62,12 +96,7 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
     print('# of CPU (threads): {}'.format(mp.cpu_count()))
 
     script = importlib.import_module('scripts.'+script_name)
-    try:
-        script_configs = importlib.import_module('scripts.'+script_name+'_configs')
-        template = getattr(script_configs, 'CONFIG' or config_name)
-    except:
-        template = getattr(script, 'CONFIG' or config_name)
-
+    template = load_config(script_name, config_name)
     try:
         script_ranges = importlib.import_module('scripts.'+script_name+'_ranges')
     except:
@@ -79,7 +108,7 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
         ranges = getattr(script_ranges, 'range_'+range_name)
         combs, keys = get_combs_and_keys(ranges)
         print('Total number of combinations: {}'.format(len(combs)))
-        for i, comb in enumerate(combs):
+        for _, comb in enumerate(combs):
             tp = copy.deepcopy(template)
             # Generate a unique exp name based on the provided ranges.
             # The description string start from the the exp name.
@@ -106,11 +135,11 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
     # Launch the experiments.
     with mp.Pool(processes=n_processes, maxtasksperchild=1) as p:
         p.map(script.main, tps, chunksize=1)
-        #mp.map(func, tps, chunksize=1)
+        # p.map(func, tps, chunksize=1)
 
 
 def func(tp):
-    print(tp['exp_name'], tp['general']['seed'])
+    print(tp['exp_name'], tp['seed']) #, tp['algorithm']['lambd'])
 
 
 if __name__ == '__main__':

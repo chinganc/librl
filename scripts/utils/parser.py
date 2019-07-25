@@ -32,11 +32,16 @@ def configure_log(config, unique_log_dir=False):
     logz.save_params(config)
 
 
+
+def create_env(envid, seed):
+    env = gym.make(envid)
+    env.seed(seed)
+    return env
+
 def setup_mdp(c, seed):
     """ Set seed and then create an MDP. """
     envid = c['envid']
-    env = gym.make(envid)
-    env.seed(seed)
+    env = create_env(envid, seed)
     # fix randomness
     if tf.__version__[0]=='2':
         tf.random.set_seed(seed)

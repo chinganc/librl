@@ -44,9 +44,9 @@ def read_attr(csv_path, attr):
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--logdir', help='The dir of experiments', type=str)
-    parser.add_argument('--value', help='The column name in the log.txt file', type=str)
-    parser.add_argument('--output', type=str, default='', help='Output file name')
+    parser.add_argument('-d','--dir', help='The dir of experiments', type=str)
+    parser.add_argument('-v', '--value', help='The column name in the log.txt file', type=str)
+    parser.add_argument('-o', '--output', type=str, default='', help='Output file name')
     #parser.add_argument('--expert_performance', type=float)
     parser.add_argument('--style', type=str, default='', help='Plotting style')
     parser.add_argument('--y_higher', nargs='?', type=float)
@@ -57,7 +57,7 @@ def main():
 
     args = parser.parse_args()
     args.attr = args.value
-    args.dir = args.logdir
+    args.dir = args.dir
     conf = Configs(args.style)
     subdirs = sorted(os.listdir(args.dir))
     subdirs = [d for d in subdirs if d[0] != '.']  # filter out weird things, e.g. .DS_Store

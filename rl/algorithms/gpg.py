@@ -133,6 +133,8 @@ class GeneralizedPolicyGradient(Algorithm):
         self.learner = BasicOnlineOptimizer(balg.Adam(x0, scheduler))
 
         # Create oracle
+        if horizon is None and delta is None and np.isclose(gamma,1.):
+            delta = min(gamma, 0.999)  # to make value learning well-defined
         create_ae = partial(ValueBasedAE, gamma=gamma, delta=delta, lambd=lambd,
                             use_is='one')
         self.ae = create_ae(policy, self.vfn_max)

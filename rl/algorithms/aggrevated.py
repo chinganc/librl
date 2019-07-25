@@ -33,6 +33,8 @@ class AggreVaTeD(Algorithm):
         scheduler = PowerScheduler(lr)
         self.learner = BasicOnlineOptimizer(balg.Adam(x0, scheduler))
         # create oracle
+        if horizon is None and delta is None and np.isclose(gamma,1.):
+            delta = min(gamma, 0.999)  # to make value learning well-defined
         self.ae = ValueBasedAE(expert, expert_vfn,  # wrt expert
                                gamma=gamma, delta=delta, lambd=lambd,
                                use_is='one', max_n_batches=max_n_batches)

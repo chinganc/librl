@@ -11,7 +11,9 @@ from rl.core.utils import logz
 class PolicyGradient(Algorithm):
     """ Basic policy gradient method. """
 
-    def __init__(self, policy, vfn, lr=1e-3,
+    def __init__(self, policy, vfn,
+                 horizon=None,
+                 lr=1e-3,
                  gamma=1.0, delta=None, lambd=0.99,
                  max_n_batches=2,
                  n_warm_up_itrs=None,
@@ -23,6 +25,8 @@ class PolicyGradient(Algorithm):
         scheduler = PowerScheduler(lr)
         self.learner = BasicOnlineOptimizer(balg.Adam(x0, scheduler))
         # create oracle
+        if horizon is None and delta is None and np.isclose(gamma,1.):
+            delta = min(gamma, 0.999)  # to make value learning well-defined
         self.ae = ValueBasedAE(policy, vfn, gamma=gamma, delta=delta, lambd=lambd,
                                use_is='one', max_n_batches=max_n_batches)
         self.oracle = ValueBasedPolicyGradient(policy, self.ae)

@@ -8,7 +8,7 @@ range_lambd = [
     [['algorithm', 'lambd'], [0, 0.1, 0.5, 0.9, 1.]],
 ]
 
-range_lambd = R.merge_ranges(range_lambd, range_common)
+range_lambd = R.merge_ranges(range_common, range_lambd)
 
 
 
