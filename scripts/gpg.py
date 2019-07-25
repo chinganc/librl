@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 from scripts.utils import parser as ps
 from rl import experimenter as Exp
-from rl.algorithms.pimp import PolicyImprovementFromExperts as Algorithm
+from rl.algorithms import GeneralizedPolicyGradient as Algorithm
 from rl.core.function_approximators.policies.tf2_policies import RobustKerasMLPGassian
 from rl.core.function_approximators.supervised_learners import SuperRobustKerasMLP
 

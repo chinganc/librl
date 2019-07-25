@@ -1,10 +1,7 @@
-import os
-import time
-import git
+import os, time, git, gym
 import tensorflow as tf
 import numpy as np
 from rl.experimenter import MDP
-from rl import envs
 from rl.core.utils import logz
 
 
@@ -38,7 +35,8 @@ def configure_log(config, unique_log_dir=False):
 def setup_mdp(c, seed):
     """ Set seed and then create an MDP. """
     envid = c['envid']
-    env = envs.create_env(envid, seed)
+    env = gym.make(envid)
+    env.seed(seed)
     # fix randomness
     if tf.__version__[0]=='2':
         tf.random.set_seed(seed)

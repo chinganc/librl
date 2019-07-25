@@ -91,7 +91,7 @@ class MaxValueFunction(SupervisedLearner):
         [setattr(v,'variable',val) for v, val in zip(self.vfns, vals)]
 
 
-class PolicyImprovementFromExperts(Algorithm):
+class GeneralizedPolicyGradient(Algorithm):
     """ Basic policy gradient method. """
 
     def __init__(self, policy, vfn,
