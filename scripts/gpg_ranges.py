@@ -7,8 +7,8 @@ range_common = [
 ]
 
 range_lambd = [
-    [['use_expert'], [True, False]],
     [['algorithm', 'lambd'], [0, 0.1, 0.5, 0.9, 1.]],
+    [['use_experts'], [True, False]],
 ]
 
 range_lambd = R.merge_ranges(range_common, range_lambd)

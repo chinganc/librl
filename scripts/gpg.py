@@ -42,9 +42,8 @@ def main(c):
     else:
         experts = [expert]
 
-
     alg = Algorithm(policy, vfn,
-                    experts=experts
+                    experts=experts,
                     horizon=mdp.horizon, gamma=mdp.gamma,
                     **c['algorithm'])
 
