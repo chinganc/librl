@@ -3,7 +3,8 @@ from rl.algorithms.algorithm import Algorithm
 from rl.adv_estimators.advantage_estimator import ValueBasedAE
 from rl.oracles.rl_oracles import ValueBasedPolicyGradient
 from rl.core.online_learners import base_algorithms as balg
-from rl.core.online_learners import BasicOnlineOptimizer
+#from rl.core.online_learners import BasicOnlineOptimizer
+from rl.online_learners.online_optimizer import BasicOnlineOptimizer
 from rl.core.online_learners.scheduler import PowerScheduler
 from rl.core.utils.misc_utils import timed
 from rl.core.utils import logz
@@ -24,6 +25,8 @@ class PolicyGradient(Algorithm):
         x0 = self.policy.variable
         scheduler = PowerScheduler(lr)
         self.learner = BasicOnlineOptimizer(balg.Adam(x0, scheduler))
+        #self.learner = BasicOnlineOptimizer(balg.AdaptiveSecondOrderUpdatie(x0, scheduler))
+
         # create oracle
         if horizon is None and delta is None and np.isclose(gamma,1.):
             delta = min(gamma, 0.999)  # to make value learning well-defined
