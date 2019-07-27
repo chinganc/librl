@@ -1,8 +1,7 @@
-from abc import ABC, abstractmethod
-
+from abc import abstractmethod, ABC
+from rl.core.online_learners import OnlineLearner
 
 class Algorithm(ABC):
-
 
     @property
     @abstractmethod
@@ -29,5 +28,4 @@ class Algorithm(ABC):
     def logp(self, obs, acs):
         """ Log probability of the behavior policy.
             Need to support batch querying. """
-
 

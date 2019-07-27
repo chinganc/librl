@@ -1,5 +1,29 @@
 import numpy as np
+from rl import online_learners as ol
+from rl.online_learners import base_algorithms as balg
 
+
+def get_learner(optimizer, policy, scheduler, max_kl=None):
+    """ Return an first-order optimizer. """
+    x0 = policy.variable
+    if optimizer=='adam':
+        return ol.BasicOnlineOptimizer(balg.Adam(x0, scheduler))
+    elif optimizer=='natgrad':
+        return ol.FisherOnlineOptimizer(
+                    balg.AdaptiveSecondOrderUpdate(x0, scheduler),
+                    policy=policy)
+    elif optimizer=='rnatgrad':
+        return ol.FisherOnlineOptimizer(
+                    balg.RobustAdaptiveSecondOrderUpdate(x0, scheduler, max_dist=max_kl),
+                    policy=policy)
+    elif 'trpo' in optimizer:
+        return ol.FisherOnlineOptimizer(
+                    balg.TrustRegionSecondOrderUpdate(x0, scheduler),
+                    policy=policy)
+    else:
+        raise NotImplementedError
+
+# For sampling random step to rollout
 def natural_t(horizon, gamma):
     if horizon < float('Inf'):
         p0 = gamma**np.arange(horizon)

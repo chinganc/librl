@@ -1,19 +1,19 @@
 from abc import ABC, abstractmethod
 import numpy as np
 import copy
-
+from rl.core.online_learners.online_learner import OnlineLearner
 from rl.core.online_learners.base_algorithms import MirrorDescent, Adam, BaseAlgorithm
 from rl.core.online_learners.scheduler import PowerScheduler
 from rl.core.utils.misc_utils import cprint
 
 
-class OnlineOptimizer(ABC):
-    """
-    An easy-to-use interface of BaseAlgorithm for solving weighted online learning problems.
-    The weight is n^p by default.
-    """
+class OnlineOptimizer(OnlineLearner):
+    """ An easy-to-use interface of BaseAlgorithm for solving weighted online
+        learning problems with full information or first-order feedbacks.
 
-    def __init__(self, base_alg, p=0.0):
+        The weight is n^p by default.
+    """
+    def __init__(self, base_alg, p=0.0, **kwargs):
         assert isinstance(base_alg, BaseAlgorithm)
         self._base_alg = base_alg  # a BaseAlgorithm object
         self._itr = 0  # starts with 0
@@ -23,22 +23,19 @@ class OnlineOptimizer(ABC):
         self._itr = 0
         self._base_alg.reset()
 
-    def _get_w(self, itr):  # NOTE this can be overloaded
+    @property
+    def w(self):  # weighting for the loss sequence
+        return self.get_w(self._itr)
+
+    def get_w(self, itr):
         return itr**self._p
 
     @property
-    def w(self):  # weighting for the loss sequence
-        return self._get_w(self._itr)
-
-    @property
-    def x(self):  # decision
+    def x(self):  # alias of decision
         return self._base_alg.project()
 
     @x.setter
     def x(self, val):
-        self._set_x(val)
-
-    def _set_x(self, val):  # NOTE this can be overloaded
         assert isinstance(self._base_alg, MirrorDescent)
         self._base_alg.set(val)
 
@@ -52,11 +49,13 @@ class OnlineOptimizer(ABC):
         # update the decision with g wrt w
         pass
 
+    @property
+    def decision(self):
+        return self.x
+
 
 class BasicOnlineOptimizer(OnlineOptimizer):
-    """
-        A online optimizer for adversarial linear problems.
-    """
+    """ A online optimizer for adversarial linear problems. """
 
     def update(self, g, **kwargs):
         self._itr += 1  # starts a new round
@@ -65,9 +64,7 @@ class BasicOnlineOptimizer(OnlineOptimizer):
 
 
 class Piccolo(OnlineOptimizer):
-    """
-        A reduction-based online optimizer for predictable linear problems.
-    """
+    """ A reduction-based online optimizer for predictable linear problems. """
 
     def __init__(self, base_alg, p=0.0):
         super().__init__(base_alg, p)
@@ -116,13 +113,12 @@ class Piccolo(OnlineOptimizer):
 
     @property
     def w_next(self):
-        return self._get_w(self._itr + 1)
+        return self.get_w(self._itr + 1)
 
 
 class PiccoloOpt(Piccolo):
-    """
-    An alternate version that (approxiately) solves an optimization problem in
-    the prediction step.
+    """ An alternate version that (approxiately) solves an optimization problem
+        in the prediction step.
     """
 
     def __init__(self, base_alg, p=0.0, n_steps=20):
@@ -194,9 +190,8 @@ class PiccoloOpt(Piccolo):
 
 
 class PiccoloOptBasic(PiccoloOpt):
-    """
-    A version that uses a BasicOnlineOptimizer object to solve the inner
-    optimization problem
+    """ A version that uses a BasicOnlineOptimizer object to solve the inner
+        optimization problem.
     """
 
     def __init__(self, base_alg, p=0.0, n_steps=20, method=None):

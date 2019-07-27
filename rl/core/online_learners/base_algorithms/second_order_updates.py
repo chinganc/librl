@@ -14,7 +14,7 @@ class SecondOrderUpdate(MirrorDescent):
     """
 
     def __init__(self, x0, scheduler, mvp=None,
-                 eps=1e-5, cg_iters=20, verbose=True, use_cache=False):
+                 eps=1e-5, cg_iters=20, verbose=False, use_cache=True, **kwargs):
         self._scheduler = scheduler
         prox = MvpQuad(mvp=mvp, scale=1.0 / self._scheduler.stepsize,
                        eps=eps, cg_iters=cg_iters,
@@ -48,11 +48,8 @@ class SecondOrderUpdate(MirrorDescent):
 class AdaptiveSecondOrderUpdate(SecondOrderUpdate):
     # use exponential moving average for adaptive stepsize
 
-    def __init__(self, x0, scheduler, mvp=None,
-                 eps=1e-5, cg_iters=20, verbose=False, use_cache=True,
-                 beta2=0.999):
-        super().__init__(x0, scheduler, mvp=mvp, eps=eps, cg_iters=cg_iters,
-                         verbose=verbose, use_cache=use_cache)
+    def __init__(self, x0, scheduler, beta2=0.999, **kwargs):
+        super().__init__(x0, scheduler, **kwargs)
         self._v = ExpMvAvg(0.0, beta2)
 
     def _compute_stepsize(self, g, w):
@@ -60,14 +57,41 @@ class AdaptiveSecondOrderUpdate(SecondOrderUpdate):
         return self._scheduler.stepsize / (np.sqrt(self._v.val) + 1e-8)
 
 
+class RobustAdaptiveSecondOrderUpdate(AdaptiveSecondOrderUpdate):
+    def __init__(self, x0, scheduler, max_dist=None, ls_iters=10, ls_decay=0.5, **kwargs):
+        AdaptiveSecondOrderUpdate.__init__(self, x0, scheduler, **kwargs)
+        assert max_dist is not None  # needs to be provided
+        self._max_dist = max_dist
+        self._ls_iters = ls_iters
+        self._ls_decay = ls_decay
+
+    def _compute_stepsize(self, g, w, dist_fun=None):
+        stepsize = AdaptiveSecondOrderUpdate._compute_stepsize(self, g, w)
+        if dist_fun is None:  # just use the initial heuristic stepsize
+            return stepsize
+        # Back-tracking line search so KL divergence is within the limit
+        direction = self.primalmap(g)
+        for _ in range(self._ls_iters):
+            h = self._h - direction * stepsize  # new point
+            distance = dist_fun(h)
+            if distance > self._max_dist:
+                print("violated distance constraint. shrinking step.")
+            else:
+                print("Stepsize OK!")
+                break
+            stepsize *= self._ls_decay
+        else:
+            print("couldn't compute a good step")
+            stepsize = 0.0
+
+        return stepsize
+
+
 class TrustRegionSecondOrderUpdate(SecondOrderUpdate):
     # use trust-region line search for adaptive stepsize
 
-    def __init__(self, x0, scheduler, mvp=None,
-                 eps=1e-5, cg_iters=20, verbose=False, use_cache=True,
-                 ls_iters=10, ls_decay=0.5):
-        super().__init__(x0, scheduler, mvp=mvp, eps=eps, cg_iters=cg_iters,
-                         verbose=verbose, use_cache=use_cache)
+    def __init__(self, x0, scheduler, ls_iters=10, ls_decay=0.5, **kwargs):
+        super().__init__(x0, scheduler, **kwargs)
         self._ls_iters = ls_iters
         self._ls_decay = ls_decay
 
@@ -77,19 +101,22 @@ class TrustRegionSecondOrderUpdate(SecondOrderUpdate):
             1) dist_fun(h_new) <= trust_region
             2) loss_fun(h_new) <= loss_fun(h)
         """
+        assert loss_fun is not None or dist_fun is not None
         if loss_fun is None:
             def loss_fun(h): return 0.
         if dist_fun is None:  # just use the initial heuristic stepsize
             def dist_fun(h): return 0.
 
-        # update the size of trust_region
+        # Update the size of trust_region.
         trust_region = w * self._scheduler.stepsize
-        # compute the initial stepsize (by assuming dist_fun is 0.5 dx^t H dx,
-        # where dx = gamma * H^{-1} g )
+
+        # Compute the initial stepsize (by assuming dist_fun is 0.5 dx^t H dx,
+        # where dx = gamma * H^{-1} g ).
         stepsize = np.sqrt(trust_region / self.dualnorm2(g))
         stepsize = min(1.0, stepsize)  # make sure stepsize is less than 1.0
+
+        # Back-tracking line search
         direction = self.primalmap(g)
-        # back-tracking line search
         loss_before = loss_fun(self._h)
         expected_improve = g.dot(direction) * stepsize
         for _ in range(self._ls_iters):

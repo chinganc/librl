@@ -54,10 +54,12 @@ CONFIG = {
         },
     },
     'algorithm': {
-        'lr':1e-3,
+        'lr':0.001,
         'delta':None,
         'lambd':0.99,
         'max_n_batches':2,
+        'optimizer':'adam',
+        'max_kl':0.1
     },
 }
 
