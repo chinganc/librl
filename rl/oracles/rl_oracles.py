@@ -22,13 +22,13 @@ class ValueBasedPolicyGradient(rlOracle):
         self._ae = ae
         # define the internal oracle
         assert isinstance(policy, Policy)
-        self._policy_t = copy.deepcopy(policy)  # just a template
-        def logp_fun(var):
-            self._policy_t.variable = var
-            return self._policy_t.logp(self.ro['obs_short'], self.ro['acs'])
-        def logp_grad(var, fs):
-            self._policy_t.variable = var
-            return self._policy_t.logp_grad(self.ro['obs_short'], self.ro['acs'], fs)
+        self._policy = copy.deepcopy(policy)  # just a template
+        def logp_fun(x):
+            self._policy.variable = x
+            return self._policy.logp(self.ro['obs_short'], self.ro['acs'])
+        def logp_grad(x, fs):
+            self._policy.variable = x
+            return self._policy.logp_grad(self.ro['obs_short'], self.ro['acs'], fs)
         self._or = LikelihoodRatioOracle(
                     logp_fun, logp_grad,
                     biased=biased, # basic mvavg
@@ -53,7 +53,7 @@ class ValueBasedPolicyGradient(rlOracle):
 
     def update(self, ro, policy, update_nor=True, update_vfn=True, **kwargs):
         # Sync policies' parameters.
-        self._policy_t.assign(policy) # NOTE sync BOTH variables and parameters
+        self._policy.assign(policy) # NOTE sync BOTH variables and parameters
         # Compute adv.
         self._ro = ro
         advs, vfns = self._ae.advs(self.ro, use_is=self._use_is)
@@ -94,13 +94,13 @@ class ValueBasedExpertGradientByRandomTimeSampling(rlOracle):
         self._ae = ae
         # Define the internal oracles
         assert isinstance(policy, Policy)
-        self._policy_t = copy.deepcopy(policy)  # just a template
-        def logp_fun(var, ro):
-            self._policy_t.variable = var
-            return self._policy_t.logp(ro['obs_short'], ro['acs'])
-        def logp_grad(var, fs, ro):
-            self._policy_t.variable = var
-            return self._policy_t.logp_grad(ro['obs_short'], ro['acs'], fs)
+        self._policy = copy.deepcopy(policy)  # just a template
+        def logp_fun(x, ro):
+            self._policy.variable = x
+            return self._policy.logp(ro['obs_short'], ro['acs'])
+        def logp_grad(x, fs, ro):
+            self._policy.variable = x
+            return self._policy.logp_grad(ro['obs_short'], ro['acs'], fs)
 
         self._scale_or, self._scale_cv = 0., 0.
         self._ro_or, self._ro_cv = None, None
@@ -154,7 +154,7 @@ class ValueBasedExpertGradientByRandomTimeSampling(rlOracle):
         assert policy is not None
 
         # Sync policies' parameters.
-        self._policy_t.assign(policy) # NOTE sync BOTH variables and parameters
+        self._policy.assign(policy) # NOTE sync BOTH variables and parameters
         # Update the oracles
         n_rollouts = len(ro_exp) if ro_pol is None else len(ro_pol)
         self._ro_or = None

@@ -1,5 +1,5 @@
-log*/
-results*/
+*log*/
+*results*/
 *.swp
 *.swo
 

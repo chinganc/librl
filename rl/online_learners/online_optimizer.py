@@ -76,10 +76,7 @@ class FisherOnlineOptimizer(OO.BasicOnlineOptimizer):
 		 **kwargs):
         """ `policy` needs to be provided. """
         assert isinstance(base_alg, BA.SecondOrderUpdate)
-        assert isinstance(policy, Policy)
         super().__init__(base_alg, p=p, **kwargs)
-        self._fisher_damping = fisher_damping
-        self._fisher_sample_limit = fisher_sample_limit
         self._reg = Reg(policy, default_damping=fisher_damping,
                         samples_limit=fisher_sample_limit)
 
@@ -87,13 +84,12 @@ class FisherOnlineOptimizer(OO.BasicOnlineOptimizer):
         assert ro is not None
         assert policy is not None
         assert np.all(np.isclose(policy.variable, self.x))
-        limit = self._fisher_sample_limit  # max number of obs use in computing kl
         self._reg.update(ro['obs'], policy)
         if isinstance(self._base_alg, BA.TrustRegionSecondOrderUpdate):
             super().update(*args, mvp=self._reg.fvp, dist_fun=self._reg.kl, **kwargs)
         elif isinstance(self._base_alg, BA.RobustAdaptiveSecondOrderUpdate):
             # Has to go before AdaptiveSecondOrderUpdate
-            super().update(*args, mvp=self._reg.fvp, dist_fun=self._reg.kl)
+            super().update(*args, mvp=self._reg.fvp, dist_fun=self._reg.kl, **kwargs)
         elif isinstance(self._base_alg, BA.AdaptiveSecondOrderUpdate):
             super().update(*args, mvp=self._reg.fvp, **kwargs)
         else:
