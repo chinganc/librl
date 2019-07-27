@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 from scripts.utils import parser as ps
 from rl import experimenter as Exp
-from rl.algorithms import GeneralizedPolicyGradient as Algorithm
+from rl.algorithms import GeneralizedPolicyGradient
 from rl.core.function_approximators.policies.tf2_policies import RobustKerasMLPGassian
 from rl.core.function_approximators.supervised_learners import SuperRobustKerasMLP
 
@@ -21,14 +21,7 @@ def main(c):
     if mdp.use_time_info:
         ob_shape = (np.prod(ob_shape)+1,)
 
-    # define expert
-    expert = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
-                                   init_lstd=-1,
-                                   units=(64,))
-    expert.restore('./experts', name='cp1000_mlp_policy_64_seed_9')
-    expert.name = 'expert'
-
-    # define the learner
+    # Define the learner
     policy = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
                                    init_lstd=-1,
                                    units=(128,128))
@@ -36,16 +29,19 @@ def main(c):
     vfn = SuperRobustKerasMLP(ob_shape, (1,), name='expert value function',
                                    units=(256,256))
 
-    # Create algorithm
-    if not c['use_experts']:
-        experts = None
-    else:
-        experts = [expert]
+    # Define expert
+    expert = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
+                                   init_lstd=-1,
+                                   units=())  # size doesn't matter
+    expert.restore('./experts', name='cp1000_mlp_policy_64_seed_9')
+    expert.name = 'expert'
 
-    alg = Algorithm(policy, vfn,
-                    experts=experts,
-                    horizon=mdp.horizon, gamma=mdp.gamma,
-                    **c['algorithm'])
+    # Create algorithm
+    experts = [expert] if c['use_experts'] else None
+    alg = GeneralizedPolicyGradient(policy, vfn,
+                                    experts=experts,
+                                    horizon=mdp.horizon, gamma=mdp.gamma,
+                                    **c['algorithm'])
 
     # Let's do some experiments!
     exp = Exp.Experimenter(alg, mdp, c['experimenter']['rollout_kwargs'])
@@ -55,7 +51,7 @@ def main(c):
 CONFIG = {
     'top_log_dir': 'log_gpg',
     'exp_name': 'cp',
-    'seed': 1234,
+    'seed': 0,
     'mdp': {
         'envid': 'DartCartPole-v1',
         'horizon': 1000,  # the max length of rollouts in training
@@ -75,14 +71,18 @@ CONFIG = {
         },
     },
     'algorithm': {
-        'lr': 1e-3,
+        'optimizer':'adam',
+        'lr':0.001,,
+        'max_kl':0.05,
         'delta':None,
-        'lambd':0.1,
-        'use_policy_as_expert': True,
+        'lambd':0.5,
         'max_n_batches':2,
-        'max_n_batches_experts':100,
-        'n_pretrain_itrs': 2,
         'n_warm_up_itrs':None,
+        'n_pretrain_itrs':5,
+        # new kwargs
+        'eps':0.5,
+        'use_policy_as_expert': True,
+        'max_n_batches_experts':100,
     },
     'use_experts':True,
 }

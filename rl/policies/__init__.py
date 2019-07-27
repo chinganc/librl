@@ -1,1 +1,1 @@
-from rl.core.function_approximators.policies import *
+from rl.core.function_approximators.policies import *  # alias

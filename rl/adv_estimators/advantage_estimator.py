@@ -30,6 +30,14 @@ class AdvantageEstimator(FunctionApproximator):
         self._ac_shape = ref_policy.y_shape
         super().__init__([self._ob_shape, self._ac_shape], (1,), name=name, **kwargs)
 
+    @property
+    def max_n_batches(self):
+        return self.buffer.max_n_batches
+
+    @property
+    def max_n_rollouts(self):
+        return self.buffer.max_n_samples
+
     @abstractmethod
     def update(self, ro, *args, **kwargs):
         """ based on rollouts """
@@ -57,14 +65,19 @@ class AdvantageEstimator(FunctionApproximator):
         return d
 
 
+
+
 class ValueBasedAE(AdvantageEstimator):
     """ An estimator based on value function. """
+
+    DELTA_MAX=0.9999
 
     def __init__(self, ref_policy,  # the reference policy
                  vfn,  # value function estimator (SupervisedLearner)
                  gamma,  # discount in the problem definition
                  delta,  # discount in defining value function to make learning well-behave, or to reduce variance
                  lambd,  # mixing rate of different K-step adv/Q estimates (e.g. 0 for actor-critic, 0.98 GAE)
+                 horizon=None,
                  pe_lambd=1.0,  # lambda for policy evaluation in [0,1] or None
                  n_pe_updates=5,  # number of iterations in policy evaluation
                  use_is='one',  # 'one' or 'multi' or None
@@ -72,6 +85,9 @@ class ValueBasedAE(AdvantageEstimator):
                  **kwargs):
         """ Create an advantage estimator wrt ref_policy. """
         self._ref_policy = ref_policy  # Policy object
+        if horizon is None and delta is None and np.isclose(gamma,1.):
+            delta = min(gamma, DELTA_MAX)  # to make value learning well-defined
+        self.horizon = float('Inf') if horizon is None else horizon
         self._pe = PE(gamma=gamma, lambd=lambd, delta=delta) # a helper function
         # importance sampling
         assert use_is in ['one', 'multi', None]
@@ -88,6 +104,18 @@ class ValueBasedAE(AdvantageEstimator):
         self._vfn._dataset.max_n_samples=0  # since we aggregate rollouts here
         self._vfn._dataset.max_n_batches=0
         super().__init__(ref_policy, name=name, **kwargs)
+
+    @property
+    def gamma(self):
+        return self._pe.gamma
+
+    @property
+    def delta(self):
+        return self._pe.delta
+
+    @property
+    def lambd(self):
+        return self._pe.lambd
 
     def weights(self, ro, policy=None):  # importance weight
         # ro is a Dataset or list of rollouts

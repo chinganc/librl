@@ -17,7 +17,7 @@ class ValueBasedPolicyGradient(rlOracle):
     """
     def __init__(self, policy, ae,
                  use_is='one', avg_type='sum',
-                 biased=False, use_log_loss=False, normalized_is=False):
+                 biased=True, use_log_loss=False, normalized_is=False):
         assert isinstance(ae, ValueBasedAE)
         self._ae = ae
         # define the internal oracle
@@ -89,7 +89,7 @@ class ValueBasedExpertGradientByRandomTimeSampling(rlOracle):
     """
     def __init__(self, policy, ae,
                  use_is='one',
-                 biased=False, use_log_loss=False, normalized_is=False):
+                 biased=True, use_log_loss=False, normalized_is=False):
         assert isinstance(ae, ValueBasedAE)
         self._ae = ae
         # Define the internal oracles

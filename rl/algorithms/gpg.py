@@ -1,23 +1,15 @@
 import copy
 import numpy as np
 from functools import partial
-from rl.algorithms.algorithm import Algorithm
-from rl.adv_estimators.advantage_estimator import ValueBasedAE
-from rl.oracles.rl_oracles import ValueBasedPolicyGradient as Oracle
-from rl.core.function_approximators.policies import Policy
-from rl.core.online_learners import base_algorithms as balg
-from rl.core.online_learners import BasicOnlineOptimizer
-from rl.core.online_learners.scheduler import PowerScheduler
+from rl.algorithms import PolicyGradient
+from rl.algorithms import utils as au
+from rl import online_learners as ol
+from rl.core.datasets import Dataset
 from rl.core.utils.misc_utils import timed, zipsame
 from rl.core.utils import logz
-from rl.core.datasets import Dataset
-from rl.core.utils.mvavg import PolMvAvg, ExpMvAvg
-
-
-from rl.core.function_approximators import FunctionApproximator, online_compatible
+from rl.core.utils.mvavg import PolMvAvg
+from rl.core.function_approximators import online_compatible
 from rl.core.function_approximators.supervised_learners import SupervisedLearner
-
-from rl.algorithms import utils as au
 
 class Bandit:
     """ Maximization """
@@ -91,87 +83,59 @@ class MaxValueFunction(SupervisedLearner):
         [setattr(v,'variable',val) for v, val in zip(self.vfns, vals)]
 
 
-class GeneralizedPolicyGradient(Algorithm):
-    """ Basic policy gradient method. """
+class GeneralizedPolicyGradient(PolicyGradient):
+    """ Use max_k V^k as the value function. It overwrites the behavior policy. """
 
     def __init__(self, policy, vfn,
                  experts=None,
-                 horizon=None,
-                 lr=1e-3,
-                 gamma=1.0, delta=None, lambd=0.9,
                  eps=0.5,  # for episilon greedy
-                 max_n_batches=2,  # for the policy
                  max_n_batches_experts=1000,  # for the experts
                  use_policy_as_expert=True,
-                 n_warm_up_itrs=None,
-                 n_pretrain_itrs=5,
                  sampling_rule='exponential', # define how random switching time is generated
-                 cyclic_rate=2): # the rate of forward training, relative to the number of iterations
-        assert isinstance(policy, Policy)
-        self._policy = policy
-        self.vfn = vfn  # of the policy
+                 cyclic_rate=2, # the rate of forward training, relative to the number of iterations
+                 **kwargs):
+
         if experts is None:
             experts = []
             use_policy_as_expert=True
             print('No expert is available. Use policy gradient.')
+
         # Define max over value functions
         vfns = [copy.deepcopy(vfn) for _ in range(len(experts))]
         if use_policy_as_expert:
             experts += [policy]
             vfns += [vfn]
         self.experts = experts
-        self.vfn_max = MaxValueFunction(vfns, eps=eps)  # max over values
+        vfn_max = MaxValueFunction(vfns, eps=eps)  # max over values
         if use_policy_as_expert:
             print('Using {} experts, including its own policy'.format(len(vfns)))
         else:
             print('Using {} experts'.format(len(vfns)))
         self._use_policy_as_expert = use_policy_as_expert
 
-        # Create online learner
-        x0 = self.policy.variable
-        scheduler = PowerScheduler(lr)
-        self.learner = BasicOnlineOptimizer(balg.Adam(x0, scheduler))
+        super().__init__(policy, vfn_max, **kwargs)
 
-        # Create oracle
-        if horizon is None and delta is None and np.isclose(gamma,1.):
-            delta = min(gamma, 0.999)  # to make value learning well-defined
-        create_ae = partial(ValueBasedAE, gamma=gamma, delta=delta, lambd=lambd,
-                            use_is='one')
-        self.ae = create_ae(policy, self.vfn_max)
         self.ae.update = None  # its update should not be called
-        self.oracle = Oracle(policy, self.ae)
-        # create aes for updating value functions
+        # Create aes for manually updating value functions
+        create_ae = partial(type(self.ae), gamma=self.ae.gamma,
+                    delta=self.ae.delta, lambd=self.ae.lambd, use_is=self.ae.use_is)
         aes = []
         for i, (e,v) in enumerate(zip(experts, vfns)):
             if use_policy_as_expert and i==(len(experts)-1):  # policy's value
-                aes.append(create_ae(e, v, max_n_batches=max_n_batches))
+                aes.append(create_ae(e, v, max_n_batches=self.ae.max_n_batches))
             else:
                 aes.append(create_ae(e, v, max_n_batches=max_n_batches_experts))
         self.aes = aes  # of the experts
 
-        # Misc configs
-        self._n_pretrain_itrs = n_pretrain_itrs
-        if n_warm_up_itrs is None:
-            n_warm_up_itrs = float('Inf')
-        self._n_warm_up_itrs =n_warm_up_itrs
-        self._itr = 0
         # for sampling random switching time
-        if horizon is None: horizon=float('Inf')
-        assert horizon<float('Inf') or gamma<1.
-        self._horizon = horizon
-        self._gamma = gamma  # discount factor of the original problem
+        assert self.ae.horizon<float('Inf') or gamma<1.
+        self._horizon = self.ae.horizon
+        self._gamma = self.ae.gamma  # discount factor
         assert sampling_rule in ['exponential','cyclic','uniform']
         self._sampling_rule = sampling_rule
         self._cyclic_rate = cyclic_rate
-        self._avg_n_steps = PolMvAvg(1,weight=1)  # the number of steps that the policy can survive so far
+        self._avg_n_steps = PolMvAvg(1,weight=1)  # number of steps the policy can survive
         self._reset_pi_ro()
-
-    @property
-    def policy(self):
-        return self._policy
-
-    def pi(self, ob, t, done):
-        return self.policy(ob)
 
     # It alternates between two phases
     #   1) roll-in learner and roll-out expert for updating value function
@@ -216,7 +180,7 @@ class GeneralizedPolicyGradient(Algorithm):
                 return self.policy(ob)
             else:
                 if t==self._t_switch[-1]: # select the expert to rollout
-                    k_star = self.vfn_max.bandit.decision(ob, explore=True)
+                    k_star = self.vfn.bandit.decision(ob, explore=True)
                     self._k_star[-1] = k_star
                 k_star = self._k_star[-1]
                 return self.experts[k_star](ob)
@@ -261,6 +225,8 @@ class GeneralizedPolicyGradient(Algorithm):
                     ro = gen_ro(pi_exp, logp=expert.logp)
                     self.aes[k].update(ro)
                     self.policy.update(ro['obs_short'])
+                    #if self._use_policy_as_expert and k==len(self.experts)-1:
+                    #    self.oracle.update(ro, update_vfn=False, policy=self.policy)
         self._reset_pi_ro()
 
     def update(self, ro):
@@ -286,6 +252,7 @@ class GeneralizedPolicyGradient(Algorithm):
                 del ro_exps[-1]
             ro_exps = [Dataset(ro_exp) for ro_exp in ro_exps]
             ro_pol = Dataset(ro_pol)
+            # update oracle
             self.oracle.update(ro_pol, update_vfn=False, policy=self.policy)
             # update value functions
             EV0, EV1 = [], []
@@ -300,10 +267,16 @@ class GeneralizedPolicyGradient(Algorithm):
             self._avg_n_steps.update(np.mean([len(r) for r in ro_pol]))
 
         with timed('Compute policy gradient'):
-            g = self.oracle.grad(self.policy)
+            g = self.oracle.grad(self.policy.variable)
 
         with timed('Policy update'):
-            self.learner.update(g)
+            if isinstance(self.learner, ol.FisherOnlineOptimizer):
+                if self._optimizer=='trpo_wl':  # use also the loss function
+                    self.learner.update(g, ro=ro, policy=self.policy, loss_fun=self.oracle.fun)
+                else:
+                    self.learner.update(g, ro=ro, policy=self.policy)
+            else:
+                self.learner.update(g)
             self.policy.variable = self.learner.x
 
         # log

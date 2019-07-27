@@ -20,13 +20,18 @@ def main(c):
     ac_shape = mdp.ac_shape
     if mdp.use_time_info:
         ob_shape = (np.prod(ob_shape)+1,)
+
+    # Define the learner
     policy = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
                                    init_lstd=-1,
                                    units=(64,))
+
     vfn = SuperRobustKerasMLP(ob_shape, (1,), name='value function',
                               units=(128,128))
     # Create algorithm
-    alg = PolicyGradient(policy, vfn, gamma=mdp.gamma, **c['algorithm'])
+    alg = PolicyGradient(policy, vfn,
+                         gamma=mdp.gamma, horizon=mdp.horizon,
+                         **c['algorithm'])
 
     # Let's do some experiments!
     exp = Exp.Experimenter(alg, mdp, c['experimenter']['rollout_kwargs'])
@@ -47,6 +52,7 @@ CONFIG = {
             'n_itrs': 100,
             'pretrain': True,
             'final_eval': False,
+            'save_freq': 5,
         },
         'rollout_kwargs': {
             'min_n_samples': 2000,
@@ -54,12 +60,14 @@ CONFIG = {
         },
     },
     'algorithm': {
+        'optimizer':'adam',
         'lr':0.001,
+        'max_kl':0.1,
         'delta':None,
         'lambd':0.99,
         'max_n_batches':2,
-        'optimizer':'adam',
-        'max_kl':0.1
+        'n_warm_up_itrs':None,
+        'n_pretrain_itrs':1,
     },
 }
 
