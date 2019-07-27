@@ -46,8 +46,8 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-d','--dir', help='The dir of experiments', type=str)
     parser.add_argument('-v', '--value', help='The column name in the log.txt file', type=str)
-    parser.add_argument('-o', '--output', type=str, default='', help='Output file name')
-    #parser.add_argument('--expert_performance', type=float)
+    parser.add_argument('-o', '--output_dir', type=str, help='Output directory')
+    parser.add_argument('-f,','--filename', type=str, default='', help='Output filename')
     parser.add_argument('--style', type=str, default='', help='Plotting style')
     parser.add_argument('--y_higher', nargs='?', type=float)
     parser.add_argument('--y_lower', nargs='?', type=float)
@@ -108,9 +108,9 @@ def main():
     plt.grid(linestyle='--', linewidth='0.2')
     for line in legend.get_lines():
         line.set_linewidth(6.0)
-    if not args.output:
-        args.output = '{}.pdf'.format(args.attr)
-    output_path = os.path.join(args.dir, args.output)
+    output_dir = args.output_dir or arg.dir
+    output_filename = args.filename or '{}.pdf'.format(args.attr)
+    output_path = os.path.join(output_dir, output_filename)
     plt.savefig(output_path)
     plt.clf()
 
