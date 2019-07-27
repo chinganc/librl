@@ -1,6 +1,8 @@
 import numpy as np
+from scipy import linalg as la
 
-class PerformanceEstimate(object):
+
+class PerformanceEstimate:
     """ A helper class for computing \lambda-weighted advantage/Q estimates.
 
         Given a function v_t, the advantage estimate is based on
@@ -154,3 +156,38 @@ class PerformanceEstimate(object):
 
     def qfn(self, c, V, done, w=1., lambd=None, gamma=None):
         return V[:-1] + self.adv(c, V, done, w, lambd, gamma)
+
+
+
+class SimplePerformanceEstimate(PerformanceEstimate):
+    """ A simplified version of PerformanceEstimate, without considering importance sampling.
+
+        Given a function v_t, the advantage estimate is based on
+
+            A_t = \gamma^t (1-\lambda) \sum_{k=0}^\infty \lambda^k  A_{k,t}
+
+        where
+            A_{k,t} = c_t - v_t + \delta * V_{k,t+1}
+            V_{k,t} = c_t + ... + \delta^{k-1} * c_{t+k-1} + \delta^k * v_{t+k}
+    """
+
+    def adv(self, c, V, done, w=1., lambd=None, gamma=None):
+        """
+            A_t = TD_t + decay TD_{t+1} + decay^2 TD_{t+2} + ...
+
+            where decay = lambd*gamma, and TD_t = c_t + delta*v_{t+1} - v_t
+        """
+
+        assert c.shape == V.shape
+        assert type(done) is bool
+        if isinstance(w, np.ndarray):
+            assert (len(w)==len(c)-1) and  len(w.shape)<=1
+        lambd = self.lambd if lambd is None else lambd
+        gamma = self.gamma if gamma is None else gamma
+
+        delta_lambd = self.delta*lambd
+        td = self.reshape_cost(c, V, done, w=1.0)
+        decay = delta_lambd ** np.arange(len(td))
+        decay = np.triu(la.circulant(decay).T, k=0)
+        adv = np.ravel(np.matmul(decay, td[:,None]))
+        return (gamma**np.arange(len(adv))) * adv

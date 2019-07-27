@@ -1,7 +1,7 @@
 from abc import abstractmethod
 import numpy as np
 import copy
-from .performance_estimate import PerformanceEstimate as PE
+from . import performance_estimate as PE
 from rl.core.function_approximators.policies import Policy
 from rl.core.function_approximators import FunctionApproximator
 from rl.core.function_approximators.supervised_learners import SupervisedLearner
@@ -85,13 +85,20 @@ class ValueBasedAE(AdvantageEstimator):
                  **kwargs):
         """ Create an advantage estimator wrt ref_policy. """
         self._ref_policy = ref_policy  # Policy object
-        if horizon is None and delta is None and np.isclose(gamma,1.):
-            delta = min(gamma, DELTA_MAX)  # to make value learning well-defined
-        self.horizon = float('Inf') if horizon is None else horizon
-        self._pe = PE(gamma=gamma, lambd=lambd, delta=delta) # a helper function
+
         # importance sampling
         assert use_is in ['one', 'multi', None]
         self.use_is = use_is
+        if horizon is None and delta is None and np.isclose(gamma,1.):
+            delta = min(gamma, DELTA_MAX)  # to make value learning well-defined
+        self.horizon = float('Inf') if horizon is None else horizon
+        if use_is=='multi':
+            self._pe = PE.PerformanceEstimate( # a helper function
+                        gamma=gamma, lambd=lambd,delta=delta)
+        else:
+            self._pe = PE.SimplePerformanceEstimate( # a helper function
+                    gamma=gamma, lambd=lambd, delta=delta)
+
         # policy evaluation
         assert 0<=pe_lambd<=1 or pe_lambd is None
         self.pe_lambd = pe_lambd  # user-defined self.pe_lambda-weighted td error
