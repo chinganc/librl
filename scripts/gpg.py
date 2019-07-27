@@ -72,7 +72,7 @@ CONFIG = {
     },
     'algorithm': {
         'optimizer':'adam',
-        'lr':0.001,,
+        'lr':0.001,
         'max_kl':0.05,
         'delta':None,
         'lambd':0.5,
