@@ -13,6 +13,15 @@ range_lambd = [
 
 range_lambd = R.merge_ranges(range_common, range_lambd)
 
+range_pg = [
+    [['algorithm', 'lambd'], [0.98]],
+    [['use_experts'], [False]],
+]
+
+range_pg = R.merge_ranges(range_common, range_pg)
+
+
+
 
 
 
