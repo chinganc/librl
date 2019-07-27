@@ -1,4 +1,5 @@
 from matplotlib import cm
+from itertools import chain
 
 SET2COLORS = cm.get_cmap('Set2').colors
 SET2 = {'darkgreen': SET2COLORS[0],
@@ -29,10 +30,16 @@ icml_piccolo_final_configs = {
 
 
 class Configs(object):
-    def __init__(self, style=None, colormap='Set2'):
+    def __init__(self, style=None, colormap=None):
         if not style:
             self.configs = None
-            self.colors = iter(cm.get_cmap(colormap).colors)
+            if colormap is None: 
+                c1 = iter(cm.get_cmap('Set1').colors)
+                c2 = iter(cm.get_cmap('Set2').colors)
+                c3 = iter(cm.get_cmap('Set3').colors)
+                self.colors = chain(c1, c2, c3)
+            else:
+                self.colors = iter(cm.get_cmap(colormap).colors)
         else:
             self.configs = globals()[style + '_configs']
             for exp_name in self.configs['order']:
