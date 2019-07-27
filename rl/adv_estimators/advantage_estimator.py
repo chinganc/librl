@@ -8,6 +8,7 @@ from rl.core.function_approximators.supervised_learners import SupervisedLearner
 from rl.core.datasets import Dataset
 from rl.core.utils.misc_utils import zipsame
 
+
 class AdvantageEstimator(FunctionApproximator):
     """ An abstract advantage function estimator based on replay buffer.
 
@@ -25,7 +26,7 @@ class AdvantageEstimator(FunctionApproximator):
         # replay buffer (the user should append ro)
         self.buffer = Dataset(max_n_batches=max_n_batches, max_n_samples=max_n_rollouts)
         assert isinstance(ref_policy, Policy)
-        self._ref_policy = ref_policy  # reference policy
+        self.ref_policy = ref_policy  # reference policy
         self._ob_shape = ref_policy.x_shape
         self._ac_shape = ref_policy.y_shape
         super().__init__([self._ob_shape, self._ac_shape], (1,), name=name, **kwargs)
@@ -65,8 +66,6 @@ class AdvantageEstimator(FunctionApproximator):
         return d
 
 
-
-
 class ValueBasedAE(AdvantageEstimator):
     """ An estimator based on value function. """
 
@@ -84,7 +83,7 @@ class ValueBasedAE(AdvantageEstimator):
                  name='value_based_adv_func_app',
                  **kwargs):
         """ Create an advantage estimator wrt ref_policy. """
-        self._ref_policy = ref_policy  # Policy object
+        self.ref_policy = ref_policy  # Policy object
 
         # importance sampling
         assert use_is in ['one', 'multi', None]
@@ -97,7 +96,7 @@ class ValueBasedAE(AdvantageEstimator):
                         gamma=gamma, lambd=lambd,delta=delta)
         else:
             self._pe = PE.SimplePerformanceEstimate( # a helper function
-                    gamma=gamma, lambd=lambd, delta=delta)
+                        gamma=gamma, lambd=lambd, delta=delta)
 
         # policy evaluation
         assert 0<=pe_lambd<=1 or pe_lambd is None
@@ -107,9 +106,10 @@ class ValueBasedAE(AdvantageEstimator):
         assert n_pe_updates >= 1, 'Policy evaluation needs at least one udpate.'
         self._n_pe_updates = n_pe_updates
         assert isinstance(vfn, SupervisedLearner)
-        self._vfn = vfn
-        self._vfn._dataset.max_n_samples=0  # since we aggregate rollouts here
-        self._vfn._dataset.max_n_batches=0
+        self.vfn = vfn
+        self.vfn._dataset.max_n_samples=0  # since we aggregate rollouts here
+        self.vfn._dataset.max_n_batches=0
+
         super().__init__(ref_policy, name=name, **kwargs)
 
     @property
@@ -126,7 +126,7 @@ class ValueBasedAE(AdvantageEstimator):
 
     def weights(self, ro, policy=None):  # importance weight
         # ro is a Dataset or list of rollouts
-        policy = policy or self._ref_policy
+        policy = policy or self.ref_policy
         assert isinstance(policy, Policy)
         return [np.exp(policy.logp(rollout.obs_short, rollout.acs) - rollout.lps) for rollout in ro]
 
@@ -140,7 +140,7 @@ class ValueBasedAE(AdvantageEstimator):
             w = np.concatenate(self.weights(ro)) if self.use_is else 1.0
             for i in range(self._n_pe_updates):
                 v_hat = (w*np.concatenate(self.qfns(ro, self.pe_lambd))).reshape([-1, 1])  # target
-                results, ev0, ev1 = self._vfn.update(ro['obs_short'], v_hat, **kwargs)
+                results, ev0, ev1 = self.vfn.update(ro['obs_short'], v_hat, **kwargs)
             return results, ev0, ev1
         else:
             return None, None, None
@@ -150,7 +150,7 @@ class ValueBasedAE(AdvantageEstimator):
 
             Note `ref_policy` argument is only considered when `self.use_is`
             is True; in this case, if `ref_policy` is None, it is wrt to
-            `self._ref_policy`. Otherwise, when `self.use_is`_is is False, the
+            `self.ref_policy`. Otherwise, when `self.use_is`_is is False, the
             adv is biased toward the behavior policy that collected the data.
         """
         use_is = use_is or self.use_is
@@ -170,7 +170,7 @@ class ValueBasedAE(AdvantageEstimator):
         return qfns
 
     def vfns(self, ro):  # value function
-        return [np.squeeze(self._vfn.predict(rollout.obs)) for rollout in ro]
+        return [np.squeeze(self.vfn.predict(rollout.obs)) for rollout in ro]
 
     # Required methods of FunctionApproximator
     def predict(self, xs, **kwargs):
@@ -178,11 +178,11 @@ class ValueBasedAE(AdvantageEstimator):
 
     @property
     def variable(self):
-        return self._vfn.variable
+        return self.vfn.variable
 
     @variable.setter
     def variable(self, val):
-        self._vfn.variable = val
+        self.vfn.variable = val
 
 
 class QBasedAE(ValueBasedAE):

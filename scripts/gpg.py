@@ -66,8 +66,8 @@ CONFIG = {
             'save_freq': 5,
         },
         'rollout_kwargs': {
-            'min_n_samples': 2000,
-            'max_n_rollouts': None,
+            'min_n_samples': None, #2000,
+            'max_n_rollouts': 2,
         },
     },
     'algorithm': {
