@@ -40,7 +40,7 @@ class tfPolicy(tfFuncApp, Policy):
 
     def kl(self, other, xs, reversesd=False, **kwargs):
         """ Return the KL divergence for each data point in the batch xs. """
-        return self.ts_kl(other, array_to_ts(xs), reversesd=reversesd)
+        return ts_to_array(self.ts_kl(other, array_to_ts(xs), reversesd=reversesd))
 
     def fvp(self, xs, g, **kwargs):
         """ Return the product between a vector g (in the same formast as
@@ -236,9 +236,9 @@ class tfGaussianPolicy(tfPolicy):
         ts_ms_1, ts_lstds_1 = get_m_and_lstd(self,  p1_sg)
         ts_ms_2, ts_lstds_2 = get_m_and_lstd(other, p2_sg)
         if reversesd:
-            return gaussian_kl(ts_ms_1, ts_lstds_1, ts_ms_2, ts_lstds_2)
+            return tf.reduce_mean(gaussian_kl(ts_ms_1, ts_lstds_1, ts_ms_2, ts_lstds_2))
         else:
-            return gaussian_kl(ts_ms_2, ts_lstds_2, ts_ms_1, ts_lstds_1)
+            return tf.reduce_mean(gaussian_kl(ts_ms_2, ts_lstds_2, ts_ms_1, ts_lstds_1))
 
     def ts_fvp(self, ts_xs, ts_gs):
         """ Computes F(self.pi)*g, where F is the Fisher information matrix and
@@ -247,7 +247,7 @@ class tfGaussianPolicy(tfPolicy):
             gt.watch(self.ts_variables)
             with tf.GradientTape() as gt2:
                 gt2.watch(self.ts_variables)  #  TODO add sample weight below??
-                ts_kl = tf.reduce_mean(self.ts_kl(self, ts_xs, p1_sg=True))
+                ts_kl = self.ts_kl(self, ts_xs, p1_sg=True)
             ts_kl_grads = gt2.gradient(ts_kl, self.ts_variables)
             ts_pd = tf.add_n([tf.reduce_sum(kg*v) for (kg, v) in zipsame(ts_kl_grads, ts_gs)])
         ts_fvp = gt.gradient(ts_pd, self.ts_variables)

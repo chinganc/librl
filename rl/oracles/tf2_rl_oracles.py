@@ -37,11 +37,11 @@ class tfValueBasedPolicyGradient(rlOracle):
         self._scale = None
         self._ro = None
 
-    def fun(self, policy):
-        return self._or.fun(policy.variables) * self._scale
+    def fun(self, x):
+        return self._or.fun(self._policy_t.unflatten(x)) * self._scale
 
-    def grad(self, policy):
-        return self._or.grad(policy.variables) * self._scale
+    def grad(self, x):
+        return self._or.grad(self._policy_t.unflatten(x)) * self._scale
 
     def update(self, ro, policy, update_nor=True):
         # Sync policies' parameters.
@@ -109,16 +109,16 @@ class tfValueBasedExpertGradient(rlOracle):
         self._ro_or = None
         self._ro_cv = None
 
-    def fun(self, policy):
-        f1 = 0. if self._ro_exp is None else self._or.fun(policy.variables)*self._scale_or
-        f2 = 0. if self._ro_pol is None else self._cv.fun(policy.variables)*self._scale_cv
+    def fun(self, x):
+        f1 = 0. if self._ro_exp is None else self._or.fun(self._policy_t.unflatten(x))*self._scale_or
+        f2 = 0. if self._ro_pol is None else self._cv.fun(self._policy_t.unflatten(x))*self._scale_cv
         return f1+f2
 
-    def grad(self, policy):
-        g1 = np.zeros_like(policy.variable) if self._ro_or is None \
-                else self._or.grad(policy.variables)*self._scale_or
-        g2 = np.zeros_like(policy.variable) if self._ro_cv is None \
-                else self._cv.grad(policy.variables)*self._scale_cv
+    def grad(self, x):
+        g1 = np.zeros_like(x) if self._ro_or is None \
+                else self._or.grad(self._policy_t.unflatten(x))*self._scale_or
+        g2 = np.zeros_like(x) if self._ro_cv is None \
+                else self._cv.grad(self._policy_t.unflatten(x))*self._scale_cv
         print(np.linalg.norm(g1), np.linalg.norm(g2))
         return g1+g2
 

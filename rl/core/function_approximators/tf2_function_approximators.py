@@ -6,7 +6,6 @@ from rl.core.function_approximators.function_approximator import FunctionApproxi
 from rl.core.function_approximators.normalizers import tfNormalizerMax
 from rl.core.utils.tf2_utils import array_to_ts, tf_float, ts_to_array
 from rl.core.utils.misc_utils import flatten, unflatten, zipsame
-
 # NOTE ts_* methods are in batch mode
 #      python methods return a single nd.array
 #      ts_variables is a list of tf.Variables
@@ -32,12 +31,11 @@ class tfFuncApp(FunctionApproximator):
 
     @property
     def variable(self):
-        return flatten(self.variables)
+        return self.flatten(self.variables)
 
     @variable.setter
     def variable(self, val):
-        vals = unflatten(val, shapes=self.var_shapes)
-        self.variables = vals
+        self.variables = self.unflatten(val)
 
     # Users can choose to implement `update`.
 
@@ -62,6 +60,13 @@ class tfFuncApp(FunctionApproximator):
         if self._var_shapes is None:
             self._var_shapes = [var.shape.as_list() for var in self.ts_variables]
         return self._var_shapes
+
+    # helps functions
+    def flatten(self, vals):
+        return flatten(vals)
+
+    def unflatten(self, val):
+        return unflatten(val, shapes=self.var_shapes)
 
     # required implementation
     @property

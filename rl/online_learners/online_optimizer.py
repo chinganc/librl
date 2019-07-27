@@ -8,21 +8,29 @@ from rl.core.online_learners import base_algorithms as BA
 from rl.core.function_approximators.policies import Policy
 
 
+
+BasicOnlineOptimizer = OO.BasicOnlineOptimizer
+Piccolo = OO.Piccolo
+
+# Below we define special online optimizer that uses policy and ro informaiton.
+
 class Reg:
-    # regularization based on KL divergence between policies
-    def __init__(self, refpol, varpol, default_damping=0.1):
+    # Regularization based on KL divergence between policies
+    def __init__(self, policy,
+                 default_damping=0.1,
+                 samples_limit=1000000):
         """
         refpol:
             reference point to compute gradient.
         varpol:
             variable policy, which has the variables to optimize over.
         """
-        assert isinstance(refpol, Policy) and isinstance(varpol, Policy)
-        self._damping0 = default_damping
-        self.refpol = refpol
-        self.varpol = varpol
+        assert isinstance(policy, Policy)
+        self.refpol = copy.deepcopy(policy)
+        self.varpol = copy.deepcopy(policy)  # just a placeholder for evaluation
         self.obs = None
-        self.damping = None
+        self._damping0 = default_damping
+        self.samples_limit = samples_limit
 
     def kl(self, x):
         self.varpol.variable = x
@@ -38,94 +46,62 @@ class Reg:
     def assign(self, reg):
         assert type(self) == type(reg)
         self.refpol.assign(reg.refpol)
+        self.varpol.assign(self.refpol)
         self.obs = np.copy(reg.obs)
-        self.damping = np.copy(reg.damping)
         self._damping0 = np.copy(reg._damping0)
 
-    def update(self, obs):
-        self.refpol.assign(self.varpol)
+    def update(self, obs, policy):
+        self.refpol.assign(policy)
+        self.varpol.assign(policy)
+        if len(obs) > self.samples_limit:
+            obs = obs[np.random.choice(len(obs), limit, replace=False)]
         self.obs = np.copy(obs)
-        self.damping = self._damping0  # /np.mean(self.std**2.0)
+
+    @property
+    def damping(self):
+        return self._damping0  # /np.mean(self.std**2.0)
 
     @property
     def initialized(self):
         return not self.obs is None
 
 
-class rlOnlineOptimizer(OO.OnlineOptimizer, ABC):
-    """ A decorator class of OnlineOptimizer, which treates policy as the
-        decision variable.
-
-        self._policy is only used as an interface variable for other rl
-        codes, which can be modified on-the-fly, NOT the state of the optimzier
-     """
+class FisherOnlineOptimizer(OO.BasicOnlineOptimizer):
+    """ Wrap BasicOnlineOptimizer to use Fisher information matrix  when the base_alg is
+        SecondOrderUpdate. """
     def __init__(self,  base_alg, p=0.0,
                  policy=None,
                  fisher_damping=0.1,
 		 fisher_sample_limit=100000,
 		 **kwargs):
+        """ `policy` needs to be provided. """
+        assert isinstance(base_alg, BA.SecondOrderUpdate)
+        assert isinstance(policy, Policy)
         super().__init__(base_alg, p=p, **kwargs)
+        self._fisher_damping = fisher_damping
+        self._fisher_sample_limit = fisher_sample_limit
+        self._reg = Reg(policy, default_damping=fisher_damping,
+                        samples_limit=fisher_sample_limit)
 
-        if self.has_fisher:
-            assert isinstance(policy, Policy)
-            self._fisher_damping = fisher_damping
-            self._fisher_sample_limit = fisher_sample_limit
-            self._policy = copy.deepcopy(policy)  # just a template
-            reg_policy = copy._deepcopy(policy) # a template
-            reg_policy.name = 'reg_policy'
-            self._reg = Reg(reg_policy, self._policy,
-                            default_damping=fisher_damping)
-
-    def update(self, *args, ro=None, **kwargs):
-        if self.has_fisher:
-            assert ro is not None
-            limit = self._fisher_sample_limit  # max number of obs use in computing kl
-            obs = ro['obs']
-            if len(obs) > limit:
-                obs = obs[np.random.choice(len(ro.obs), limit, replace=False)]
-            self._reg.update(obs)
-            if isinstance(self._base_alg, BA.TrustRegionSecondOrderUpdate):
-                super().update(*args, mvp=self._reg.fvp, dist_fun=self._reg.kl, **kwargs)
-            elif isinstance(self._base_alg, BA.RobustAdaptiveSecondOrderUpdate): # TODO
-                # Has to go before AdaptiveSecondOrderUpdate
-                super().update(*args, mvp=self._reg.fvp, dist_fun=self._reg.kl)
-            elif isinstance(self._base_alg, BA.AdaptiveSecondOrderUpdate):
-                super().update(*args, mvp=self._reg.fvp, **kwargs)
-            else:
-                raise AttributeError('Unsupported base_alg.')
+    def update(self, *args, ro=None, policy=None, **kwargs):
+        assert ro is not None
+        assert policy is not None
+        assert np.all(np.isclose(policy.variable, self.x))
+        limit = self._fisher_sample_limit  # max number of obs use in computing kl
+        self._reg.update(ro['obs'], policy)
+        if isinstance(self._base_alg, BA.TrustRegionSecondOrderUpdate):
+            super().update(*args, mvp=self._reg.fvp, dist_fun=self._reg.kl, **kwargs)
+        elif isinstance(self._base_alg, BA.RobustAdaptiveSecondOrderUpdate):
+            # Has to go before AdaptiveSecondOrderUpdate
+            super().update(*args, mvp=self._reg.fvp, dist_fun=self._reg.kl)
+        elif isinstance(self._base_alg, BA.AdaptiveSecondOrderUpdate):
+            super().update(*args, mvp=self._reg.fvp, **kwargs)
         else:
-            super().update(*args, **kwargs)
-        self._policy.variable = self.x
+            raise NotImplementedError
 
 
-    @property
-    def has_fisher(self):
-        return isinstance(self._base_alg, BA.SecondOrderUpdate)
-
-    @property
-    def x(self):
-        return super().x
-
-    @x.setter
-    def x(self, val):
-        super(rlOnlineOptimizer, type(self)).x.fset(self, val)
-        self._policy.variable=self.x
-
-    #TODO remove this
-    def assign(self, policy):
-        # NOTE this does not change the state of the optimizer
-        self._policy.assign(policy)
-
-
-
-class BasicOnlineOptimizer(rlOnlineOptimizer, OO.BasicOnlineOptimizer):
-    pass
-
-class Piccolo(rlOnlineOptimizer, OO.Piccolo):
-    pass
-
-
-class rlPiccoloFisher(rlOnlineOptimizer):
+# TODO
+class FisherPiccolo(Piccolo):
     """ A decorator class for using Fisher information matrix (and KL
         divergence) as the regularization, in OO.Piccolo.
     """
