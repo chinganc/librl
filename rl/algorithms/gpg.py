@@ -265,9 +265,10 @@ class GeneralizedPolicyGradient(PolicyGradient):
             # update value functions
             EV0, EV1 = [], []
             for k, ro_exp in enumerate(ro_exps):
-                _, ev0, ev1 = self.aes[k].update(ro_exp)
-                EV0.append(ev0)
-                EV1.append(ev1)
+                if len(ro_exp)>0:
+                    _, ev0, ev1 = self.aes[k].update(ro_exp)
+                    EV0.append(ev0)
+                    EV1.append(ev1)
             if self._use_policy_as_expert:
                 _, ev0, ev1 = self.aes[-1].update(ro_pol)
 
