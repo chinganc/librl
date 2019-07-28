@@ -7,6 +7,26 @@ from rl.algorithms import GeneralizedPolicyGradient
 from rl.core.function_approximators.policies.tf2_policies import RobustKerasMLPGassian
 from rl.core.function_approximators.supervised_learners import SuperRobustKerasMLP
 
+
+import os
+def create_experts(path, name):
+    def load_expert(path, name):
+        expert = RobustKerasMLPGassian((1,), (1,), init_lstd=0, name='dummy')
+        expert.restore(path, name=name)
+        expert.name = 'expert'
+        return expert
+
+    for f in os.scandir(path):  # for a single expert
+        if f.name.endswith(name):
+            experts = [load_expert(path, name)]
+            break
+    else: # for a set of experts
+        experts = []
+        for d in os.scandir(path):
+            experts.append(load_expert(os.path.join(path,d.name,'saved_policies'), name))
+            experts[-1].name = 'expert_'+str(len(experts))
+    return experts
+
 def main(c):
 
     # Setup logz and save c
@@ -30,14 +50,12 @@ def main(c):
                               units=c['value_units'])
 
     # Define expert
-    expert = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
-                                   init_lstd=-1,
-                                   units=())  # size doesn't matter
-    expert.restore('./experts', name='cp1000_mlp_policy_64_seed_9')
-    expert.name = 'expert'
+    if c['use_experts']:
+        experts = create_experts(c['expert_path'],c['expert_name'])
+    else:
+        experts=None
 
     # Create algorithm
-    experts = [expert] if c['use_experts'] else None
     ro_by_n_samples = c['experimenter']['rollout_kwargs'] is not None
     alg = GeneralizedPolicyGradient(policy, vfn,
                                     experts=experts,
@@ -86,11 +104,13 @@ CONFIG = {
         'use_policy_as_expert': True,
         'max_n_batches_experts':100,
     },
-    'use_experts':True,
     'policy_units': (128,),
     'value_units': (256,256),
     'init_lstd': -1,
-  
+    #
+    'use_experts':True,
+    'expert_path':'./experts/cp_experts',
+    'expert_name':'policy_50', # 'cp1000_mlp_policy_64_seed_9',
 }
 
 if __name__ == '__main__':
