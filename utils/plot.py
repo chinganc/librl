@@ -108,7 +108,7 @@ def main():
     plt.grid(linestyle='--', linewidth='0.2')
     for line in legend.get_lines():
         line.set_linewidth(6.0)
-    output_dir = args.output_dir or arg.dir
+    output_dir = args.output_dir or args.dir
     output_filename = args.filename or '{}.pdf'.format(args.attr)
     output_path = os.path.join(output_dir, output_filename)
     plt.savefig(output_path)

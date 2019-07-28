@@ -37,13 +37,12 @@ class ContextualEpsilonGreedy(Bandit):
         vals = [m(xs, **kwargs) for m in self.models]
         vals = np.concatenate(vals, axis=1)
         k_star = np.argmax(vals, axis=1)
-        val_star = vals.flatten()[k_star+np.arange(N)*K]
-        val_star = np.reshape(val_star,[-1,1])
         if explore:
             ind = np.where(np.random.rand(N)<=self.eps)
             k_star[ind] = np.random.randint(0,K,size=(len(ind),))
             return k_star
         else:
+            val_star = np.amax(vals, axis=1).reshape([-1,1])
             return k_star, val_star
 
 
@@ -93,6 +92,7 @@ class GeneralizedPolicyGradient(PolicyGradient):
                  use_policy_as_expert=True,
                  sampling_rule='exponential', # define how random switching time is generated
                  cyclic_rate=2, # the rate of forward training, relative to the number of iterations
+                 ro_by_n_samples=False, # 'sample' or 'rollout'
                  **kwargs):
 
         if experts is None:
@@ -135,6 +135,7 @@ class GeneralizedPolicyGradient(PolicyGradient):
         self._sampling_rule = sampling_rule
         self._cyclic_rate = cyclic_rate
         self._avg_n_steps = PolMvAvg(1,weight=1)  # number of steps the policy can survive
+        self._ro_by_n_samples = ro_by_n_samples
         self._reset_pi_ro()
 
     # It alternates between two phases
@@ -154,6 +155,8 @@ class GeneralizedPolicyGradient(PolicyGradient):
         self._ind_ro_mix = []
 
         self._k_star = []  # for K-experts
+        self._n_samples_ro_mix = 0
+        self._n_samples_ro_pol = 0
 
     def pi_ro(self, ob, t, done):
         if t==0:  # make sure logp has been called
@@ -190,15 +193,20 @@ class GeneralizedPolicyGradient(PolicyGradient):
             rollout."""
         def treat_as_ro_pol():
             self._ind_ro_pol.append(self._n_ro)
-            self._ro_with_policy = False
+            self._n_samples_ro_pol+=len(obs)
+            if self._ro_by_n_samples:
+                self._ro_with_policy = self._n_samples_ro_pol<self._n_samples_ro_mix
+            else:
+                self._ro_with_policy = False
             return self.policy.logp(obs, acs)
         def treat_as_ro_mix():
             self._ind_ro_mix.append(self._n_ro)
-            self._ro_with_policy = True
+            self._n_samples_ro_mix+=len(obs)
             t_switch = self._t_switch[-1]
             k_star = self._k_star[-1]
             logp0 = self.policy.logp(obs[:t_switch], acs[:t_switch])
             logp1 = self.experts[k_star].logp(obs[t_switch:], acs[t_switch:])
+            self._ro_with_policy = True
             return np.concatenate([logp0, logp1])
 
         assert len(self._t_switch)==len(self._scale)==len(self._k_star)

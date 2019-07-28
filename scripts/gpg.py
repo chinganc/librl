@@ -38,9 +38,11 @@ def main(c):
 
     # Create algorithm
     experts = [expert] if c['use_experts'] else None
+    ro_by_n_samples = c['experimenter']['rollout_kwargs'] is not None
     alg = GeneralizedPolicyGradient(policy, vfn,
                                     experts=experts,
                                     horizon=mdp.horizon, gamma=mdp.gamma,
+                                    ro_by_n_samples=ro_by_n_samples,
                                     **c['algorithm'])
 
     # Let's do some experiments!
@@ -63,11 +65,11 @@ CONFIG = {
             'pretrain': True,
             'final_eval': False,
             'eval_freq': 1,
-            'save_freq': 5,
+            'save_freq': None,
         },
         'rollout_kwargs': {
             'min_n_samples': None, #2000,
-            'max_n_rollouts': 2,
+            'max_n_rollouts': 4, #None,
         },
     },
     'algorithm': {
