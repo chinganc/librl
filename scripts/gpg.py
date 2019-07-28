@@ -23,11 +23,11 @@ def main(c):
 
     # Define the learner
     policy = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
-                                   init_lstd=-1,
-                                   units=(128,128))
+                                   init_lstd=c['init_lstd'],
+                                   units=c['policy_units'])
 
-    vfn = SuperRobustKerasMLP(ob_shape, (1,), name='expert value function',
-                                   units=(256,256))
+    vfn = SuperRobustKerasMLP(ob_shape, (1,), name='value function',
+                              units=c['value_units'])
 
     # Define expert
     expert = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
@@ -87,6 +87,10 @@ CONFIG = {
         'max_n_batches_experts':100,
     },
     'use_experts':True,
+    'policy_units': (128,),
+    'value_units': (256,256),
+    'init_lstd': -1,
+  
 }
 
 if __name__ == '__main__':

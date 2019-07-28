@@ -23,11 +23,11 @@ def main(c):
 
     # Define the learner
     policy = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
-                                   init_lstd=-1,
-                                   units=(64,))
+                                   init_lstd=c['init_lstd'],
+                                   units=c['policy_units'])
 
     vfn = SuperRobustKerasMLP(ob_shape, (1,), name='value function',
-                              units=(128,128))
+                              units=c['value_units'])
     # Create algorithm
     alg = PolicyGradient(policy, vfn,
                          gamma=mdp.gamma, horizon=mdp.horizon,
@@ -69,6 +69,9 @@ CONFIG = {
         'n_warm_up_itrs':None,
         'n_pretrain_itrs':1,
     },
+    'policy_units': (64,),
+    'value_units': (128,128),
+    'init_lstd': -1,
 }
 
 

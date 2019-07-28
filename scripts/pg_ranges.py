@@ -1,7 +1,7 @@
 from scripts import ranges as R
 
 range_common = [
-    [['seed'], [x * 100 for x in range(16)]],
+    [['seed'], [x * 100 for x in range(4)]],
 ]
 
 range_lambd = [
