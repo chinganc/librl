@@ -104,7 +104,7 @@ CONFIG = {
         'use_policy_as_expert': True,
         'max_n_batches_experts':100,
     },
-    'policy_units': (128,),
+    'policy_units': (128,128),
     'value_units': (256,256),
     'init_lstd': -1,
     #
