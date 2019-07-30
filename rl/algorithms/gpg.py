@@ -320,8 +320,9 @@ class GeneralizedPolicyGradient(PolicyGradient):
         logz.log_tabular('stepsize', self.learner.stepsize)
         logz.log_tabular('std', np.mean(np.exp(2.*self.policy.lstd)))
         logz.log_tabular('g_norm', np.linalg.norm(g))
-        logz.log_tabular('ExplainVarianceBefore(AE)', ev0)
-        logz.log_tabular('ExplainVarianceAfter(AE)', ev1)
+        if sel._use_policy_as_expert:
+            logz.log_tabular('ExplainVarianceBefore(AE)', ev0)
+            logz.log_tabular('ExplainVarianceAfter(AE)', ev1)
         logz.log_tabular('MeanExplainVarianceBefore(AE)', np.mean(EV0))
         logz.log_tabular('MeanExplainVarianceAfter(AE)', np.mean(EV1))
         logz.log_tabular('NumberOfExpertRollouts', np.sum([len(ro) for ro in ro_exps]))
