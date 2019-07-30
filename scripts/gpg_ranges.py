@@ -36,7 +36,7 @@ range_aggrevate = [
     [['algorithm', 'use_policy_as_expert'], [False]],
 ]
 
-range_uniform = R.merge_ranges(range_common, range_uniform)
+range_aggrevate = R.merge_ranges(range_common, range_aggrevate)
 
 
 
