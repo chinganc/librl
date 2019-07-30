@@ -1,6 +1,8 @@
 import argparse, copy, importlib
 import multiprocessing as mp
 import itertools
+import os
+import json
 
 try: # Restrict TensorFlow to use limited memory
     import tensorflow as tf
@@ -17,8 +19,8 @@ try: # Restrict TensorFlow to use limited memory
 except:
     pass
 
+# `rl` has to loaded after tesorflow has been configured.
 from rl.core.utils.misc_utils import zipsame, dict_update
-
 
 def get_combs_and_keys(ranges):
 
@@ -57,19 +59,23 @@ def load_config(script_name, config_name):
     config_name = 'config_'+config_name
     try:  # try the user-provided version
         config = load_attr('scripts.'+script_name+'_configs', config_name)
-    except:
+    except AttributeError:
         try:  # try the default ones
             config = load_attr('scripts.'+script_name, config_name)
-        except:
+        except AttributeError:
             try:  # try to compose one
                 config = copy.deepcopy(get_CONFIG(script_name))
                 config_part = load_attr('scripts.configs', config_name)
                 dict_update(config, config_part)
-            except:
+            except AttributeError:
                 print('Fails to create configs from config_name.')
                 raise ValueError
     return config
 
+def save_range(r, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+    with open(os.path.join(output_dir, "range.json"), 'w') as out:
+        out.write(json.dumps(r, separators=(',\n', '\t:\t'), sort_keys=False))
 
 def main(script_name, range_names, n_processes=-1, config_name=None):
     """ Run the `main` function in script_name.py in parallel with
@@ -99,14 +105,15 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
     template = load_config(script_name, config_name)
     try:
         script_ranges = importlib.import_module('scripts.'+script_name+'_ranges')
-    except:
+    except AttributeError:
         script_ranges = importlib.import_module('scripts.ranges')
 
     # Create the configs for all the experiments.
     tps = []
     for range_name in range_names:
-        ranges = getattr(script_ranges, 'range_'+range_name)
-        combs, keys = get_combs_and_keys(ranges)
+        r = getattr(script_ranges, 'range_'+range_name)
+        save_range(r, template['top_log_dir'])
+        combs, keys = get_combs_and_keys(r)
         print('Total number of combinations: {}'.format(len(combs)))
         for _, comb in enumerate(combs):
             tp = copy.deepcopy(template)
