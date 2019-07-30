@@ -21,8 +21,8 @@ class Bandit:
 
 class ContextualEpsilonGreedy(Bandit):
 
-    def __init__(self, x_shape,  models, eps):
-        self.x_shape = x_shape
+    def __init__(self, x_shape, models, eps):
+        self.x_shape = x_shape # for online
         self.eps = eps
         self.models = models
 
@@ -46,18 +46,45 @@ class ContextualEpsilonGreedy(Bandit):
             return k_star, val_star
 
 
+class Uniform(Bandit):
+
+    def __init__(self, x_shape, models):
+        self.x_shape = x_shape
+        self.models = models
+
+    def update(self, k, *args, **kwargs):
+        return self.models[k].update(*args, **kwargs)
+
+    @online_compatible
+    def decision(self, xs, explore=False, **kwargs):
+        # epsilon-greedy choice
+        N = len(xs)
+        K = len(self.models)
+        vals = [m(xs, **kwargs) for m in self.models]
+        vals = np.concatenate(vals, axis=1)
+        k_star = np.random.randint(0,K,(N,))
+        if explore:
+            return k_star
+        else:
+            val_star = vals.flatten()[k_star+np.arange(N)*K].reshape([-1,1])
+            return k_star, val_star
+
+
 class MaxValueFunction(SupervisedLearner):
     """ Statewise maximum over a set of value functions.
 
         It uses a contextual bandit algoithm to help learn the best expert to
         follow at a visited state
     """
-    def __init__(self, vfns, eps=0.5, name='max_vfn'):
+    def __init__(self, vfns, eps=0.5, uniform=False, name='max_vfn'):
         assert all([v.x_shape==vfns[0].x_shape for v in vfns])
         assert all([v.y_shape==vfns[0].y_shape for v in vfns])
         assert all([isinstance(v, SupervisedLearner) for v in vfns])
         super().__init__(vfns[0].x_shape, vfns[0].y_shape, name=name)
-        self.bandit = ContextualEpsilonGreedy(self.x_shape, vfns, eps=eps)
+        if uniform:
+            self.bandit = Uniform(self.x_shape, vfns)
+        else:
+            self.bandit = ContextualEpsilonGreedy(self.x_shape, vfns, eps=eps)
         self.vfns = vfns
 
     def predict(self, xs, **kwargs):
@@ -88,6 +115,7 @@ class GeneralizedPolicyGradient(PolicyGradient):
     def __init__(self, policy, vfn,
                  experts=None,
                  eps=0.5,  # for episilon greedy
+                 uniform=False,
                  max_n_batches_experts=1000,  # for the experts
                  use_policy_as_expert=True,
                  sampling_rule='exponential', # define how random switching time is generated
@@ -106,7 +134,7 @@ class GeneralizedPolicyGradient(PolicyGradient):
             experts += [policy]
             vfns += [vfn]
         self.experts = experts
-        vfn_max = MaxValueFunction(vfns, eps=eps)  # max over values
+        vfn_max = MaxValueFunction(vfns, eps=eps, uniform=uniform)  # max over values
         if use_policy_as_expert:
             print('Using {} experts, including its own policy'.format(len(vfns)))
         else:

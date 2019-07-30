@@ -52,6 +52,8 @@ def main(c):
     # Define expert
     if c['use_experts']:
         experts = create_experts(c['expert_path'],c['expert_name'])
+        if c['n_experts'] is not None and len(expert)>c['n_experts']:
+            expert = experts[c['n_experts']]
     else:
         experts=None
 
@@ -101,6 +103,7 @@ CONFIG = {
         'n_pretrain_itrs':5,
         # new kwargs
         'eps':0.5,
+        'uniform':True,
         'use_policy_as_expert': True,
         'max_n_batches_experts':100,
     },
@@ -110,7 +113,8 @@ CONFIG = {
     #
     'use_experts':True,
     'expert_path':'./experts/cp_experts',
-    'expert_name':'policy_50', # 'cp1000_mlp_policy_64_seed_9',
+    'expert_name':'policy_best', # 'cp1000_mlp_policy_64_seed_9',
+    'n_experts': None,
 }
 
 if __name__ == '__main__':
