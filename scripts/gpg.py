@@ -91,7 +91,7 @@ CONFIG = {
         },
         'rollout_kwargs': {
             'min_n_samples': None, #2000,
-            'max_n_rollouts': 8, #None,
+            'max_n_rollouts': 4, #None,
         },
     },
     'algorithm': {
