@@ -49,11 +49,13 @@ def main(c):
     vfn = SuperRobustKerasMLP(ob_shape, (1,), name='value function',
                               units=c['value_units'])
 
-    # Define expert
+    # Define experts
     if c['use_experts']:
         experts = create_experts(c['expert_path'],c['expert_name'])
-        if c['n_experts'] is not None and len(expert)>c['n_experts']:
-            expert = experts[c['n_experts']]
+        if c['n_experts'] is not None and len(experts)>c['n_experts']:
+            experts = experts[:c['n_experts']]
+        if len(experts)<1: 
+            experts = None
     else:
         experts=None
 
@@ -89,7 +91,7 @@ CONFIG = {
         },
         'rollout_kwargs': {
             'min_n_samples': None, #2000,
-            'max_n_rollouts': 4, #None,
+            'max_n_rollouts': 8, #None,
         },
     },
     'algorithm': {
