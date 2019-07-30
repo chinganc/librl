@@ -54,7 +54,7 @@ def main(c):
         experts = create_experts(c['expert_path'],c['expert_name'])
         if c['n_experts'] is not None and len(experts)>c['n_experts']:
             experts = experts[:c['n_experts']]
-        if len(experts)<1: 
+        if len(experts)<1:
             experts = None
     else:
         experts=None
@@ -105,7 +105,7 @@ CONFIG = {
         'n_pretrain_itrs':5,
         # new kwargs
         'eps':0.5,
-        'uniform':True,
+        'uniform':False,
         'use_policy_as_expert': True,
         'max_n_batches_experts':100,
     },
@@ -114,7 +114,7 @@ CONFIG = {
     'init_lstd': -1,
     #
     'use_experts':True,
-    'expert_path':'./experts/cp_experts',
+    'expert_path':'./experts/cp_experts', #'./experts'
     'expert_name':'policy_best', # 'cp1000_mlp_policy_64_seed_9',
     'n_experts': None,
 }
