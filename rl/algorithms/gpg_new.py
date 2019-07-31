@@ -106,7 +106,7 @@ class GeneralizedPolicyGradientNew(GeneralizedPolicyGradient):
             self._avg_n_steps.update(np.mean([len(r) for r in ro_pol]))
 
         with timed('Compute policy gradient'):
-            g = self.oracle.grad(self.policy.variable)
+            g = self.oracle.grad(self.policy.variable) * (1-self.ae.lambd)
             g += self.oracle_cor.grad(self.policy.variable) * self.ae.lambd
 
         with timed('Policy update'):
