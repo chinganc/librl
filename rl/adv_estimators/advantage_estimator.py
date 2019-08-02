@@ -18,7 +18,7 @@ class AdvantageEstimator(FunctionApproximator):
             `advs`, `qfns`, `vfns`
     """
     # NOTE We overload the interfaces here to work with policies and rollouts.
-    # This class can no longer use as a wrapper of usual `FunctionApproximator`.
+    # This class can no longer act as a wrapper of usual `FunctionApproximator`.
     def __init__(self, ref_policy, name='advantage_func_app',
                  max_n_rollouts=float('Inf'),  # number of samples (i.e. rollouts) to keep
                  max_n_batches=0,  # number of batches (i.e. iterations) to keep
@@ -39,6 +39,7 @@ class AdvantageEstimator(FunctionApproximator):
     def max_n_rollouts(self):
         return self.buffer.max_n_samples
 
+    # Methods require implementation
     @abstractmethod
     def update(self, ro, *args, **kwargs):
         """ based on rollouts """
@@ -95,7 +96,7 @@ class ValueBasedAE(AdvantageEstimator):
             self._pe = PE.PerformanceEstimate( # a helper function
                         gamma=gamma, lambd=lambd,delta=delta)
         else:
-            self._pe = PE.SimplePerformanceEstimate( # a helper function
+            self._pe = PE.SimplePerformanceEstimate( # a faster version
                         gamma=gamma, lambd=lambd, delta=delta)
 
         # policy evaluation
@@ -110,6 +111,7 @@ class ValueBasedAE(AdvantageEstimator):
         self.vfn._dataset.max_n_samples=0  # since we aggregate rollouts here
         self.vfn._dataset.max_n_batches=0
 
+        # initialize the replay buffer
         super().__init__(ref_policy, name=name, **kwargs)
 
     @property
