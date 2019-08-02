@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 from scripts.utils import parser as ps
 from rl import experimenter as Exp
-from rl.algorithms import GeneralizedPolicyGradient
+from rl.algorithms import OptimisticPolicyGradient
 from rl.core.function_approximators.policies.tf2_policies import RobustKerasMLPGassian
 from rl.core.function_approximators.supervised_learners import SuperRobustKerasMLP
 
@@ -61,7 +61,7 @@ def main(c):
 
     # Create algorithm
     ro_by_n_samples = c['experimenter']['rollout_kwargs'] is not None
-    alg = GeneralizedPolicyGradient(policy, vfn,
+    alg = OptimisticPolicyGradient(policy, vfn,
                                     experts=experts,
                                     horizon=mdp.horizon, gamma=mdp.gamma,
                                     ro_by_n_samples=ro_by_n_samples,
@@ -73,7 +73,7 @@ def main(c):
 
 
 CONFIG = {
-    'top_log_dir': 'log_gpg',
+    'top_log_dir': 'log_opg',
     'exp_name': 'cp',
     'seed': 0,
     'mdp': {

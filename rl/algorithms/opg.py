@@ -19,6 +19,7 @@ class Bandit:
         """ Return the chosen arm. """
         pass
 
+
 class ContextualEpsilonGreedy(Bandit):
 
     def __init__(self, x_shape, models, eps):
@@ -109,7 +110,7 @@ class MaxValueFunction(SupervisedLearner):
         [setattr(v,'variable',val) for v, val in zip(self.vfns, vals)]
 
 
-class GeneralizedPolicyGradient(PolicyGradient):
+class OptimisticPolicyGradient(PolicyGradient):
     """ Use max_k V^k as the value function. It overwrites the behavior policy. """
 
     def __init__(self, policy, vfn,
@@ -144,6 +145,7 @@ class GeneralizedPolicyGradient(PolicyGradient):
         super().__init__(policy, vfn_max, **kwargs)
 
         self.ae.update = None  # its update should not be called
+
         # Create aes for manually updating value functions
         create_ae = partial(type(self.ae), gamma=self.ae.gamma,
                     delta=self.ae.delta, lambd=self.ae.lambd, use_is=self.ae.use_is)
@@ -155,7 +157,7 @@ class GeneralizedPolicyGradient(PolicyGradient):
                 aes.append(create_ae(e, v, max_n_batches=max_n_batches_experts))
         self.aes = aes  # of the experts
 
-        # for sampling random switching time
+        # For sampling random switching time
         assert self.ae.horizon<float('Inf') or gamma<1.
         self._horizon = self.ae.horizon
         self._gamma = self.ae.gamma  # discount factor
@@ -261,8 +263,6 @@ class GeneralizedPolicyGradient(PolicyGradient):
                     ro = gen_ro(pi_exp, logp=expert.logp)
                     self.aes[k].update(ro)
                     self.policy.update(ro['obs_short'])
-                    #if self._use_policy_as_expert and k==len(self.experts)-1:
-                    #    self.oracle.update(ro, update_vfn=False, policy=self.policy)
         self._reset_pi_ro()
 
     def update(self, ro):
@@ -288,9 +288,11 @@ class GeneralizedPolicyGradient(PolicyGradient):
                 del ro_exps[-1]
             ro_exps = [Dataset(ro_exp) for ro_exp in ro_exps]
             ro_pol = Dataset(ro_pol)
-            # update oracle
+
+            # Update oracle
             self.oracle.update(ro_pol, update_vfn=False, policy=self.policy)
-            # update value functions
+
+            # Update value functions (after oracle update so it unbiased)
             EV0, EV1 = [], []
             for k, ro_exp in enumerate(ro_exps):
                 if len(ro_exp)>0:
@@ -300,7 +302,7 @@ class GeneralizedPolicyGradient(PolicyGradient):
             if self._use_policy_as_expert:
                 _, ev0, ev1 = self.aes[-1].update(ro_pol)
 
-            # for adaptive sampling
+            # For adaptive sampling
             self._avg_n_steps.update(np.mean([len(r) for r in ro_pol]))
 
         with timed('Compute policy gradient'):
@@ -316,7 +318,7 @@ class GeneralizedPolicyGradient(PolicyGradient):
                 self.learner.update(g)
             self.policy.variable = self.learner.x
 
-        # log
+        # Log
         logz.log_tabular('stepsize', self.learner.stepsize)
         logz.log_tabular('std', np.mean(np.exp(2.*self.policy.lstd)))
         logz.log_tabular('g_norm', np.linalg.norm(g))
@@ -328,6 +330,6 @@ class GeneralizedPolicyGradient(PolicyGradient):
         logz.log_tabular('NumberOfExpertRollouts', np.sum([len(ro) for ro in ro_exps]))
         logz.log_tabular('NumberOfLearnerRollouts', len(ro_pol))
 
-        # reset
+        # Reset
         self._reset_pi_ro()
         self._itr+=1
