@@ -25,18 +25,25 @@ export PYTHONPATH="{PYTHONPATH}:[the parent folder of rlfamily repo]"
 ```
 
 
-#### Install PyDart2 ####
-Installing PyDart2 through pip does not work. So we install it manually.
+#### Install Dart ####
+The Ubuntu package is too new for PyDart2, so we install it manually. 
 
-Install requirements:
+First install the requirements following the instructions at https://dartsim.github.io/install_dart_on_ubuntu.html. 
+We compile and install it manually.
 ```
-sudo apt-add-repository ppa:dartsim
-sudo apt-get update
-sudo apt-get install libdart6-all-dev
-sudo apt-get install swig python3-pip python3-pyqt4 python3-pyqt4.qtopengl
+git clone git://github.com/dartsim/dart.git
+cd dart
+git checkout tags/v6.7.2
+mkdir build
+cd build
+cmake ..
+make -j4
+sudo make install
+echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib:/usr/lib:/usr/local/lib" >> ~/.bashrc
 ```
-Some of the requirement installation may incur errors in Ubuntu 18.04. These can likely be ignored. 
-Download, compile, and install
+
+#### Install PyDart2 ####
+Installing PyDart2 through pip does not work, so we install it manually.
 ```
 git clone https://github.com/sehoonha/pydart2.git
 cd pydart2
