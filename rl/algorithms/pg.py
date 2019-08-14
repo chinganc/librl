@@ -1,5 +1,5 @@
 import numpy as np
-from rl.algorithms.algorithm import Algorithm
+from rl.algorithms.algorithm import Algorithm, PolicyAgent
 from rl.algorithms.utils import get_learner
 from rl.adv_estimators.advantage_estimator import ValueBasedAE
 from rl.oracles.rl_oracles import ValueBasedPolicyGradient
@@ -23,6 +23,7 @@ class PolicyGradient(Algorithm):
         assert isinstance(policy, Policy)
         self.vfn = vfn
         self._policy = policy
+        self._agent = PolicyAgent(self._policy)
 
         # Create online learner.
         scheduler = ol.scheduler.PowerScheduler(lr)
@@ -45,23 +46,17 @@ class PolicyGradient(Algorithm):
     def policy(self):
         return self._policy
 
-    def pi(self, ob, t, done):
-        return self.policy(ob)
-
-    def pi_ro(self, ob, t, done):
-        return self.policy(ob)
-
-    def logp(self, obs, acs):
-        return self.policy.logp(obs, acs)
+    def agent(self, mode):
+        return self._agent
 
     def pretrain(self, gen_ro):
         with timed('Pretraining'):
             for _ in range(self._n_pretrain_itrs):
-                ro = gen_ro(self.pi_ro, logp=self.logp)
+                ro, _ = gen_ro(self._agent)
                 self.oracle.update(ro, self.policy)
                 self.policy.update(xs=ro['obs_short'])
 
-    def update(self, ro):
+    def update(self, ro, agent):
         # Update input normalizer for whitening
         if self._itr < self._n_warm_up_itrs:
             self.policy.update(xs=ro['obs_short'])
@@ -90,3 +85,5 @@ class PolicyGradient(Algorithm):
         logz.log_tabular('ExplainVarianceAfter(AE)', ev1)
 
         self._itr +=1
+
+

@@ -1,18 +1,22 @@
 import time
 import numpy as np
+from functools import partial
 from rl.core.datasets import Dataset
-
 
 class MDP:
     """ A wrapper for gym env. """
-    def __init__(self, env, gamma=1.0, horizon=None, use_time_info=None, v_end=None):
-        self.env = env
+    def __init__(self, env, gamma=1.0, horizon=None, use_time_info=True, v_end=None):
+        self.env = env  # a gym-like env
         self.gamma = gamma
         if horizon is None:
             horizon = float('Inf')
         self.horizon = horizon
-        self.v_end = v_end or (lambda ob, done : 0.)  # terminal reward
-        self.use_time_info = lambda t: t/self.horizon
+        self.v_end = v_end
+        self.use_time_info = use_time_info
+        self.t_state = self._t_state if use_time_info else None
+
+    def _t_state(self, t):
+        return t/self.horizon
 
     @property
     def ob_shape(self):
@@ -22,22 +26,22 @@ class MDP:
     def ac_shape(self):
         return self.env.action_space.shape
 
-    def run(self, pi, logp=None,
+    def run(self, agent,
                   min_n_samples=None, max_n_rollouts=None,
                   with_animation=False):
-        """ `pi` takes (ob, time, done) as input"""
-        if logp is None:  # viewed as deterministic
-            logp = lambda obs, acs: np.zeros((len(acs),1))
-        return generate_rollout(pi, logp, self.env, v_end=self.v_end,
-                                use_time_info=self.use_time_info,
-                                min_n_samples=min_n_samples,
-                                max_n_rollouts=max_n_rollouts,
-                                max_rollout_len=self.horizon,
-                                with_animation=with_animation)
+        ro =  generate_rollout(agent.pi, agent.logp, self.env,
+                               callback=agent.callback,
+                               v_end=self.v_end,
+                               t_state=self.t_state,
+                               min_n_samples=min_n_samples,
+                               max_n_rollouts=max_n_rollouts,
+                               max_rollout_len=self.horizon,
+                               with_animation=with_animation)
+        return ro, agent
 
 
-class Rollout(object):
-    """ A container for storing statistics along a trajectory. 
+class Rollout:
+    """ A container for storing statistics along a trajectory.
 
         The length of a rollout is determined by the number actions applied.
         The observations/states/rewards can contain in additional the
@@ -45,21 +49,20 @@ class Rollout(object):
         actions.)
 
     """
-    def __init__(self, obs, acs, rws, sts, done, logp):
+    def __init__(self, obs, acs, rws,  done, logp):
         """
-            `obs`, `acs`, `rws`, `sts`  are lists of floats
+            `obs`, `acs`, `rws`  are lists of floats
             `done` is bool
             `logp` is a callable function or an nd.array
 
-            `obs`, `sts`, `rws` can be of length of `acs` or one element longer if they contain the
-            terminal observation/state/reward.
+            `obs`, `rws` can be of length of `acs` or one element longer if they contain the
+            terminal observation/reward.
         """
-        assert len(obs)==len(sts)==len(rws)
+        assert len(obs)==len(rws)
         assert (len(obs) == len(acs)+1) or (len(obs)==len(acs))
         self.obs = np.array(obs)
         self.acs = np.array(acs)
         self.rws = np.array(rws)
-        self.sts = np.array(sts)
         self.dns = np.zeros((len(self)+1,))
         self.dns[-1] = float(done)
         if isinstance(logp, np.ndarray):
@@ -71,10 +74,6 @@ class Rollout(object):
     @property
     def obs_short(self):
         return self.obs[:len(self),:]
-
-    @property
-    def sts_short(self):
-        return self.sts[:len(self),:]
 
     @property
     def rws_short(self):
@@ -91,15 +90,15 @@ class Rollout(object):
         obs=self.obs[key]
         acs=self.acs[key]
         rws=self.rws[key]
-        sts=self.sts[key]
         logp=self.lps[key]
         done = bool(self.dns[key][-1])
-        return Rollout(obs=obs, acs=acs, rws=rws, sts=sts,
-                       done=done,logp=logp)
+        return Rollout(obs=obs, acs=acs, rws=rws, done=done,logp=logp)
 
 
-def generate_rollout(pi, logp, env, v_end,
-                     use_time_info=None,
+def generate_rollout(pi, logp, env,
+                     callback=None,
+                     v_end=None,
+                     t_state=None,
                      min_n_samples=None, max_n_rollouts=None,
                      max_rollout_len=None,
                      with_animation=False):
@@ -130,7 +129,7 @@ def generate_rollout(pi, logp, env, v_end,
             `v_end`: the terminal value when the episoide ends (a callable
                      function of observation and done)
 
-            `use_time_info`: a function that maps time to desired features
+            `t_state`: a function that maps time to desired features
 
             `max_rollout_len`: the maximal length of a rollout (i.e. the problem's horizon)
 
@@ -142,50 +141,38 @@ def generate_rollout(pi, logp, env, v_end,
 
     """
 
+    # Configs
     assert (min_n_samples is not None) or (max_n_rollouts is not None)  # so we can stop
     min_n_samples = min_n_samples or float('Inf')
     max_n_rollouts = max_n_rollouts or float('Inf')
     max_rollout_len = max_rollout_len or float('Inf')
     max_rollout_len = min(env._max_episode_steps, max_rollout_len)
-    n_samples = 0
-    rollouts = []
 
-    # Try to retrieve the underlying state, if available.
-    get_state = None
-    if hasattr(env, 'env'):
-        if hasattr(env.env, 'state'):
-            get_state = lambda: env.env.state  # openai gym env, which is a TimeLimit object
-    elif hasattr(env, 'state'):
-        get_state = lambda: env.state
 
-    # Augment state/observation with time information, if needed.
-    if use_time_info is not None:
-        post_process = lambda x,t: np.concatenate([x.flatten(), (use_time_info(t),)])
-    else:
-        post_process = lambda x,t :x
+    if v_end is None:
+        def v_end(ob, dn): return 0.
+
+    def post_process(x, t):
+        # Augment observation with time information, if needed.
+        return x if t_state is None else np.concatenate([x.flatten(), (t_state(t),)])
 
     def step(ac, tm):
         ob, rw, dn, info = env.step(ac)  # current reward, next ob and dn
-        st = ob if get_state is None else get_state()
-        # may need to augment observatino and state with time
-        ob = post_process(ob, tm)
-        st = post_process(st, tm)
-        return st, ob, rw, dn, info
+        return post_process(ob, tm), rw, dn, info
 
     def reset(tm):
         ob = env.reset()
-        st = ob if get_state is None else get_state()
-        ob = post_process(ob, tm)
-        st = post_process(st, tm)
-        return st, ob
+        return post_process(ob, tm)
 
     # Start trajectory-wise rollouts.
+    n_samples = 0
+    rollouts = []
     while True:
-        animate_this_rollout = len(rollouts) == 0 and with_animation
-        obs, acs, rws, sts = [], [], [], []
+        animate_this_rollout = len(rollouts)==0 and with_animation
+        obs, acs, rws, = [], [], []
         tm = 0  # time step
         dn = False
-        st, ob = reset(tm)
+        ob = reset(tm)
         # each trajectory
         while True:
             if animate_this_rollout:
@@ -195,24 +182,26 @@ def generate_rollout(pi, logp, env, v_end,
             if ac is None:
                 dn = False  # the learner decides to stop collecting data
                 break
-            # ob, st, ac, rw are at tm
+            # ob, ac, rw are at tm
             obs.append(ob)
-            sts.append(st)
             acs.append(ac)
-            st, ob, rw, dn, _ = step(ac, tm)
+            ob, rw, dn, _ = step(ac, tm)
             rws.append(rw)
             tm += 1
             if dn or tm >= max_rollout_len:
                 break # due to steps limit or entering an absorbing state
-        # save the terminal state/observation/reward
-        sts.append(st)
+        # save the terminal observation/reward
         obs.append(ob)
         rws.append(v_end(ob, dn))  # terminal reward
         # end of one rollout (`logp` is called once)
-        rollout = Rollout(obs=obs, acs=acs, rws=rws, sts=sts, done=dn, logp=logp)
+        rollout = Rollout(obs=obs, acs=acs, rws=rws, done=dn, logp=logp)
+        if callback is not None:
+            callback(rollout)
         rollouts.append(rollout)
         n_samples += len(rollout)
         if (n_samples >= min_n_samples) or (len(rollouts) >= max_n_rollouts):
             break
     ro = Dataset(rollouts)
     return ro
+
+

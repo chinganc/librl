@@ -1,8 +1,21 @@
 from abc import abstractmethod, ABC
 from rl.core.online_learners import OnlineLearner
 
+
 class Algorithm(ABC):
     """ An abtract interface required by Experimenter. """
+
+    # For update
+    @abstractmethod
+    def pretrain(self, gen_ro):
+        """ Pretrain the policy.
+
+            `gen_ro` takes an Agent and returns rollouts as a Dataset and the
+            Agent that collects it.
+        """
+    @abstractmethod
+    def update(self, ro, agent):
+        """ Update the policy based on rollouts. """
 
     # Outcome of an algorithm
     @property
@@ -10,43 +23,42 @@ class Algorithm(ABC):
     def policy(self):
         """ Return a Policy object which is the outcome of the algorithm. """
 
-    # For update
-    @abstractmethod
-    def pretrain(self, gen_ro):
-        """ Pretrain the policy. """
-
-    @abstractmethod
-    def update(self, ro):
-        """ Update the policy based on rollouts. """
-
-    # For performance evaluation
-    @abstractmethod
-    def pi(self, ob, t, done):
-        """ Target policy used in online querying. """
-
     # For data collection
     @abstractmethod
-    def pi_ro(self, ob, t, done):
-        """ Behavior policy used in online querying. """
+    def agent(self, mode):
+        """ Return a picklable Agent for data collection.
+
+            `mode` is either 'behavior' or 'target'.
+        """
+
+class Agent(ABC):
+
+    @abstractmethod
+    def pi(self, ob, t, done):
+        """ Policy used in online querying. """
 
     @abstractmethod
     def logp(self, obs, acs):
-        """ Log probability of the behavior policy, which will be called at
-            end, once, of each rollout.
+        """ Log probability of the behavior policy.
 
             Need to support batch querying. """
 
-    # For parallel data collection
-    def child_alg(self):
-        """ Return an Algorithm for parallel data collection. """
-        raise NotImplementedError
-
-    def batch_update(self, batch_ro):
-        """ Perform `update` given results collected by child algorithms.
-
-            `batch_ro` is a list of dicts, in which each dict has key `child`
-            and key `ro`.
-        """
-        raise NotImplementedError
+    @abstractmethod
+    def callback(self, ro):
+        """ A method called at the end of each rollout. """
 
 
+class PolicyAgent(Agent):
+    """ A trivial example based on Policy. """
+
+    def __init__(self, policy):
+        self.policy = policy
+
+    def pi(self, ob, t, done):
+        return self.policy(ob)
+
+    def logp(self, obs, acs):
+        return self.policy.logp(obs, acs)
+
+    def callback(self, ro):
+        pass

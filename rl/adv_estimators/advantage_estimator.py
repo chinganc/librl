@@ -63,7 +63,7 @@ class AdvantageEstimator(FunctionApproximator):
         else:
             d = self.__dict__
         d = dict(d)
-        del d['_ref_policy']
+        del d['ref_policy']
         return d
 
 
