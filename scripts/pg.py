@@ -46,6 +46,7 @@ CONFIG = {
         'envid': 'DartCartPole-v1',
         'horizon': 1000,  # the max length of rollouts in training
         'gamma': 1.0,
+        'n_processes':1,
     },
     'experimenter': {
         'run_kwargs': {

@@ -24,7 +24,6 @@ class PolicyGradient(Algorithm):
         assert isinstance(policy, Policy)
         self.vfn = vfn
         self._policy = policy
-        self._agent = PolicyAgent(self._policy)
 
         # Create online learner.
         scheduler = ol.scheduler.PowerScheduler(lr)
@@ -48,20 +47,19 @@ class PolicyGradient(Algorithm):
         return self._policy
 
     def agent(self, mode):
-        return self._agent
+        return PolicyAgent(self._policy)
 
     def pretrain(self, gen_ro):
         with timed('Pretraining'):
             for _ in range(self._n_pretrain_itrs):
-                ros, _ = gen_ro(self._agent)
-                ro = functools.reduce(lambda x,y: x+y, ros)
+                ros, _ = gen_ro(self.agent('behavior'))
+                ro = self.merge(ros)
                 self.oracle.update(ro, self.policy)
                 self.policy.update(xs=ro['obs_short'])
 
     def update(self, ros, agents):
-
         # Aggregate data
-        ro = functools.reduce(lambda x,y: x+y, ros)
+        ro = self.merge(ros)
 
         # Update input normalizer for whitening
         if self._itr < self._n_warm_up_itrs:
@@ -92,4 +90,8 @@ class PolicyGradient(Algorithm):
 
         self._itr +=1
 
+    @staticmethod
+    def merge(ros):
+        """ Merge a list of Dataset instances. """
+        return functools.reduce(lambda x,y: x+y, ros)
 

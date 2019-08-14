@@ -2,21 +2,35 @@ import time
 import numpy as np
 from functools import partial
 from rl.core.datasets import Dataset
+from rl.core.utils.mp_utils import Worker, JobRunner
 
 class MDP:
     """ A wrapper for gym env. """
-    def __init__(self, env, gamma=1.0, horizon=None, use_time_info=True, v_end=None):
+    def __init__(self, env, gamma=1.0, horizon=None, use_time_info=True, v_end=None,
+                 n_processes=1, min_ro_per_process=1):
         self.env = env  # a gym-like env
         self.gamma = gamma
-        if horizon is None:
-            horizon = float('Inf')
+        horizon = float('Inf') if horizon is None else horizon
         self.horizon = horizon
-        self.v_end = v_end
         self.use_time_info = use_time_info
-        self.t_state = self._t_state if use_time_info else None
 
-    def _t_state(self, t):
-        return t/self.horizon
+        # configs for rollouts
+        t_state = partial(self.t_state, horizon=horizon) if use_time_info else None
+        self._gen_ro = partial(self.generate_rollout,
+                               env=self.env,
+                               v_end=v_end,
+                               t_state=t_state,
+                               max_rollout_len=horizon)
+        self._n_processes = n_processes
+        self._min_ro_per_process = int(max(1, min_ro_per_process))
+
+    def __del__(self):
+        if hasattr(self, '_job_runner'):
+            self._job_runner.stop()
+
+    @staticmethod
+    def t_state(t, horizon):
+        return t/horizon
 
     @property
     def ob_shape(self):
@@ -26,19 +40,40 @@ class MDP:
     def ac_shape(self):
         return self.env.action_space.shape
 
-    def run(self, agent,
-                  min_n_samples=None, max_n_rollouts=None,
-                  with_animation=False):
-        ro =  generate_rollout(agent.pi, agent.logp, self.env,
-                               callback=agent.callback,
-                               v_end=self.v_end,
-                               t_state=self.t_state,
-                               min_n_samples=min_n_samples,
-                               max_n_rollouts=max_n_rollouts,
-                               max_rollout_len=self.horizon,
-                               with_animation=with_animation)
-        return ro, agent
+    def run(self, agent, min_n_samples=None, max_n_rollouts=None,
+            with_animation=False):
+        if self._n_processes>1: # parallel data collection
+            if not hasattr(self, '_job_runner'):  # start the process
+                workers = [Worker(method=self._gen_ro) for _ in range(self._n_processes)]
+                self._job_runner = JobRunner(workers)
+            # determine rollout configs
+            N = self._n_processes  # number of jobs
+            if max_n_rollouts is not None:
+                N = int(np.ceil(max_n_rollouts/self._min_ro_per_process))
+                max_n_rollouts = self._min_ro_per_process
+            if min_n_samples is not None:
+                min_n_samples = int(min_n_samples/N)
+            kwargs = {'min_n_samples':min_n_samples,
+                      'max_n_rollouts':max_n_rollouts,
+                      'with_animation':False}
+            # start data collection
+            job = ((agent,), kwargs)
+            [self._job_runner.put(job) for _ in range(N)]
+            res = self._job_runner.aggregate(N)
+            ros, agents = [r[0] for r in res], [r[1] for r in res]
+        else:
+            kwargs = {'min_n_samples':min_n_samples,
+                      'max_n_rollouts':max_n_rollouts,
+                      'with_animation':with_animation}
+            ro, agent = self._gen_ro(agent, **kwargs)
+            ros, agents = [ro], [agent]
+        return ros, agents
 
+    @staticmethod
+    def generate_rollout(agent, *args, **kwargs):  # a wrapper
+        ro = generate_rollout(agent.pi, agent.logp, *args,
+                            callback=agent.callback, **kwargs)
+        return ro, agent
 
 class Rollout:
     """ A container for storing statistics along a trajectory.

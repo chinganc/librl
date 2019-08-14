@@ -31,8 +31,6 @@ def configure_log(config, unique_log_dir=False):
     logz.configure_output_dir(log_dir)
     logz.save_params(config)
 
-
-
 def create_env(envid, seed):
     env = gym.make(envid)
     env.seed(seed)
@@ -40,6 +38,7 @@ def create_env(envid, seed):
 
 def setup_mdp(c, seed):
     """ Set seed and then create an MDP. """
+    c = dict(c)
     envid = c['envid']
     env = create_env(envid, seed)
     # fix randomness
@@ -48,7 +47,8 @@ def setup_mdp(c, seed):
     else:
         tf.set_random_seed(seed)  # graph-level seed
     np.random.seed(seed)
-    mdp = MDP(env, gamma=c['gamma'], horizon=c['horizon'])
+    del c['envid']
+    mdp = MDP(env, **c)
     return mdp
 
 

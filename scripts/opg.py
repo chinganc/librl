@@ -60,15 +60,15 @@ def main(c):
         experts=None
 
     # Create algorithm
-    ro_by_n_samples = c['experimenter']['rollout_kwargs'] is not None
+    ro_by_n_samples = c['experimenter']['ro_kwargs'] is not None
     alg = OptimisticPolicyGradient(policy, vfn,
                                     experts=experts,
                                     horizon=mdp.horizon, gamma=mdp.gamma,
-                                    ro_by_n_samples=ro_by_n_samples,
+                                    mix_unroll_kwargs={'ro_by_n_samples':ro_by_n_samples},
                                     **c['algorithm'])
 
     # Let's do some experiments!
-    exp = Exp.Experimenter(alg, mdp, c['experimenter']['rollout_kwargs'])
+    exp = Exp.Experimenter(alg, mdp, c['experimenter']['ro_kwargs'])
     exp.run(**c['experimenter']['run_kwargs'])
 
 
@@ -80,6 +80,8 @@ CONFIG = {
         'envid': 'DartCartPole-v1',
         'horizon': 1000,  # the max length of rollouts in training
         'gamma': 1.0,
+        'n_processes': 4,
+        'min_ro_per_process': 2,
     },
     'experimenter': {
         'run_kwargs': {
@@ -89,9 +91,9 @@ CONFIG = {
             'eval_freq': 1,
             'save_freq': None,
         },
-        'rollout_kwargs': {
-            'min_n_samples': None, #2000,
-            'max_n_rollouts': 4, #None,
+        'ro_kwargs': {
+            'min_n_samples': None,
+            'max_n_rollouts': 4,
         },
     },
     'algorithm': {
@@ -106,7 +108,7 @@ CONFIG = {
         # new kwargs
         'eps':0.5,
         'uniform':False,
-        'use_policy_as_expert': True,
+        'policy_as_expert': True,
         'max_n_batches_experts':100,
     },
     'policy_units': (128,128),
@@ -116,7 +118,7 @@ CONFIG = {
     'use_experts':True,
     'expert_path':'./experts/cp_experts', #'./experts'
     'expert_name':'policy_best', # 'cp1000_mlp_policy_64_seed_9',
-    'n_experts': None,
+    'n_experts': 2, # None,
 }
 
 if __name__ == '__main__':

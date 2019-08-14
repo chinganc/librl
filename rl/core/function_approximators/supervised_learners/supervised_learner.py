@@ -1,8 +1,10 @@
+import copy
 from abc import abstractmethod
 import numpy as np
 from rl.core.function_approximators.function_approximator import FunctionApproximator
 from rl.core.datasets import Dataset, data_namedtuple
 from rl.core.utils.math_utils import compute_explained_variance
+
 
 Data = data_namedtuple('Data', 'xs ys ws')
 class SupervisedLearner(FunctionApproximator):
@@ -15,6 +17,14 @@ class SupervisedLearner(FunctionApproximator):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
         self._dataset = Dataset(max_n_samples=max_n_samples,
                                 max_n_batches=max_n_batches)
+
+    def as_funcapp(self):
+        """ Return a new copy but without the dataset and update rules. """
+        new = copy.copy(self)
+        new._dataset = None
+        new.update = None
+        new.update_funcapp = None
+        return new
 
     def update(self, xs, ys, ws=1.0, **kwargs):
         """ Update the function approximator through supervised learning

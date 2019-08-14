@@ -4,20 +4,16 @@ import numpy as np
 from rl.algorithms import Algorithm
 from rl.core.utils.misc_utils import safe_assign, timed
 from rl.core.utils import logz
-from rl.core.utils.mp_utils import Worker, JobRunner
 
 class Experimenter:
 
-    def __init__(self, alg, mdp, ro_kwargs, n_processes=1, min_ro_per_process=1):
+    def __init__(self, alg, mdp, ro_kwargs):
         """
             ro_kwargs is a dict with keys, 'min_n_samples', 'max_n_rollouts'
         """
         self.alg = safe_assign(alg, Algorithm)
         self.mdp = mdp
         self.ro_kwargs = ro_kwargs
-
-        self._n_processes = n_processes
-        self._min_ro_per_process = min_ro_per_process
 
         self._n_samples = 0  # number of data points seen
         self._n_rollouts = 0
@@ -28,30 +24,7 @@ class Experimenter:
         """ Run the agent in the mdp and return rollout statistics as a Dataset
             and the agent that collects it.
         """
-        if self._n_processes>1: # parallel data collection
-            # determine ro_kwargs and number of jobs
-            if self.ro_kwargs['max_n_rollouts'] is None:
-                M_r = None
-                N = self._n_processes
-            else:
-                M_r = max(1, self._min_ro_per_process)
-                N = int(np.ceil(self.ro_kwargs['max_n_rollouts']/M_r))
-
-            if self.ro_kwargs['min_n_samples'] is None:
-                m_s = None
-            else:
-                m_s = int(np.ceil(self.ro_kwargs['min_n_samples']/N))
-            ro_kwargs = {'min_n_samples': m_s, 'max_n_rollouts': M_r}
-
-            # start data collection.
-            job = ((agent,), ro_kwargs)
-            [self._job_runner.put(job) for _ in range(N)]
-            res = self._job_runner.aggregate(N)
-            ros, agents = [r[0] for r in res], [r[1] for r in res]
-        else:
-            ro, agent = self.mdp.run(agent, **self.ro_kwargs)
-            ros, agents = [ro], [agent]
-
+        ros, agents = self.mdp.run(agent, **self.ro_kwargs)
         # Log
         ro = functools.reduce(lambda x,y: x+y, ros)
         if not eval_mode:
@@ -88,12 +61,6 @@ class Experimenter:
         eval_policy = eval_freq is not None
         save_policy = save_freq is not None
 
-        # Start the processes.
-        if self._n_processes>1:
-            workers = [Worker(method=self.mdp.run) for _ in range(self._n_processes)]
-            self._job_runner = JobRunner(workers)
-
-
         start_time = time.time()
         if pretrain:
             self.alg.pretrain(functools.partial(self.gen_ro, to_log=False))
@@ -126,11 +93,6 @@ class Experimenter:
         if final_eval:
             self.gen_ro(self.agent('target'), to_log=True, eval_mode=True)
             logz.dump_tabular()
-
-
-        # Close the processes.
-        if self._n_processes>1:
-            self._job_runner.stop()
 
     def _save_policy(self, policy, suffix):
         path = os.path.join(logz.LOG.output_dir,'saved_policies')
