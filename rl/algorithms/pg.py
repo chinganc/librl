@@ -1,3 +1,4 @@
+import functools
 import numpy as np
 from rl.algorithms.algorithm import Algorithm, PolicyAgent
 from rl.algorithms.utils import get_learner
@@ -52,11 +53,16 @@ class PolicyGradient(Algorithm):
     def pretrain(self, gen_ro):
         with timed('Pretraining'):
             for _ in range(self._n_pretrain_itrs):
-                ro, _ = gen_ro(self._agent)
+                ros, _ = gen_ro(self._agent)
+                ro = functools.reduce(lambda x,y: x+y, ros)
                 self.oracle.update(ro, self.policy)
                 self.policy.update(xs=ro['obs_short'])
 
-    def update(self, ro, agent):
+    def update(self, ros, agents):
+
+        # Aggregate data
+        ro = functools.reduce(lambda x,y: x+y, ros)
+
         # Update input normalizer for whitening
         if self._itr < self._n_warm_up_itrs:
             self.policy.update(xs=ro['obs_short'])

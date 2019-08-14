@@ -105,7 +105,7 @@ class Dataset:
         self._assert_other_type(other)
         def sum(a, b):
             return None if (a is None or b is None) else a+b
-        batches  = copy.deepcopy(self._batches+other._batches)
+        batches  = self._batches+other._batches
         max_n_batches = sum(self.max_n_batches, other.max_n_batches)
         max_n_samples = sum(self.max_n_samples, other.max_n_samples)
         return type(self)(batches, max_n_batches=max_n_batches, max_n_samples=max_n_samples)

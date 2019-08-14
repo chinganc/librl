@@ -8,16 +8,16 @@ from rl.core.utils.mp_utils import Worker, JobRunner
 
 class Experimenter:
 
-    def __init__(self, alg, mdp, ro_kwargs, n_processes=5):
+    def __init__(self, alg, mdp, ro_kwargs, n_processes=1, min_ro_per_process=1):
         """
             ro_kwargs is a dict with keys, 'min_n_samples', 'max_n_rollouts'
         """
         self.alg = safe_assign(alg, Algorithm)
         self.mdp = mdp
         self.ro_kwargs = ro_kwargs
+
         self._n_processes = n_processes
-        if n_processes>1:
-            self._jobrunner = JobRunner([Worker() for _ in range(n_processes)])
+        self._min_ro_per_process = min_ro_per_process
 
         self._n_samples = 0  # number of data points seen
         self._n_rollouts = 0
@@ -26,10 +26,34 @@ class Experimenter:
 
     def gen_ro(self, agent, prefix='', to_log=False, eval_mode=False):
         """ Run the agent in the mdp and return rollout statistics as a Dataset
-            and the agent that collects it.    
+            and the agent that collects it.
         """
-        ro, agent = self.mdp.run(agent, **self.ro_kwargs)
+        if self._n_processes>1: # parallel data collection
+            # determine ro_kwargs and number of jobs
+            if self.ro_kwargs['max_n_rollouts'] is None:
+                M_r = None
+                N = self._n_processes
+            else:
+                M_r = max(1, self._min_ro_per_process)
+                N = int(np.ceil(self.ro_kwargs['max_n_rollouts']/M_r))
 
+            if self.ro_kwargs['min_n_samples'] is None:
+                m_s = None
+            else:
+                m_s = int(np.ceil(self.ro_kwargs['min_n_samples']/N))
+            ro_kwargs = {'min_n_samples': m_s, 'max_n_rollouts': M_r}
+
+            # start data collection.
+            job = ((agent,), ro_kwargs)
+            [self._job_runner.put(job) for _ in range(N)]
+            res = self._job_runner.aggregate(N)
+            ros, agents = [r[0] for r in res], [r[1] for r in res]
+        else:
+            ro, agent = self.mdp.run(agent, **self.ro_kwargs)
+            ros, agents = [ro], [agent]
+
+        # Log
+        ro = functools.reduce(lambda x,y: x+y, ros)
         if not eval_mode:
             self._n_rollouts += len(ro)
             self._n_samples += ro.n_samples
@@ -56,13 +80,19 @@ class Experimenter:
                 self.best_performance = performance
             logz.log_tabular(prefix + 'BestSumOfRewards', self.best_performance)
 
-        return ro, agent
+        return ros, agents
 
     def run(self, n_itrs, pretrain=True,
             save_freq=None, eval_freq=None, final_eval=False, final_save=True):
 
         eval_policy = eval_freq is not None
         save_policy = save_freq is not None
+
+        # Start the processes.
+        if self._n_processes>1:
+            workers = [Worker(method=self.mdp.run) for _ in range(self._n_processes)]
+            self._job_runner = JobRunner(workers)
+
 
         start_time = time.time()
         if pretrain:
@@ -79,8 +109,8 @@ class Experimenter:
                         self.gen_ro(self.alg.agent('target'), to_log=True, eval_mode=True)
 
             with timed('Generate env rollouts'):
-                ro, agent = self.gen_ro(self.alg.agent('behavior'), to_log=not eval_policy)
-            self.alg.update(ro, agent)
+                ros, agents = self.gen_ro(self.alg.agent('behavior'), to_log=not eval_policy)
+            self.alg.update(ros, agents)
 
             if save_policy:
                 if itr % save_freq == 0:
@@ -88,7 +118,7 @@ class Experimenter:
             # dump log
             logz.dump_tabular()
 
-        # save final policy
+        # Save the final policy.
         if final_save:
             self._save_policy(self.alg.policy, n_itrs)
             self._save_policy(self.best_policy, 'best')
@@ -96,6 +126,11 @@ class Experimenter:
         if final_eval:
             self.gen_ro(self.agent('target'), to_log=True, eval_mode=True)
             logz.dump_tabular()
+
+
+        # Close the processes.
+        if self._n_processes>1:
+            self._job_runner.stop()
 
     def _save_policy(self, policy, suffix):
         path = os.path.join(logz.LOG.output_dir,'saved_policies')
