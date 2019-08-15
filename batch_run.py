@@ -21,6 +21,8 @@ except:
 
 # `rl` has to loaded after tesorflow has been configured.
 from rl.core.utils.misc_utils import zipsame, dict_update
+from rl.core.utils.mp_utils import JobRunner, Worker
+
 
 def get_combs_and_keys(ranges):
 
@@ -98,7 +100,7 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
     # Set to the number of workers.
     # It defaults to the cpu count of your machine.
     if n_processes == -1:
-        n_processes = None
+        n_processes = mp.cpu_count()
     print('# of CPU (threads): {}'.format(mp.cpu_count()))
 
     script = importlib.import_module('scripts.'+script_name)
@@ -140,14 +142,18 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
             tps.append(tp)
 
     # Launch the experiments.
-    with mp.Pool(processes=n_processes, maxtasksperchild=1) as p:
-        p.map(script.main, tps, chunksize=1)
-        # p.map(func, tps, chunksize=1)
-
+    # with mp.Pool(processes=n_processes, maxtasksperchild=1) as p:
+    #     p.map(script.main, tps, chunksize=1)
+    #     # p.map(func, tps, chunksize=1)
+    workers = [Worker(method=script.main) for _ in range(n_processes)]
+    job_runner = JobRunner(workers)
+    for tp in tps:
+        job = ((tp,),{})
+        job_runner.put(job)
+    job_runner.aggregate(len(tps))
 
 def func(tp):
     print(tp['exp_name'], tp['seed']) #, tp['algorithm']['lambd'])
-
 
 if __name__ == '__main__':
     mp.set_start_method('spawn')
