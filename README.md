@@ -26,8 +26,7 @@ export PYTHONPATH="{PYTHONPATH}:[the parent folder of librl repo]"
 #### Install Dart ####
 The Ubuntu package is too new for PyDart2, so we install it manually. 
 
-First install the requirements following the instructions at https://dartsim.github.io/install_dart_on_ubuntu.html. 
-We compile and install it manually.
+First install the requirements following the instructions of Install DART from source at https://dartsim.github.io/install_dart_on_ubuntu.html. We compile and install it manually, because PyDart2 only supports Dart before 6.8.
 ```
 git clone git://github.com/dartsim/dart.git
 cd dart
@@ -37,6 +36,9 @@ cd build
 cmake ..
 make -j4
 sudo make install
+```
+Someitmes you may need to link library manually.
+```
 echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib:/usr/lib:/usr/local/lib" >> ~/.bashrc
 ```
 
@@ -63,16 +65,6 @@ cd dartenv
 git checkout nodisplay
 pip install -e .[dart]
 ```
-
-#### Troubleshooting ####
-If you encounter the error:
-```
-ModuleNotFoundError: No module named 'pydart2._pydart2_api'
-
-ImportError: libdart.so.6.5: cannot open shared object file: No such file or directory
-```
-try installing PyDart2 again.
-
 
 #### Run experiments ####
 Firstly, go to the main folder.
