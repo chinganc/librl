@@ -11,12 +11,13 @@ from rl.core.utils import logz
 
 class Experimenter:
 
-    def __init__(self, alg, mdp, ro_kwargs):
+    def __init__(self, alg, mdp, ro_kwargs, mdp_test=None):
         """
             ro_kwargs is a dict with keys, 'min_n_samples', 'max_n_rollouts'
         """
         self.alg = safe_assign(alg, Algorithm)
         self.mdp = mdp
+        self.mdp_test = mdp_test or mdp
         self.ro_kwargs = ro_kwargs
 
         self._n_samples = 0  # number of data points seen
@@ -24,11 +25,11 @@ class Experimenter:
         self.best_policy = copy.deepcopy(self.alg.policy)
         self.best_performance = -float('Inf')
 
-    def gen_ro(self, agent, prefix='', to_log=False, eval_mode=False):
+    def gen_ro(self, agent, mdp, prefix='', to_log=False, eval_mode=False):
         """ Run the agent in the mdp and return rollout statistics as a Dataset
             and the agent that collects it.
         """
-        ros, agents = self.mdp.run(agent, **self.ro_kwargs)
+        ros, agents = mdp.run(agent, **self.ro_kwargs)
         # Log
         ro = functools.reduce(lambda x,y: x+y, ros)
         if not eval_mode:
@@ -36,7 +37,7 @@ class Experimenter:
             self._n_samples += ro.n_samples
         if to_log:
             # current ro
-            gamma = self.mdp.gamma
+            gamma = mdp.gamma
             sum_of_rewards = [ ((gamma**np.arange(len(r.rws)))*r.rws).sum() for r in ro]
             performance = np.mean(sum_of_rewards)
             rollout_lens = [len(rollout) for rollout in ro]
@@ -67,7 +68,7 @@ class Experimenter:
 
         start_time = time.time()
         if pretrain:
-            self.alg.pretrain(functools.partial(self.gen_ro, to_log=False))
+            self.alg.pretrain(functools.partial(self.gen_ro, mdp=self.mdp, to_log=False))
 
         # Main loop
         for itr in range(n_itrs):
@@ -77,10 +78,10 @@ class Experimenter:
             if eval_policy:
                 if itr % eval_freq == 0:
                     with timed('Evaluate policy performance'):
-                        self.gen_ro(self.alg.agent('target'), to_log=True, eval_mode=True)
+                        self.gen_ro(self.alg.agent('target'), mdp=self.mdp_test, to_log=True, eval_mode=True)
 
             with timed('Generate env rollouts'):
-                ros, agents = self.gen_ro(self.alg.agent('behavior'), to_log=not eval_policy)
+                ros, agents = self.gen_ro(self.alg.agent('behavior'), mdp=self.mdp,  to_log=not eval_policy)
             self.alg.update(ros, agents)
 
             if save_policy:
@@ -95,7 +96,7 @@ class Experimenter:
             self._save_policy(self.best_policy, 'best')
 
         if final_eval:
-            self.gen_ro(self.agent('target'), to_log=True, eval_mode=True)
+            self.gen_ro(self.agent('target'), mdp=self.mdp, to_log=True, eval_mode=True)
             logz.dump_tabular()
 
     def _save_policy(self, policy, suffix):
