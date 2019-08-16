@@ -1,4 +1,4 @@
-# Copyright (c) 2016 rllab contributors
+# Copyright (c) 2018 Georgia Tech Robot Learning Lab
 # Licensed under the MIT License.
 
 import copy
