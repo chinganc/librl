@@ -1,5 +1,5 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License.i
+# Licensed under the MIT License.
 
 from abc import abstractmethod
 import numpy as np
