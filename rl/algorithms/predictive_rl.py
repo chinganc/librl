@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Georgia Tech Robot Learning Lab
+# Copyright (c) 2019 Georgia Tech Robot Learning Lab
 
 import numpy as np
 from rl.algorithms.algorithm import Algorithm

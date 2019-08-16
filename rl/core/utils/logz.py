@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Georgia Tech Robot Learning Lab
+# Copyright (c) 2019 Georgia Tech Robot Learning Lab
 # Licensed under the MIT License.
 
 """
