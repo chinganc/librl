@@ -1,3 +1,6 @@
+# Copyright (c) 2016 rllab contributors
+# Licensed under the MIT License.
+
 import tensorflow as tf
 from abc import abstractmethod
 from rl.core.function_approximators.function_approximator import FunctionApproximator

@@ -1,3 +1,6 @@
+# Copyright (c) 2016 rllab contributors
+# Licensed under the MIT License.
+
 import numpy as np
 from abc import abstractmethod
 from rl.core.online_learners.base_algorithms import MirrorDescent

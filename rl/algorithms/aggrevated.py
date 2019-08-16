@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 import numpy as np
 from rl.algorithms.algorithm import Algorithm
 from rl.adv_estimators.advantage_estimator import ValueBasedAE

@@ -1,6 +1,8 @@
+# Copyright (c) 2016 rllab contributors
+# Licensed under the MIT License.
+
 import copy
 from rl.oracles.oracle import rlOracle
-
 
 class SimulationOracle(rlOracle):
 

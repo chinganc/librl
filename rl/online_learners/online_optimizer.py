@@ -1,3 +1,7 @@
+# Copyright (c) 2016 rllab contributors
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 from abc import ABC
 import numpy as np
 import tensorflow as tf
@@ -6,7 +10,6 @@ import rl.core.utils.tf_utils as U
 from rl.core.online_learners import online_optimizer as OO
 from rl.core.online_learners import base_algorithms as BA
 from rl.core.function_approximators.policies import Policy
-
 
 
 BasicOnlineOptimizer = OO.BasicOnlineOptimizer

@@ -1,3 +1,5 @@
+# Copyright (c) 2016 rllab contributors
+
 import numpy as np
 from rl.algorithms.algorithm import Algorithm
 from rl.policies import Policy

@@ -1,3 +1,6 @@
+# Copyright (c) 2016 rllab contributors
+# Licensed under the MIT License.
+
 import numpy as np
 from abc import ABC, abstractmethod
 from rl.core.online_learners.utils import cg

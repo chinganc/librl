@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 import tensorflow as tf
 from rl.core import function_approximators as fa
 from rl.core.function_approximators.supervised_learners import SupervisedLearner

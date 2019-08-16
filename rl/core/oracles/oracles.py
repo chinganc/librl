@@ -1,3 +1,7 @@
+# Copyright (c) 2016 rllab contributors
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 import numpy as np
 from rl.core.function_approximators.normalizers import NormalizerStd, Normalizer
 from rl.core.oracles import Oracle

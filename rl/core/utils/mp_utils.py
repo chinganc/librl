@@ -1,3 +1,6 @@
+# Copyright (c) 2016 rllab contributors
+# Licensed under the MIT License.
+
 import copy
 import multiprocessing as mp
 

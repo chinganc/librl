@@ -1,3 +1,6 @@
+# Copyright (c) 2016 rllab contributors
+# Licensed under the MIT License.
+
 import numpy as np
 from rl.core.utils.mvavg import ExpMvAvg, MomentMvAvg
 from rl.core.online_learners.base_algorithms.base_algorithm import MirrorDescent

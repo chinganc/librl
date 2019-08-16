@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 import numpy as np
 from rl import online_learners as ol
 from rl.online_learners import base_algorithms as balg

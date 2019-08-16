@@ -1,3 +1,6 @@
+# Copyright (c) 2016 rllab contributors
+# Licensed under the MIT License.
+
 import gym, os
 from rl import envs
 from rl.core.function_approximators import supervised_learners as Sup

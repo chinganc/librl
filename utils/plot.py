@@ -1,3 +1,6 @@
+# Copyright (c) 2016 rllab contributors
+# Licensed under the MIT License.
+
 import matplotlib
 matplotlib.use('Agg')  # in order to be able to save figure through ssh
 # matplotlib.use('TkAgg')  # Can change to 'Agg' for non-interactive mode

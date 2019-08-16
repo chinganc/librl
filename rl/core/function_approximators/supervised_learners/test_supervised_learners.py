@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 import unittest
 import numpy as np
 
@@ -22,7 +25,7 @@ class Tests(unittest.TestCase):
 
         xs = np.random.random([100]+list(x_shape))
         ys = np.sum(xs**2,axis=1, keepdims=True)+1
-       
+
         ys_bad = ys.copy()
         ys_bad[0]+=1e10
         results = fun.update(xs, ys_bad, clip_y=True, epochs=10)

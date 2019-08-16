@@ -1,3 +1,7 @@
+# Copyright (c) 2016 rllab contributors
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 import argparse, copy, importlib
 import multiprocessing as mp
 import itertools

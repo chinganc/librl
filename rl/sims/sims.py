@@ -1,3 +1,6 @@
+# Copyright (c) 2016 rllab contributors
+# Licensed under the MIT License.
+
 from abc import ABC, abstractmethod
 import functools
 import numpy as np

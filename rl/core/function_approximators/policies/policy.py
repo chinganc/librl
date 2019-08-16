@@ -1,3 +1,7 @@
+# Copyright (c) 2016 rllab contributors
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 from abc import abstractmethod
 import numpy as np
 from rl.core.function_approximators.function_approximator import FunctionApproximator, online_compatible

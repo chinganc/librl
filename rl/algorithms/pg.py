@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 import functools
 import numpy as np
 from rl.algorithms.algorithm import Algorithm, PolicyAgent

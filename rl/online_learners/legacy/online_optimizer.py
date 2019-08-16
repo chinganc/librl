@@ -1,3 +1,6 @@
+# Copyright (c) 2016 rllab contributors
+# Licensed under the MIT License.
+
 import numpy as np
 import tensorflow as tf
 import rl.core.utils.tf_utils as U
