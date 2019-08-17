@@ -145,6 +145,12 @@ class KerasFuncApp(tfFuncApp):
         return self.kmodel.predict(xs, **kwargs)
 
     # utilities (tf.keras.Model needs to be serialized)
+    def __copy__(self):
+        # need to overwrite; otherwise it calls __getstate__
+        new = type(self).__new__(type(self))
+        new.__dict__.update(self.__dict__)
+        return new
+
     def __getstate__(self):
         if hasattr(super(), '__getstate__'):
             d = super().__getstate__()
