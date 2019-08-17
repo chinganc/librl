@@ -42,8 +42,8 @@ class Worker(Process):
 class JobRunner:
 
     def __init__(self, workers):
-        self.in_queue = Queue(1)
-        self.out_queue = Queue(1)
+        self.in_queue = Queue()
+        self.out_queue = Queue()
         self.workers = workers
         [worker.start(self.in_queue, self.out_queue) for worker in workers]
 
