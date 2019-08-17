@@ -97,6 +97,8 @@ class Rollout:
             `obs`, `rws` can be of length of `acs` or one element longer if they contain the
             terminal observation/reward.
         """
+        self.__attrlist = []
+
         assert len(obs)==len(rws)
         assert (len(obs) == len(acs)+1) or (len(obs)==len(acs))
         self.obs = np.array(obs)
@@ -125,14 +127,23 @@ class Rollout:
     def __len__(self):
         return len(self.acs)
 
+    def __setattr__(self, name, value):
+        # Set per-rollout attributes, which are not sliced when self[ind] is called.
+        if not name in ('_Rollout__attrlist','obs', 'acs', 'rws', 'lps', 'dns', 'lps'):
+            self._Rollout__attrlist.append(name)
+        object.__setattr__(self, name, value)
+
     def __getitem__(self, key):
+        assert isinstance(key, slice) or isinstance(key, int)
         obs=self.obs[key]
         acs=self.acs[key]
         rws=self.rws[key]
         logp=self.lps[key]
         done = bool(self.dns[key][-1])
-        return Rollout(obs=obs, acs=acs, rws=rws, done=done,logp=logp)
-
+        rollout = Rollout(obs=obs, acs=acs, rws=rws, done=done,logp=logp)
+        for name in self._Rollout__attrlist:
+            setattr(rollout, name, copy.deepcopy(getattr(self, name)))
+        return rollout
 
 def generate_rollout(pi, logp, env,
                      callback=None,

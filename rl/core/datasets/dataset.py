@@ -50,46 +50,44 @@ class Dataset:
     """ A collection of batch data where each batch contains a set of samples.
 
         The batch data class needs to implement `__len__` which returns the
-        number of samples of that batch.  If the batch data instance has an
-        `attr` attribute or key, `some_dataset[attr]` will return all the
-        matched samples across all batch data. `some_dataset[None]` will
-        concatenate all the batch data into a "single" batch, as either a
-        np.ndarray or Dataset.
+        number of samples of that batch.  If the batch data instance inside a
+        dataset `some_dataset` has an `attr` attribute or key (if it has both
+        an attribute and key named `attr`, then the attribute is returned),
+        `some_dataset[attr]` will return all the matched samples across all
+        batch data. `some_dataset[None]` will concatenate all the batch data
+        into a "single" batch, as either a np.ndarray or Dataset.
     """
 
-    def __init__(self, data=None, max_n_batches=None, max_n_samples=None,
+    def __init__(self, batches=None, max_n_batches=None, max_n_samples=None,
                        single_batch=False):
         """
             Args:
-                `data`: initial batch(es) of data
+                `batches`: a list of initial batch(es)
                 `max_n_batches`: maximal number of batches to keep
                 `max_n_samples`: maximal number of samples to keep
-                `single_batch`: when the batch data class is a list and `data`
-                                is one batch data instance, this option needs
-                                to be set `True`.
 
-            It keeps most recent data when, it is full. But note that because
-            the data are kept in terms of batches, the actual number of samples
-            might be slighly larger than `max_n_samples`, when the batch with
-            the highest weight has more than `max_n_samples` of samples.
-
-            Given this, if both `max_n_batches` and `max_n_batches` are 0, it
-            only retains the most recent data.
+            Dataset keeps data in terms of batches and it never deletes samples
+            inside batches. It keeps the most recent data when it is full. But
+            note that because the data are kept in terms of batches, the actual
+            number of samples might be larger than `max_n_samples`, when the
+            most recent batch has more than `max_n_samples` of samples. Also,
+            when a Dataset instance is full it will remains full after deleting
+            old batches when new data are added. Following this rule, when
+            `max_n_batches` is 0, it only retains the most recent batch.
 
         """
-        if data is None:
+        if batches is None:
             self._batches = []
-        else:
-            if type(data)==list and not single_batch:
-                self._batches = data
-            else:
-                self._batches = [data]
+        else: # a list of data
+            assert type(batches)==list
+            self._batches = batches
+
         self.max_n_batches = max_n_batches
         self.max_n_samples = max_n_samples
         self._cache ={}
 
     def append(self, data):
-        """ Add an new data into the dataset. """
+        """ Add new data into the dataset. """
         self._assert_data_type(data)
         self._make_room_for_batches(1)  # check if we need to throw away some old batches
         self._batches.append(data)  # always keep all the new batch
@@ -120,13 +118,22 @@ class Dataset:
     def __add__(self, other):  # alias
         return self.join(other)
 
-    #def __getattr__(self, name):
-    #    return self[name]
-
     def __getitem__(self, key):
-        """ Retrieve a dataset containing only samples with keys, ordered from
-        old to new. If `key` is None, it will try to concatenate as an nd.array
-        or join the contents as a new Dataset.
+        """ Concatenate the dataset.
+
+            If `key` is int or slice, it namely returns self._batches[key].
+
+            If `key` is string, it concatenates each batch's attribute named
+            `key` or value associated with `key` into a single batch. (It tries
+            first to retrieve batch.key and then batch[key]).  It will try to
+            concatenate the retrieved values from the batches (in the following
+            order) as a single nd.ndarray (if the retrieved value is an
+            nd.array), a new Dataset (if the retrieved value is iterable but
+            not np.ndarray), or a nd.ndarray (if this also fails it returns the
+            retrieved values as a list). The ordering of the retrieved values
+            are from old to new. If `key` is None, it will try to concatenate
+            all batches as an nd.array or join the
+            contents as a new Dataset.
         """
         def get_item(key):
             if key is None:  # try to concatenate all of them
@@ -142,22 +149,25 @@ class Dataset:
                 if isinstance(item_list[0], np.ndarray):
                     return np.concatenate(item_list)
                 elif isinstance(item_list[0], Iterable):
+                    # When item_list is self._batches, this removes the level
+                    # of the current batch and treat each sample in the current
+                    # batches as a new batch in the new dataset.
                     return Dataset(list(itertools.chain.from_iterable(item_list)))
-                else:
+                else:  # last resort
                     try:
                         return np.concatenate(item_list)
                     except:
                         return item_list
-            else:
-                return item_list
+            raise AttributeError('Key is not found in Dataset.')
 
-        # try to use cache
-        if isinstance(key,Hashable):
+        if isinstance(key, int) or isinstance(key, slice):
+            return self._batches[key]
+        else:
+            assert isinstance(key, str) or key is None
+            # try to use cache
             if self._cache.get(key, None) is None:
                 self._cache[key] = get_item(key)
             return self._cache[key]
-        else:
-            return get_item(key)
 
     def __iter__(self):
         for batch in self._batches:

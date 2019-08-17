@@ -36,7 +36,7 @@ class Tests(unittest.TestCase):
 
         MyData = data_namedtuple('MyData', ['x','y','z'])
         data = MyData(y=np.arange(10), x=np.random.random((10,1)), z= np.random.normal(size=(10,13)))
-        dataset = Dataset(data)
+        dataset = Dataset([data])
         data = MyData(y=np.arange(10), x=np.random.random((10,1)), z= np.random.normal(size=(10,13)))
         dataset.append(data)
         data = MyData(y=np.arange(10), x=np.random.random((10,1)), z= np.random.normal(size=(10,13)))
