@@ -1,3 +1,4 @@
+# Copyright (c) 2019 Georgia Tech Robot Learning Lab
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
@@ -5,7 +6,7 @@ import tensorflow as tf
 import numpy as np
 from rl.core.function_approximators.policies import Policy
 from rl.core.function_approximators.function_approximator import online_compatible
-from rl.core.function_approximators.tf2_function_approximators import tfFuncApp, RobustKerasMLP, KerasFuncApp, RobustKerasFuncApp, tfRobustMLP
+from rl.core.function_approximators.tf2_function_approximators import tfFuncApp, RobustKerasMLP, KerasFuncApp, RobustKerasFuncApp, tfRobustMLP, tfConstant
 from rl.core.utils.misc_utils import zipsame
 from rl.core.utils.tf2_utils import tf_float, array_to_ts, ts_to_array
 from rl.core.utils.misc_utils import flatten, unflatten
@@ -115,7 +116,15 @@ def gaussian_exp(ms, vs, As, bs, cs, canonical, diagonal_A, diagonal_vs):
 
 
 class tfGaussianPolicy(tfPolicy):
-    """ A wrapper for augmenting tfFuncApp with diagonal Gaussian noises. """
+    """ A wrapper class for augmenting tfFuncApp with diagonal Gaussian noises.
+
+        For example, for a subclass `A` of tfFuncApp, one can define
+
+            class B(tfGaussianPolicy, A):
+                pass
+
+        which creates a Gaussian policy with the mean specified by `A`.
+    """
     def __init__(self, x_shape, y_shape, name='tf_gaussian_policy',
                  init_lstd=None, min_std=1e-12,  # new attribues
                  **kwargs):
@@ -265,4 +274,8 @@ class RobustKerasMLPGassian(tfGaussianPolicy, RobustKerasMLP):
 
 class tfRobustMLPGaussian(tfGaussianPolicy, tfRobustMLP):
     pass
+
+class tfGaussian(tfGaussianPolicy, tfConstant):
+    pass
+
 

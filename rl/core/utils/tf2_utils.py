@@ -1,3 +1,4 @@
+# Copyright (c) 2019 Georgia Tech Robot Learning Lab
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
@@ -14,6 +15,9 @@ def none_to_zero(tensor, var):
     else:
         tensor =  tf.zeros_like(var) if tensor is None else tensor
     return tensor
+
+def identity(ts_x):
+    return ts_x + tf.zeros_like(ts_x)
 
 """ Conversion between tf.Tensor(s) and np.ndarray(s) """
 def ts_to_array(ts_x):

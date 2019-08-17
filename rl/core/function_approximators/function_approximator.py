@@ -16,7 +16,7 @@ def online_compatible(f):
                 else x[None,:]
     @wraps(f)
     def decorated_f(self, x, *args, **kwargs):
-        if x.shape==self.x_shape:  # single instance
+        if x.shape==self.x_shape or x is None:  # single instance
             x = to_batch(x)
             args =[to_batch(a) for a in args]
             y = f(self, x, *args, **kwargs)

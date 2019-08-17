@@ -1,3 +1,4 @@
+# Copyright (c) 2019 Georgia Tech Robot Learning Lab
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
@@ -7,7 +8,7 @@ import tensorflow as tf
 from abc import abstractmethod
 from rl.core.function_approximators.function_approximator import FunctionApproximator
 from rl.core.function_approximators.normalizers import tfNormalizerMax
-from rl.core.utils.tf2_utils import array_to_ts, tf_float, ts_to_array
+from rl.core.utils.tf2_utils import array_to_ts, tf_float, ts_to_array, identity
 from rl.core.utils.misc_utils import flatten, unflatten, zipsame
 # NOTE ts_* methods are in batch mode
 #      python methods return a single nd.array
@@ -232,6 +233,7 @@ class RobustKerasFuncApp(tfRobustFuncApp, KerasFuncApp):
 
 
 # Some examples
+
 class RobustKerasMLP(RobustKerasFuncApp):
     """ Basic MLP using tf.keras.layers """
 
@@ -291,3 +293,49 @@ class tfMLP(tfFuncApp):
 
 class tfRobustMLP(tfRobustFuncApp, tfMLP):
     pass
+
+
+class tfConstant(tfFuncApp):
+    """ A constant function. """
+    def __init__(self, x_shape, y_shape, name='tf_constant', **kwargs):
+        # `x_shape` is ignored.
+        self._ts_val = tf.Variable(tf.random.normal(shape))
+        super().__init__(x_shape, y_shape, name=name, **kwargs)
+
+    @property
+    def ts_variables(self):
+        return self._ts_val
+
+    def ts_predict(self, ts_xs, **kwargs):
+        return identity(self._ts_val)
+
+
+class tfIdentity(tfFuncApp):
+    """ Just an identity map """
+    def __init__(self, x_shape, y_shape=None, name='tf_identity', **kwargs):
+        assert y_shape is None or x_shape==y_shape
+        super().__init__(x_shape, y_shape, name=name, **kwargs)
+
+    @property
+    def ts_variables(self):
+        return []
+
+    def ts_predict(self, ts_xs, **kwargs):
+        return identity(ts_xs)  # prevent wrong chain-rule
+
+
+class tfGradFun(tfFuncApp):
+    """ Gradient of some scalar base function. """
+    def __init__(self, x_shape, y_shape, name='tf_grad', base_fun=None, **kwargs):
+        assert isinstance(base_fun, tfFuncApp)
+        assert sum(base_fun.y_shape)==1
+        self.base_fun = base_fun
+        super().__init__(x_shape, y_shape=x_shape, name=name, **kwargs)
+
+    @property
+    def ts_variables(self):
+        return self.base_fun.ts_variables
+
+    def ts_predict(self, ts_xs, **kwargs):
+        return self.base_fun.ts_grad(ts_xs, **kwargs)
+

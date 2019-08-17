@@ -8,7 +8,7 @@ from rl.core.function_approximators.function_approximator import FunctionApproxi
 
 
 class Policy(FunctionApproximator):
-    """ An abstract interface that represents conditional distribution \pi(a|s).
+    """ An abstract interface that represents conditional distribution \pi(y|x).
 
         A policy is namely a stochastic FunctionApproximator.
     """
@@ -66,3 +66,4 @@ class Policy(FunctionApproximator):
         """ Computes F(self.pi)*g, where F is the Fisher information matrix and
         g is a np.ndarray in the same shape as self.variable. """
         raise NotImplementedError
+
