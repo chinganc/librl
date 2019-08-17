@@ -28,10 +28,6 @@ class MDP:
         self._n_processes = n_processes
         self._min_ro_per_process = int(max(1, min_ro_per_process))
 
-    def __del__(self):
-        if hasattr(self, '_job_runner'):
-            self._job_runner.stop()
-
     @staticmethod
     def t_state(t, horizon):
         return t/horizon
@@ -62,8 +58,7 @@ class MDP:
                       'with_animation':False}
             # start data collection
             job = ((agent,), kwargs)
-            [self._job_runner.put(job) for _ in range(N)]
-            res = self._job_runner.aggregate(N)
+            res = self._job_runner.run([job]*N)
             ros, agents = [r[0] for r in res], [r[1] for r in res]
         else:
             kwargs = {'min_n_samples':min_n_samples,

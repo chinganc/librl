@@ -151,10 +151,8 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
     #     # p.map(func, tps, chunksize=1)
     workers = [Worker(method=script.main) for _ in range(n_processes)]
     job_runner = JobRunner(workers)
-    for tp in tps:
-        job = ((tp,),{})
-        job_runner.put(job)
-    job_runner.aggregate(len(tps))
+    jobs = [((tp,),{}) for tp in tps]
+    job_runner.run(jobs)
 
 def func(tp):
     print(tp['exp_name'], tp['seed']) #, tp['algorithm']['lambd'])
