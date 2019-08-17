@@ -42,20 +42,18 @@ class Worker(Process):
 class JobRunner:
 
     def __init__(self, workers):
-        self.in_queue = Queue()
-        self.out_queue = Queue()
+        self.in_queue = Queue(1)
+        self.out_queue = Queue(1)
         self.workers = workers
         [worker.start(self.in_queue, self.out_queue) for worker in workers]
 
     def __del__(self):
-        self.stop()
-
-    def stop(self):
-        [self._put(None) for _ in self.workers]
+        """ Kill all the workers. """
+        [self.in_queue.put(None)  for _ in self.workers]
         [worker.join() for worker in self.workers]
 
     def run(self, jobs):
-        # run the jobs in parallel
+        """ Run the jobs in parallel. """
         N = len(jobs)
         n = 0
         results = []
@@ -66,7 +64,7 @@ class JobRunner:
                         self._put(jobs[i])
                         n=i+1
                 except mp.queues.Full:
-                    pass  # jobs is empty
+                    pass
 
             try:  # retrieve as many results as possible
                 while True:
