@@ -29,6 +29,7 @@ class Worker(Process):
 
             if item is None:
                 print('Terminating Process.')
+                self.out_queue.put(True)
                 return
             if self._method is None:
                 method, args, kwargs = item
@@ -49,7 +50,7 @@ class JobRunner:
 
     def __del__(self):
         """ Kill all the workers. """
-        [self.in_queue.put(None)  for _ in self.workers]
+        self.run([None]*len(self))
         [worker.join() for worker in self.workers]
 
     def run(self, jobs):
@@ -68,7 +69,8 @@ class JobRunner:
 
             try:  # retrieve as many results as possible
                 while True:
-                    results.append(self._get())
+                    res = self._get()
+                    results.append(res)
             except mp.queues.Empty:
                 pass
 
