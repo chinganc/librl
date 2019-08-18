@@ -26,7 +26,7 @@ class PolicyGradient(Algorithm):
 
         assert isinstance(policy, Policy)
         self.vfn = vfn
-        self._policy = policy
+        self.policy = policy
 
         # Create online learner.
         scheduler = ol.scheduler.PowerScheduler(lr)
@@ -45,12 +45,11 @@ class PolicyGradient(Algorithm):
         self._n_warm_up_itrs =n_warm_up_itrs
         self._itr = 0
 
-    @property
-    def policy(self):
-        return self._policy
+    def get_policy(self):
+        return self.policy
 
     def agent(self, mode):
-        return PolicyAgent(self._policy)
+        return PolicyAgent(self.policy)
 
     def pretrain(self, gen_ro):
         with timed('Pretraining'):
@@ -86,7 +85,8 @@ class PolicyGradient(Algorithm):
 
         # log
         logz.log_tabular('stepsize', self.learner.stepsize)
-        logz.log_tabular('std', np.mean(np.exp(2.*self.policy.lstd)))
+        if hasattr(self.policy,'lstd'):
+            logz.log_tabular('std', np.mean(np.exp(2.*self.policy.lstd)))
         logz.log_tabular('g_norm', np.linalg.norm(g))
         logz.log_tabular('ExplainVarianceBefore(AE)', ev0)
         logz.log_tabular('ExplainVarianceAfter(AE)', ev1)

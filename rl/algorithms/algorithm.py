@@ -22,9 +22,8 @@ class Algorithm(ABC):
         """ Update the policy based on rollouts. """
 
     # Outcome of an algorithm
-    @property
     @abstractmethod
-    def policy(self):
+    def get_policy(self):
         """ Return a Policy object which is the outcome of the algorithm. """
 
     # For data collection

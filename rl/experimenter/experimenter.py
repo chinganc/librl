@@ -22,7 +22,7 @@ class Experimenter:
 
         self._n_samples = 0  # number of data points seen
         self._n_rollouts = 0
-        self.best_policy = copy.deepcopy(self.alg.policy)
+        self.best_policy = copy.deepcopy(self.alg.get_policy())
         self.best_performance = -float('Inf')
 
     def gen_ro(self, agent, mdp, prefix='', to_log=False, eval_mode=False):
