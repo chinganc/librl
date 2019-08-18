@@ -299,8 +299,8 @@ class tfConstant(tfFuncApp):
     """ A constant function. """
     def __init__(self, x_shape, y_shape, name='tf_constant', **kwargs):
         # `x_shape` is ignored.
-        self._ts_val = tf.Variable(tf.random.normal(shape))
-        super().__init__(x_shape, y_shape, name=name, **kwargs)
+        self._ts_val = tf.Variable(tf.random.normal(y_shape))
+        super().__init__((), y_shape, name=name, **kwargs)
 
     @property
     def ts_variables(self):
@@ -314,7 +314,7 @@ class tfIdentity(tfFuncApp):
     """ Just an identity map """
     def __init__(self, x_shape, y_shape=None, name='tf_identity', **kwargs):
         assert y_shape is None or x_shape==y_shape
-        super().__init__(x_shape, y_shape, name=name, **kwargs)
+        super().__init__(x_shape, x_shape, name=name, **kwargs)
 
     @property
     def ts_variables(self):
@@ -329,8 +329,9 @@ class tfGradFun(tfFuncApp):
     def __init__(self, x_shape, y_shape, name='tf_grad', base_fun=None, **kwargs):
         assert isinstance(base_fun, tfFuncApp)
         assert sum(base_fun.y_shape)==1
+        assert base_fun.x_shape==x_shape
         self.base_fun = base_fun
-        super().__init__(x_shape, y_shape=x_shape, name=name, **kwargs)
+        super().__init__(x_shape, x_shape, name=name, **kwargs)
 
     @property
     def ts_variables(self):

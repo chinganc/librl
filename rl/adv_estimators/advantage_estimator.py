@@ -96,11 +96,10 @@ class ValueBasedAE(AdvantageEstimator):
         if horizon is None and delta is None and np.isclose(gamma,1.):
             delta = min(gamma, DELTA_MAX)  # to make value learning well-defined
         self.horizon = float('Inf') if horizon is None else horizon
-        if use_is=='multi':
-            self._pe = PE.PerformanceEstimate( # a helper function
+
+        self._pe = PE.PerformanceEstimate( # a helper function
                         gamma=gamma, lambd=lambd,delta=delta)
-        else:
-            self._pe = PE.SimplePerformanceEstimate( # a faster version
+        self._spe = PE.SimplePerformanceEstimate( # a faster version
                         gamma=gamma, lambd=lambd, delta=delta)
 
         # policy evaluation
@@ -154,6 +153,8 @@ class ValueBasedAE(AdvantageEstimator):
     def advs(self, ro, lambd=None, use_is=None, ref_policy=None):  # advantage function
         """ Compute adv (evaluated at ro) wrt to ref_policy.
 
+            ro: a list of Rollout isinstances
+
             Note `ref_policy` argument is only considered when `self.use_is`
             is True; in this case, if `ref_policy` is None, it is wrt to
             `self.ref_policy`. Otherwise, when `self.use_is`_is is False, the
@@ -166,7 +167,7 @@ class ValueBasedAE(AdvantageEstimator):
             advs = [self._pe.adv(rollout.rws, vf, rollout.done, w=w, lambd=lambd)
                     for rollout, vf, w in zipsame(ro, vfns, ws)]
         else:
-            advs = [self._pe.adv(rollout.rws, vf, rollout.done, w=1.0, lambd=lambd)
+            advs = [self._spe.adv(rollout.rws, vf, rollout.done, w=1.0, lambd=lambd)
                     for rollout, vf in zipsame(ro, vfns)]
         return advs, vfns
 
