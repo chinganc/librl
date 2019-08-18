@@ -51,17 +51,6 @@ class Oracle(ABC):
         """ Set the parameters as others. """
         assert type(self)==type(other)
         self.__dict__.update(copy.deepcopy(other).__dict__)
-        # if hasattr(other,'__getstate__'):
-        #     d = other.__getstate__()
-        # else:
-        #     d = other.__dict__
-        # d = dict(d)
-        # for k in excludes:
-        #     del d[k]
-        # if hasattr(self,'__setstate__'):
-        #     self.__setstate__(d)
-        # else:
-        #     self.__dict__.update(d)
 
     def __deepcopy__(self, memo, excludes=()):
         """ __deepcopy__ but with an exclusion list

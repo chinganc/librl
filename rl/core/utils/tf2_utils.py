@@ -30,7 +30,7 @@ def ts_to_array(ts_x):
 def array_to_ts(x):
     # convert np.ndarray(s) to tf.Tensor(s)
     if isinstance(x, list) or isinstance(x, tuple):
-        return [tf.constant(xx,dtype=tf_float) for xx in x]
+        return [tf.constant(xx, dtype=tf_float) for xx in x]
     else:
         return tf.constant(x, dtype=tf_float)
 
