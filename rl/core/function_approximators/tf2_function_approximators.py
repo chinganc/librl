@@ -298,16 +298,17 @@ class tfRobustMLP(tfRobustFuncApp, tfMLP):
 class tfConstant(tfFuncApp):
     """ A constant function. """
     def __init__(self, x_shape, y_shape, name='tf_constant', **kwargs):
-        # `x_shape` is ignored.
+        assert x_shape==(0,)  # make sure the user know what's going on
         self._ts_val = tf.Variable(tf.random.normal(y_shape))
-        super().__init__((), y_shape, name=name, **kwargs)
+        super().__init__((0,), y_shape, name=name, **kwargs)
 
     @property
     def ts_variables(self):
-        return self._ts_val
+        return [self._ts_val]
 
     def ts_predict(self, ts_xs, **kwargs):
-        return identity(self._ts_val)
+        ts_ones = tf.ones([ts_xs.shape[0]]+[1]*len(self.y_shape))
+        return ts_ones * self._ts_val
 
 
 class tfIdentity(tfFuncApp):

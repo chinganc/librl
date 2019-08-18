@@ -185,14 +185,13 @@ def generate_rollout(pi, logp, env,
             `with_animation`: display animiation of the first rollout
 
     """
-
     # Configs
     assert (min_n_samples is not None) or (max_n_rollouts is not None)  # so we can stop
     min_n_samples = min_n_samples or float('Inf')
     max_n_rollouts = max_n_rollouts or float('Inf')
     max_rollout_len = max_rollout_len or float('Inf')
-    max_rollout_len = min(env._max_episode_steps, max_rollout_len)
-
+    max_episode_steps = getattr(env, '_max_episode_steps', float('Inf'))
+    max_rollout_len = min(max_episode_steps, max_rollout_len)
 
     if v_end is None:
         def v_end(ob, dn): return 0.

@@ -134,8 +134,10 @@ class tfGaussianPolicy(tfPolicy):
         self._ts_lstd = tf.Variable(array_to_ts(init_lstd), dtype=tf_float)
         self._ts_min_lstd = tf.constant(np.log(min_std), dtype=tf_float)
         super().__init__(x_shape, y_shape, name=name, **kwargs)
+        self._mean_var_shapes = None
 
-    # Some conveniet properties
+    # Some convenient properties
+    @online_compatible
     def mean(self, xs):
         return self(xs, stochastic=False)
 
@@ -143,8 +145,32 @@ class tfGaussianPolicy(tfPolicy):
         return self.ts_predict(xs, stochastic=False)
 
     @property
+    def ts_mean_variables(self):
+        return super().ts_variables
+
+    @property
+    def mean_variable(self):
+        return flatten(ts_to_array(super().ts_variables))
+
+    @mean_variable.setter
+    def mean_variable(self, val):
+        vals = unflatten(val, shapes=self.mean_var_shapes)
+        [var.assign(val) for var, val in zipsame(self.ts_mean_variables, vals)]
+
+    @property
+    def mean_var_shapes(self):
+        if self._mean_var_shapes is None:
+            self._mean_var_shapes = [var.shape.as_list() for var in self.ts_mean_variables]
+        return self._mean_var_shapes
+
+
+    @property
     def lstd(self):
         return self.ts_lstd.numpy()
+
+    @lstd.setter
+    def lstd(self, val):
+        return self._ts_lstd.assign(val)
 
     @property
     def ts_lstd(self):
@@ -273,9 +299,14 @@ class RobustKerasMLPGassian(tfGaussianPolicy, RobustKerasMLP):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
 class tfRobustMLPGaussian(tfGaussianPolicy, tfRobustMLP):
-    pass
+    def __init__(self, x_shape, y_shape, name='robust_MLP_gaussian_policy', **kwargs):
+        """ The user needs to provide init_lstd and optionally min_std. """
+        super().__init__(x_shape, y_shape, name=name, **kwargs)
 
 class tfGaussian(tfGaussianPolicy, tfConstant):
-    pass
+    """ A Gaussian distribution with learnable mean and diagonal covariance. """
 
+    def __init__(self, x_shape, y_shape, name='tfGaussian', **kwargs):
+        """ The user needs to provide init_lstd and optionally min_std. """
+        super().__init__(x_shape, y_shape, name=name, **kwargs)
 
