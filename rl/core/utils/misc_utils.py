@@ -108,7 +108,7 @@ def unflatten(v, template=None, shapes=None):
             start += w.size
     else:
         for shape in shapes:
-            size = np.prod(shape)
+            size = int(np.prod(shape))
             vs.append(np.reshape(v[start:start+size], shape))
             start += size
     return vs

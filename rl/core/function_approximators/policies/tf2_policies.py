@@ -85,11 +85,11 @@ class tfPolicy(tfFuncApp, Policy):
         raise NotImplementedError
 
 
-class _RobustKerasPolicy(RobustKerasFuncApp, tfPolicy):
+class _RobustKerasPolicy(tfPolicy, RobustKerasFuncApp):
     pass  # for debugging
 
 
-class _RobustKerasMLPPolicy(RobustKerasMLP, tfPolicy):
+class _RobustKerasMLPPolicy(tfPolicy, RobustKerasMLP):
     pass  # for debugging
 
 
