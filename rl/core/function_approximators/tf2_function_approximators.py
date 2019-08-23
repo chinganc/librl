@@ -159,8 +159,8 @@ class KerasFuncApp(tfFuncApp):
         # but without creating tf.Variables, if possible.
         for k,v in other.__dict__.items():
             if k not in excludes:
-                if k!='kmodel' or v in self.ts_variables:
-                    setattr(self,k,copy.deepcopy(v))
+                if k!='kmodel' and not (v in self.ts_variables):
+                    setattr(self, k, copy.deepcopy(v))
         self.variable = other.variable
 
     def __copy__(self):

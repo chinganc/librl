@@ -43,6 +43,12 @@ def robust_keras_supervised_learner(cls):
             self.kmodel.compile(optimizer=tf.keras.optimizers.Adam(self._lr),
                                 loss=self._loss, metrics=list(self._metrics))
 
+        def predict(self, *args, **kwargs):
+            # prevent memory-leak
+            return self.k_predict(*args, **kwargs)
+
+
+
     # to make them look the same as intended
     decorated_cls.__name__ = cls.__name__
     decorated_cls.__qualname__ = cls.__qualname__
