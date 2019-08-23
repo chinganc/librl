@@ -41,6 +41,12 @@ class tfFuncApp(FunctionApproximator):
     def variable(self, val):
         self.variables = self.unflatten(val)
 
+    def assign(self, other, excludes=()):
+        ts_vars = [k for k,v in self.__dict__.items() if isinstance(v, tf.Variable)]
+        excludes = list(excludes)+ts_vars
+        super().assign(other, excludes)
+        [getattr(self,k).assign(getattr(other,k)) for k in ts_vars]
+
     # Users can choose to implement `update`.
 
     # New methods of tfFuncApp
@@ -148,14 +154,7 @@ class KerasFuncApp(tfFuncApp):
     # utilities (tf.keras.Model needs to be serialized)
     def assign(self, other, excludes=()):
         """ Set the parameters as others. """
-        assert type(self)==type(other)
-        # Below mimics the behavior of
-        # self.__dict__.update(copy.deepcopy(other).__dict__)
-        # but without creating tf.Variables, if possible.
-        for k,v in other.__dict__.items():
-            if k not in excludes:
-                if k!='kmodel' and not (v in self.ts_variables):
-                    setattr(self, k, copy.deepcopy(v))
+        super().assign(other, excludes=('kmodel',))
         self.variable = other.variable
 
     def __copy__(self):

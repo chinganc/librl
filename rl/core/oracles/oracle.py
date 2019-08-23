@@ -47,26 +47,26 @@ class Oracle(ABC):
         """ Redefine the function. """
         raise NotImplementedError
 
-    def assign(self, other):
+    def assign(self, other, excludes=()):
         """ Set the parameters as others. """
         assert type(self)==type(other)
-        self.__dict__.update(copy.deepcopy(other).__dict__)
+        keys = [ k for k in other.__dict__ if not k in excludes ]
+        for k in keys:
+            self.__dict__[k] = copy.deepcopy(other.__dict__[k])
 
     def __deepcopy__(self, memo, excludes=()):
         """ __deepcopy__ but with an exclusion list
             excludes is a list of attribute names (string) that is to be shallow copied.
         """
         assert isinstance(memo, dict)
-        new = copy.copy(self)
+        new = copy.copy(self)  # so it has all the attributes
         memo[id(self)] = new  # prevent loop
         if hasattr(self,'__getstate__'):
             d = self.__getstate__()
         else:
             d = self.__dict__
         # don't deepcopy the items in `excludes`
-        d = dict(d)
-        for k in excludes:
-            del d[k]
+        d = {k:v for k,v in d.items() if not k in excludes}
         # deepcopy others
         d = copy.deepcopy(d, memo)
         if hasattr(new,'__setstate__'):
