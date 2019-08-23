@@ -9,7 +9,6 @@ from rl.core.function_approximators.function_approximator import FunctionApproxi
 from rl.core.datasets import Dataset, data_namedtuple
 from rl.core.utils.math_utils import compute_explained_variance
 
-
 Data = data_namedtuple('Data', 'xs ys ws')
 class SupervisedLearner(FunctionApproximator):
     """ FunctionApproximator trained on aggregated data. """
@@ -46,6 +45,7 @@ class SupervisedLearner(FunctionApproximator):
         ev0 = compute_explained_variance(self(xs), ys)
         results = self.update_funcapp(**kwargs)  # return logs, if any
         ev1 = compute_explained_variance(self(xs), ys)
+
         return results, ev0, ev1
 
     @abstractmethod

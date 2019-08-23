@@ -146,6 +146,11 @@ class KerasFuncApp(tfFuncApp):
         return self.kmodel.predict(xs, **kwargs)
 
     # utilities (tf.keras.Model needs to be serialized)
+
+    def __del__(self):
+        del self.kmodel
+        tf.keras.backend.clear_session()  # clean graph
+
     def __copy__(self):
         # need to overwrite; otherwise it calls __getstate__
         new = type(self).__new__(type(self))
@@ -229,10 +234,29 @@ class RobustKerasFuncApp(tfRobustFuncApp, KerasFuncApp):
     def k_predict(self, xs, clip_y=True, **kwargs):  # take care of this new method
         xs = self._x_nor(xs)
         ys = super().k_predict(xs)
-        return self._y_nor(ts_ys) if clip_y else ys
+        return self._y_nor(ys) if clip_y else ys
 
 
 # Some examples
+
+class KerasMLP(KerasFuncApp):
+    """ Basic MLP using tf.keras.layers """
+
+    def __init__(self, x_shape, y_shape, name='robust_k_mlp', units=(),
+                 activation='tanh', **kwargs):
+        self.units, self.activation = units, activation
+        super().__init__(x_shape, y_shape, name=name, **kwargs)
+
+    def _build_kmodel(self, x_shape, y_shape):
+        # the last layer is linear
+        ts_in = tf.keras.Input(x_shape)
+        ts_xs = tf.keras.layers.Reshape((np.prod(x_shape),))(ts_in)
+        for unit in self.units:
+            ts_xs = tf.keras.layers.Dense(unit, activation=self.activation)(ts_xs)
+        ts_ys = tf.keras.layers.Dense(np.prod(y_shape), activation='linear')(ts_xs)
+        ts_out = tf.keras.layers.Reshape(y_shape)(ts_ys)
+        kmodel = tf.keras.Model(ts_in, ts_out)
+        return kmodel
 
 class RobustKerasMLP(RobustKerasFuncApp):
     """ Basic MLP using tf.keras.layers """

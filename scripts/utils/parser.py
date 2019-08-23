@@ -45,6 +45,7 @@ def setup_mdp(c, seed):
     c = dict(c)
     envid = c['envid']
     env = create_env(envid, seed)
+    tf.keras.backend.clear_session()
     # fix randomness
     if tf.__version__[0]=='2':
         tf.random.set_seed(seed)
