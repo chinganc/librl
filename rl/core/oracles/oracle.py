@@ -47,7 +47,7 @@ class Oracle(ABC):
         """ Redefine the function. """
         raise NotImplementedError
 
-    def assign(self, other, excludes=()):
+    def assign(self, other):
         """ Set the parameters as others. """
         assert type(self)==type(other)
         self.__dict__.update(copy.deepcopy(other).__dict__)
