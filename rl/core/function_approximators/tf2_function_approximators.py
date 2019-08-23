@@ -146,11 +146,6 @@ class KerasFuncApp(tfFuncApp):
         return self.kmodel.predict(xs, **kwargs)
 
     # utilities (tf.keras.Model needs to be serialized)
-
-    def __del__(self):
-        del self.kmodel
-        tf.keras.backend.clear_session()  # clean graph
-
     def assign(self, other, excludes=()):
         """ Set the parameters as others. """
         assert type(self)==type(other)

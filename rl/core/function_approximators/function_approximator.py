@@ -112,4 +112,4 @@ class FunctionApproximator(Oracle):
         path = os.path.join(path, name)
         with open(path, 'rb') as pickle_file:
             saved = pickle.load(pickle_file)
-        self.assign(saved)
+        self.__dict__.update(saved.__dict__)
