@@ -142,10 +142,11 @@ class ValueBasedAE(AdvantageEstimator):
         ro = self.buffer[None] # join all the ros in the replay buffer
         if len(ro)>0:
             print('Replay buffer: {} batches, {} rollouts, {} samples'.format(len(self.buffer), len(ro), ro.n_samples))
-            w = np.concatenate(self.weights(ro)) if self.use_is else 1.0
+            ro_ws = np.concatenate([r.weight*np.ones((len(r),)) for r in ro])  # trajectory importance
+            w = np.concatenate(self.weights(ro)) if self.use_is else 1.0  # per-step importance due to off-policy
             for i in range(self._n_pe_updates):
                 v_hat = (w*np.concatenate(self.qfns(ro, self.pe_lambd))).reshape([-1, 1])  # target
-                results, ev0, ev1 = self.vfn.update(ro['obs_short'], v_hat, **kwargs)
+                results, ev0, ev1 = self.vfn.update(ro['obs_short'], v_hat, ws=ro_ws, **kwargs)
             return results, ev0, ev1
         else:
             return None, None, None

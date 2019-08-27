@@ -83,7 +83,7 @@ class Rollout:
         actions.)
 
     """
-    def __init__(self, obs, acs, rws,  done, logp):
+    def __init__(self, obs, acs, rws,  done, logp, weight=1.0):
         """
             `obs`, `acs`, `rws`  are lists of floats
             `done` is bool
@@ -106,6 +106,7 @@ class Rollout:
             self.lps = logp
         else:
             self.lps = logp(self.obs[:len(self)], self.acs)
+        self.weight = weight
 
     @property
     def obs_short(self):
@@ -135,7 +136,8 @@ class Rollout:
         rws=self.rws[key]
         logp=self.lps[key]
         done = bool(self.dns[key][-1])
-        rollout = Rollout(obs=obs, acs=acs, rws=rws, done=done,logp=logp)
+        weight = self.weight
+        rollout = Rollout(obs=obs, acs=acs, rws=rws, done=done, logp=logp, weight=weight)
         for name in self._Rollout__attrlist:
             setattr(rollout, name, copy.deepcopy(getattr(self, name)))
         return rollout
