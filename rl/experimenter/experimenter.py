@@ -70,7 +70,11 @@ class Experimenter:
                 gamma = m.gamma
                 sum_of_rewards = [ ((gamma**np.arange(len(r.rws)))*r.rws).sum() for r in ro]
                 performance = np.mean(sum_of_rewards)
-                avg_of_rewards = [ sr/(gamma**np.arange(len(r.rws))).sum() for sr, r in zip(sum_of_rewards, ro)]
+                if gamma<1.:
+                    avg_of_rewards = [ (1-gamma)*sr for sr, r in zip(sum_of_rewards, ro)]
+                else:
+                    avg_of_rewards = [ sr/len(r) for sr, r in zip(sum_of_rewards, ro)]
+
                 performance_avg = np.mean(avg_of_rewards)
                 rollout_lens = [len(rollout) for rollout in ro]
                 n_samples = sum(rollout_lens)

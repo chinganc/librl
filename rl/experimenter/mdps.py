@@ -120,7 +120,7 @@ class Rollout:
 
     @property
     def rws_short(self):
-        return self.rws[:len(self),:]
+        return self.rws[:len(self)]
 
     @property
     def done(self):
