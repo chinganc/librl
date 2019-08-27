@@ -40,10 +40,13 @@ class Experimenter:
             gamma = mdp.gamma
             sum_of_rewards = [ ((gamma**np.arange(len(r.rws)))*r.rws).sum() for r in ro]
             performance = np.mean(sum_of_rewards)
+            avg_of_rewards = [ sr/(gamma**np.arange(len(r.rws))).sum() for sr, r in zip(sum_of_rewards, ro)]
+            performance_avg = np.mean(avg_of_rewards)
             rollout_lens = [len(rollout) for rollout in ro]
             n_samples = sum(rollout_lens)
             logz.log_tabular(prefix + "NumSamples", n_samples)
             logz.log_tabular(prefix + "NumberOfRollouts", len(ro))
+            logz.log_tabular(prefix + "MeanAvgOfRewards", performance_avg)
             logz.log_tabular(prefix + "MeanSumOfRewards", performance)
             logz.log_tabular(prefix + "StdSumOfRewards", np.std(sum_of_rewards))
             logz.log_tabular(prefix + "MaxSumOfRewards", np.max(sum_of_rewards))
