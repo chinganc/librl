@@ -28,6 +28,12 @@ class MDP:
         self._n_processes = n_processes
         self._min_ro_per_process = int(max(1, min_ro_per_process))
 
+    def initialize(self):
+        try:  # try to reset the env
+            self.env.initialize()
+        except:
+            pass
+
     @staticmethod
     def t_state(t, horizon):
         return t/horizon
