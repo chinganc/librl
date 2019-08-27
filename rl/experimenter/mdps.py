@@ -136,8 +136,7 @@ class Rollout:
         rws=self.rws[key]
         logp=self.lps[key]
         done = bool(self.dns[key][-1])
-        weight = self.weight
-        rollout = Rollout(obs=obs, acs=acs, rws=rws, done=done, logp=logp, weight=weight)
+        rollout = Rollout(obs=obs, acs=acs, rws=rws, done=done, logp=logp)
         for name in self._Rollout__attrlist:
             setattr(rollout, name, copy.deepcopy(getattr(self, name)))
         return rollout
