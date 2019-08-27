@@ -2,7 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
-import time
+import time, copy
 import numpy as np
 from functools import partial
 from rl.core.datasets import Dataset
