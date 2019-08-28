@@ -22,7 +22,7 @@ class ParameterExploringPolicyGradient(Algorithm):
     def __init__(self, distribution,
                  policy, vfn,
                  optimizer='adam',
-                 lr=1e-3, max_kl=0.1,
+                 lr=1e-3, c=1e-3, max_kl=0.1,
                  horizon=None, gamma=1.0, delta=None, lambd=0.99,
                  max_n_batches=2,
                  n_warm_up_itrs=None,
@@ -48,7 +48,7 @@ class ParameterExploringPolicyGradient(Algorithm):
         self.vfn = vfn
 
         # Create online learner.
-        scheduler = ol.scheduler.PowerScheduler(lr)
+        scheduler = ol.scheduler.PowerScheduler(lr, c=c)
         self.learner = get_learner(optimizer, distribution, scheduler, max_kl) # dist.
         self._optimizer = optimizer
 

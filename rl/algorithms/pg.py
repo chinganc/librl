@@ -18,7 +18,7 @@ class PolicyGradient(Algorithm):
 
     def __init__(self, policy, vfn,
                  optimizer='adam',
-                 lr=1e-3, max_kl=0.1,
+                 lr=1e-3, c=1e-3, max_kl=0.1,
                  horizon=None, gamma=1.0, delta=None, lambd=0.99,
                  max_n_batches=2,
                  n_warm_up_itrs=None,

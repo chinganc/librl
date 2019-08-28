@@ -87,16 +87,16 @@ class Experimenter:
                 logz.log_tabular(prefix + "MinSumOfRewards", np.min(sum_of_rewards))
                 logz.log_tabular(prefix + "MeanRolloutLens", np.mean(rollout_lens))
                 logz.log_tabular(prefix + "StdRolloutLens", np.std(rollout_lens))
-                # total
-                logz.log_tabular(prefix + 'TotalNumberOfSamples', self._n_samples)
-                logz.log_tabular(prefix + 'TotalNumberOfRollouts', self._n_rollouts)
-                logz.log_tabular(prefix + 'BestSumOfRewards', self.best_performance)
 
                 avg_performance+=performance/len(mdp)
 
-        if avg_performance >= self.best_performance:
-            self.best_policy = copy.deepcopy(self.alg.policy)
-            self.best_performance = avg_performance
+        if to_log:  # total
+            if avg_performance >= self.best_performance:
+                self.best_policy = copy.deepcopy(self.alg.policy)
+                self.best_performance = avg_performance
+            logz.log_tabular(prefix + 'TotalNumberOfSamples', self._n_samples)
+            logz.log_tabular(prefix + 'TotalNumberOfRollouts', self._n_rollouts)
+            logz.log_tabular(prefix + 'BestSumOfRewards', self.best_performance)
 
         return ros_all, agents_all
 
