@@ -7,6 +7,7 @@ import multiprocessing as mp
 import itertools
 import os
 import json
+from functools import partial
 
 try: # Restrict TensorFlow to use limited memory
     import tensorflow as tf
@@ -149,10 +150,23 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
     # with mp.Pool(processes=n_processes, maxtasksperchild=1) as p:
     #     p.map(script.main, tps, chunksize=1)
     #     # p.map(func, tps, chunksize=1)
-    workers = [Worker(method=script.main) for _ in range(n_processes)]
+
+    # workers = [Worker(method=script.main) for _ in range(n_processes)]
+    # job_runner = JobRunner(workers)
+    # jobs = [((tp,),{}) for tp in tps]
+    # job_runner.run(jobs)
+
+
+    workers = [Worker() for _ in range(n_processes)]
     job_runner = JobRunner(workers)
-    jobs = [((tp,),{}) for tp in tps]
+    jobs = [(partial(run_script, script.main, tp),(), {}) for tp in tps]
     job_runner.run(jobs)
+
+def run_script(main, config):
+    w = Worker(method=main)
+    j = ((config,),{})
+    return JobRunner([w]).run([j])
+
 
 def func(tp):
     print(tp['exp_name'], tp['seed']) #, tp['algorithm']['lambd'])
