@@ -117,13 +117,7 @@ class Experimenter:
 
             if eval_policy:
                 if itr % eval_freq == 0:
-                    with timed('Evaluate policy performance'):
-                        self.gen_ro(self.alg.agent('target'),
-                                    mdp=self.mdp_test,
-                                    ro_kwargs=self.ro_kwargs_test,
-                                    initialize=True,
-                                    to_log=True,
-                                    eval_mode=True)
+                    self._eval_policy()
 
             with timed('Generate env rollouts'):
                 ros, agents = self.gen_ro(self.alg.agent('behavior'), to_log=not eval_policy)
@@ -136,13 +130,22 @@ class Experimenter:
             logz.dump_tabular()
 
         # Save the final policy.
+        if final_eval:
+            self._eval_policy()
+            logz.dump_tabular()
+
         if final_save:
             self._save_policy(self.alg.policy, n_itrs)
             self._save_policy(self.best_policy, 'best')
 
-        if final_eval:
-            self.gen_ro(self.alg.agent('target'), to_log=True, eval_mode=True)
-            logz.dump_tabular()
+    def _eval_policy(self):
+        with timed('Evaluate policy performance'):
+            self.gen_ro(self.alg.agent('target'),
+                        mdp=self.mdp_test,
+                        ro_kwargs=self.ro_kwargs_test,
+                        initialize=True,
+                        to_log=True,
+                        eval_mode=True)
 
     def _save_policy(self, policy, suffix):
         path = os.path.join(logz.LOG.output_dir,'saved_policies')
