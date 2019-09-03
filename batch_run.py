@@ -66,7 +66,7 @@ def load_config(script_name, config_name):
     config_name = 'config_'+config_name
     try:  # try the user-provided version
         config = load_attr('scripts.'+script_name+'_configs', config_name)
-    except AttributeError:
+    except (AttributeError, ImportError):
         try:  # try the default ones
             config = load_attr('scripts.'+script_name, config_name)
         except AttributeError:
@@ -110,9 +110,10 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
 
     script = importlib.import_module('scripts.'+script_name)
     template = load_config(script_name, config_name)
+
     try:
         script_ranges = importlib.import_module('scripts.'+script_name+'_ranges')
-    except AttributeError:
+    except ImportError:
         script_ranges = importlib.import_module('scripts.ranges')
 
     # Create the configs for all the experiments.
@@ -133,7 +134,7 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
                     entry = entry[k]
                 # Make sure the key is indeed included in the template,
                 # so that we set the desired flag.
-                assert key[-1] in entry
+                assert key[-1] in entry, 'missing {} in the config'.format(key[-1])
                 entry[key[-1]] = value
                 if key[-1]=='seed':
                     continue # do not include seed number
