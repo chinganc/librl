@@ -131,6 +131,8 @@ class Experimenter:
 
         # Save the final policy.
         if final_eval:
+            logz.log_tabular("Time", time.time() - start_time)
+            logz.log_tabular("Iteration", itr+1)
             self._eval_policy()
             logz.dump_tabular()
 
