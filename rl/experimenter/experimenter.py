@@ -141,7 +141,7 @@ class Experimenter:
             self._save_policy(self.best_policy, 'best')
 
         if final_eval:
-            self.gen_ro(self.agent('target'), to_log=True, eval_mode=True)
+            self.gen_ro(self.alg.agent('target'), to_log=True, eval_mode=True)
             logz.dump_tabular()
 
     def _save_policy(self, policy, suffix):
