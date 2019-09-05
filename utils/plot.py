@@ -42,6 +42,8 @@ def read_attr(csv_path, attr):
         vals = []
         for row in reader:
             vals.append(row[idx])
+
+    vals = [np.nan if v=='' else v for v in vals]
     return np.array(vals, dtype=np.float64)
 
 
@@ -85,8 +87,10 @@ def main(logdir, value, output_dir=None, filename=None, style=None,
         if not exp_name:
             continue
         color = conf.color(exp_name)
-        plt.plot(iters, mid, label=conf.label(exp_name), color=color, linewidth=linewidth)
-        plt.fill_between(iters, low, high, alpha=0.25, facecolor=color)
+
+        mask =  np.isfinite(mid)
+        plt.plot(iters[mask], mid[mask], label=conf.label(exp_name), color=color, linewidth=linewidth)
+        plt.fill_between(iters[mask], low[mask], high[mask], alpha=0.25, facecolor=color)
     if n_curves == 0:
         print('Nothing to plot.')
         return 0
