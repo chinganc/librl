@@ -82,8 +82,7 @@ def main(logdir, value, output_dir=None, filename=None, style=None,
             low, mid, high = np.percentile(data, [25, 50, 75], axis=0)
         if n_iters is not None:
             mid, high, low = mid[:n_iters], high[:n_iters], low[:n_iters]
-        n_iters = mid.size
-        iters = np.arange(n_iters)
+        iters = np.arange(mid.size)
         if not exp_name:
             continue
         color = conf.color(exp_name)
