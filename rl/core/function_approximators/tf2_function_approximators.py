@@ -289,7 +289,9 @@ class tfMLP(tfFuncApp):
 
     def __init__(self, x_shape, y_shape, name='robust_k_mlp', units=(),
                  activation='tanh', **kwargs):
+        assert(activation in ['tanh', 'relu', 'sigmoid'])
         self.units, self.activation = units, activation
+        self.activation_fn = getattr(tf.nn, activation)
         self.ts_w, self.ts_b = [], []
         dims = [np.prod(x_shape)]+list(units)+[np.prod(y_shape)]
         for i in range(1,len(dims)):
@@ -314,7 +316,7 @@ class tfMLP(tfFuncApp):
         for i in range(len(self.ts_w)-1):
             ts_w = self.ts_w[i]
             ts_b = self.ts_b[i]
-            ts_xs = tf.tanh(tf.tensordot(ts_xs, ts_w, axes=1)+ts_b)
+            ts_xs = self.activation_fn(tf.tensordot(ts_xs, ts_w, axes=1)+ts_b)
         ts_w = self.ts_w[-1]
         ts_b = self.ts_b[-1]
         ts_ys = tf.tensordot(ts_xs, ts_w, axes=1)+ts_b
