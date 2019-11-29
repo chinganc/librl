@@ -1,9 +1,7 @@
-# rlfamily #
-
-Code for reproducing the results in the paper: Predictor-Corrector Policy Optimization. Ching-An Cheng, Xinyan Yan, Nathan Ratliff, Byron Boots. ICML 2019.
+# librl #
 
 ### Installation ###
-Tested in Ubuntu 16.04 and Ubuntu 18.04 with python 3.5, 3.6.
+Tested in Ubuntu 16.04 and Ubuntu 18.04 with python 3.5, 3.6, 3.7.
 
 #### Install rlfamily and most of the requirements ####
 Prepare python3 virtual environment:
@@ -16,27 +14,36 @@ pip install --upgrade -r requirements.txt
 ```
 Install this repo and requirements:
 ```
-git clone https://github.com/gtrll/rlfamily.git
+git clone https://github.com/cacgt/librl.git
+git checkout develop
 pip install --upgrade -r requirements.txt
 ```
 You may need to run
 ```
-export PYTHONPATH="{PYTHONPATH}:[the parent folder of rlfamily repo]"
+export PYTHONPATH="{PYTHONPATH}:[the parent folder of librl repo]"
 ```
 
+#### Install Dart ####
+The Ubuntu package is too new for PyDart2, so we install it manually. 
+
+First install the requirements following the instructions of Install DART from source at https://dartsim.github.io/install_dart_on_ubuntu.html. We compile and install it manually, because PyDart2 only supports Dart before 6.8.
+```
+git clone git://github.com/dartsim/dart.git
+cd dart
+git checkout tags/v6.7.2
+mkdir build
+cd build
+cmake ..
+make -j4
+sudo make install
+```
+Someitmes you may need to link library manually.
+```
+echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib:/usr/lib:/usr/local/lib" >> ~/.bashrc
+```
 
 #### Install PyDart2 ####
-Installing PyDart2 through pip does not work. So we install it manually.
-
-Install requirements:
-```
-sudo apt-add-repository ppa:dartsim
-sudo apt-get update
-sudo apt-get install libdart6-all-dev
-sudo apt-get install swig python3-pip python3-pyqt4 python3-pyqt4.qtopengl
-```
-Some of the requirement installation may incur errors in Ubuntu 18.04. These can likely be ignored. 
-Download, compile, and install
+Installing PyDart2 through pip does not work, so we install it manually.
 ```
 git clone https://github.com/sehoonha/pydart2.git
 cd pydart2
@@ -59,43 +66,16 @@ git checkout nodisplay
 pip install -e .[dart]
 ```
 
-#### Troubleshooting ####
-If you encounter the error:
-```
-ModuleNotFoundError: No module named 'pydart2._pydart2_api'
-
-ImportError: libdart.so.6.5: cannot open shared object file: No such file or directory
-```
-try installing PyDart2 again.
-
-
-
-### Reproduce the results in the paper  ###
-
 #### Run experiments ####
 Firstly, go to the main folder.
 ```
-cd rlfamily
+cd librl
 ```
-
-Run experiments for env [env], using first-order oracle [oracle], using base algorithm [alg]:
+Run a single script, e.g., Policy Gradient in `scripts/pg.py`
 ```
-python scripts/batch_run.py [env] configs_[env] -r [oracle] -a [alg]
+python scripts/pg.py
 ```
-
-* [env] can be `cp`, `hopper`, `snake`, and `walker3d`.
-* [oracle] can be `mf` (Base Algorithm), `lazy1` (last), `agg1` (reply), `sim1` (TrueDyn), 
-`sim1_models` (BiasedDyn), `dyna_adv` (Dyna-Adversarial), `adv` (PicCoLO-Adversarial), 
-`sim1_opt` (BiasedDyn0.2-FP),
-where the names in the parentheses correspond to the ones in the paper.
-* [alg] can be `adam`, `natgrad`, `trpo`.
-
-Note that [oracle] and [alg] can be lists. For example:
+Run `scripts/pg.py` with a set of different configurations given as a dict named `range_common` in `scripts/pg_ranges.py`
 ```
-python scripts/batch_run.py hopper configs_hopper -r mf lazy1 agg1 sim1 sim1_models -a adam trpo natgrad
+python batch_run.py pg -r common
 ```
-
-#### Plot results ####
-Change the name of the folders based on `icml_piccolo_final_configs` in `scripts/plot_configs.py`.
-And plot the results using `scripts/plot_icml_piccolo_final.sh`.
-

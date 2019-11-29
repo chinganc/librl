@@ -1,186 +1,150 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 import copy
-from rl.tools.utils.misc_utils import dict_update
 
-configs = {
-    'general': {
-        'top_log_dir': 'log',
+# This file contains certain default configs that can used to compose new
+# configs by overwriting certain fields in CONFIG.
+
+def def_traj_config(c):
+    c = copy.deepcopy(c)
+    c['experimenter']['rollout_kwargs']['max_n_rollouts'] = \
+        c['experimenter']['rollout_kwargs']['min_n_samples']/c['mdp']['horizon']
+    c['experimenter']['rollout_kwargs']['min_n_samples'] = None
+    return c
+
+config_cp = {
+    'exp_name': 'cp',
+    'mdp': {
         'envid': 'DartCartPole-v1',
-        'seed': 0,
-        'exp_name': 'cp',
+        'horizon': 1000,
+        'gamma': 1.0
     },
     'experimenter': {
-        'run_alg_kwargs': {
-            'n_itrs': 100,
-            'pretrain': True,
-            'final_eval': False,
-        },
-        'rollout_kwargs': {
-            'min_n_samples': 4000,
-            'max_n_rollouts': None,
-            'max_rollout_len': None,  # the max length of rollouts in training
-        },
-    },
-    'algorithm': {
-        'alg_cls': 'PredictiveRL',
-        'n_model_steps': None,
-        'opt_method': 'BFGS',
-        'model_step_learning_rate': None,  # if it's None, it reuses the current base_alg; otherwise it's should be a dict
-        'alg_kwargs': {
-            'update_rule': 'model-free',  # 'piccolo', 'model-free', 'model-based', 'dyna'
-            'update_in_pred': False,
-            'take_first_pred': False,
-            'warm_start': True,  # for VI
-            'shift_adv': False,  # for VI
-            'stop_std_grad': False,
-            'ignore_samples': False,  # for reproducing classic model-based algorithms
-        },
-        'base_alg': 'adam',  # 'natgrad', 'adam', 'adagrad', 'trpo'
-        'adam_beta1': 0.9,
-        'adagrad_rate': 0.5,
-        'reg_damping': 0.1,
-        'use_shift': False,
-        'learning_rate': {
-            'p': 0,
-            'eta': 0.01,
-            'c': 0.01,
-            'limit': None,
-        },
-    },
-    'oracle': {
-        'loss_type': 'rl',
-        'or_kwargs': {
-            'avg_type': 'sum',  # 'avg' or 'sum'
-            'correlated': True,  # False, # update adv nor before computing adv
-            'use_log_loss': False,
-            'normalize_weighting': True,
-        },
-        'nor_kwargs': {  # simple baseline substraction
-            'rate': .0,
-            'momentum': 0,  # 0 for instant, None for moving average
-            'clip_thre': None,
-            'unscale': True,
-        },
-    },
-    'model_oracle': {
-        'mor_cls': 'LazyOracle',  # 'SimulationOracle', 'LazyOracle', 'AggregatedOracle', 'DummyOracle' 'AdversarialOracle',
-        # 'true',  # 'true': true env; [0, 1): custom env with inaccurate env; 'mlp': custom env with mlp dyn
-        'env_type': 0.1,
-        'dyn_learning_with_piccolo_weight': False,  # not useful yet
-        'dyn_learning_weights_type': 'one',  # 'one' or 'T-t', way to weight the importance of samples in a rollout
-        'lazyor_kwargs': {
-            'beta': 0.,  # mixing coefficient of using a lazy oracle
-        },
-        'ensemble_size': 1,  # for weighted oracle
-        'weighting_mode': 'average',  # 'average', # 'recent', # for weighted oracle
-        'aggor_kwargs': {
-            'max_n_rollouts': None,
-            'max_n_samples': None,
-            'max_n_iterations': 3,
-        },
-        'learn_dyn': False,
-        'rollout_kwargs': {
-            'min_n_samples': 4000,
-            'max_n_rollouts': None,
-            'max_rollout_len': None,
-        },
-    },
-    'policy': {
-        'nor_cls': 'tfNormalizerMax',
-        'nor_kwargs': {
-            'rate': 0.0,
-            'momentum': None,
-            'clip_thre': 5.0,
-        },
-        'policy_cls': 'tfGaussianMLPPolicy',
-        'pol_kwargs': {
-            'size': 32,  # 64,
-            'n_layers': 1,  # 2
-            'init_logstd': -1.0,
-            'max_to_keep': 10,
-        },
-    },
-    'advantage_estimator': {
-        'gamma': 1.0,
-        'delta': 0.99,  # discount to make MDP well-behave, or variance reduction parameter
-        'lambd': 0.98,   # 0, 0.98, GAE parameter, in the estimation of on-policy value function
-        'default_v': 0.0,  # value ofn the absorbing state
-        # 'monte-carlo' (lambda = 1), 'td' (lambda = 0), 'same' (as GAE lambd),
-        # or TD(lambda) for learning vf.
-        'v_target': 0.98,
-        'onestep_weighting': False,  # whether to use one-step importance weight (only for value function learning)
-        'multistep_weighting': False,  # whether to use multi-step importance weight
-        'data_aggregation': False,
-        'max_n_rollouts': None,  # for data aggregation
-        'n_updates': 1,
-        'vfn_params': {
-            'nor_cls': 'tfNormalizerMax',
-            'nor_kwargs': {
-                'rate': 0.0,
-                'momentum': None,
-                'clip_thre': 5.0,
-            },
-            'fun_class': 'tfMLPSupervisedLearner',
-            'fun_kwargs': {
-                'learning_rate': 1e-3,
-                'batch_size': 128,  
-                'n_batches': 2048,
-                'batch_size_for_prediction': 2048,
-                'size': 64,
-                'n_layers': 2,
-            },
-        },
+        'run_kwargs': {'n_itrs': 100},
+        'rollout_kwargs': {'min_n_samples': 2000},
     },
 }
 
-# Hopper.
-t = {
-    'general': {
-        'exp_name': 'hopper',
+config_cp_traj = def_traj_config(config_cp)
+
+config_hopper = {
+    'exp_name': 'hopper',
+    'mdp': {
         'envid': 'DartHopper-v1',
+        'horizon': 1000,
+        'gamma': 1.0,
     },
     'experimenter': {
-        'run_alg_kwargs': {'n_itrs': 200},
-        'rollout_kwargs': {'min_n_samples': 16000},
-    },
-    'model_oracle': {
+        'run_kwargs': {'n_itrs': 200},
         'rollout_kwargs': {'min_n_samples': 16000},
     },
 }
-configs_hopper = copy.deepcopy(configs)
-dict_update(configs_hopper, t)
 
+config_hopper_traj = def_traj_config(config_hopper)
 
-# Snake.
-t = {
-    'general': {
-        'exp_name': 'snake',
-        'envid': 'DartSnake7Link-v1',
+config_reacher3d = {
+    'exp_name': 'reacher3d',
+    'mdp': {
+        'envid': 'DartReacher3d-v1',
+        'horizon': 500,
+        'gamma': 1.0,
     },
     'experimenter': {
-        'run_alg_kwargs': {'n_itrs': 200},
-        'rollout_kwargs': {'min_n_samples': 16000},
-    },
-    'model_oracle': {
+        'run_kwargs': {'n_itrs': 200},
         'rollout_kwargs': {'min_n_samples': 16000},
     },
 }
-configs_snake = copy.deepcopy(configs)
-dict_update(configs_snake, t)
 
+config_reacher3d_traj = def_traj_config(config_reacher3d)
 
-# Walker3d.
-t = {
-    'general': {
-        'exp_name': 'walker3d',
+config_halfcheetah = {
+    'exp_name': 'halfcheetah',
+    'mdp': {
+        'envid': 'DartHalfCheetah-v1',
+        'horizon': 1000,
+        'gamma': 1.0,
+    },
+    'experimenter': {
+        'run_kwargs': {'n_itrs': 200},
+        'rollout_kwargs': {'min_n_samples': 16000},
+    },
+}
+
+config_halfcheetah_traj = def_traj_config(config_halfcheetah)
+
+config_dog = {
+    'exp_name': 'dog',
+    'mdp': {
+        'envid': 'DartDog-v1',
+        'horizon': 1000,
+        'gamma': 1.0,
+    },
+    'experimenter': {
+        'run_kwargs': {'n_itrs': 1000},
+        'rollout_kwargs': {'min_n_samples': 16000},
+    },
+}
+
+config_dog_traj = def_traj_config(config_dog)
+
+config_humanwalker = {
+    'exp_name': 'humanwalker',
+    'mdp': {
+        'envid': 'DartHumanWalker-v1',
+        'horizon': 300,
+        'gamma': 1.0,
+    },
+    'experimenter': {
+        'run_kwargs': {'n_itrs': 1000},
+        'rollout_kwargs': {'min_n_samples': 16000},
+    },
+}
+
+config_humanwalker_traj = def_traj_config(config_humanwalker)
+
+config_walker2d = {
+    'exp_name': 'walker2d',
+    'mdp': {
+        'envid': 'DartWalker2d-v1',
+        'horizon': 1000,
+        'gamma': 1.0,
+    },
+    'experimenter': {
+        'run_kwargs': {'n_itrs': 500},
+        'rollout_kwargs': {'min_n_samples': 16000},
+    },
+}
+
+config_walker2d_traj = def_traj_config(config_walker2d)
+
+config_walker3d = {
+    'exp_name': 'walker3d',
+    'mdp': {
         'envid': 'DartWalker3d-v1',
+        'horizon': 1000,
+        'gamma': 1.0,
     },
     'experimenter': {
-        'run_alg_kwargs': {'n_itrs': 1000},
-        'rollout_kwargs': {'min_n_samples': 16000},
-    },
-    'model_oracle': {
+        'run_kwargs': {'n_itrs': 1000},
         'rollout_kwargs': {'min_n_samples': 16000},
     },
 }
-configs_walker3d = copy.deepcopy(configs)
-dict_update(configs_walker3d, t)
+
+config_walker3d_traj = def_traj_config(config_walker3d)
+
+config_snake = {
+    'exp_name': 'snake',
+    'mdp': {
+        'envid': 'DartSnake7Link-v1',
+        'horizon': 1000,
+        'gamma': 1.0,
+    },
+    'experimenter': {
+        'run_kwargs': {'n_itrs': 200},
+        'rollout_kwargs': {'min_n_samples': 16000},
+    },
+}
+
+config_sanke_traj = def_traj_config(config_snake)
+

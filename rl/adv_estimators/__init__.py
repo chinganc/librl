@@ -1,1 +1,2 @@
-from rl.adv_estimators.advantage_estimator import AdvantageEstimator
+from rl.adv_estimators.advantage_estimator import AdvantageEstimator, ValueBasedAE
+

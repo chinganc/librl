@@ -4,7 +4,5 @@ matplotlib
 scikit-learn
 joblib
 GitPython
-
-tensorflow==1.12.1
-pybullet
+pyqt5
 
