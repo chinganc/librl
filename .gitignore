@@ -1,5 +1,6 @@
-log/
-results*/
+*log*/
+*results*/
+*.sh
 *.swp
 *.swo
 

@@ -1,7 +1,10 @@
+# Copyright (c) 2019 Georgia Tech Robot Learning Lab
+# Licensed under the MIT License.
+
 import functools
 import copy
 from collections import deque
-from rl.tools import oracles as Or
+from rl.core import oracles as Or
 from rl.oracles.oracle import rlOracle
 from rl.experimenter import RO
 
