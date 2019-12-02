@@ -8,6 +8,7 @@ from functools import partial
 from rl.core.datasets import Dataset
 from rl.core.utils.mp_utils import Worker, JobRunner
 
+
 class MDP:
     """ A wrapper for gym env. """
     def __init__(self, env, gamma=1.0, horizon=None, use_time_info=True, v_end=None,
@@ -47,7 +48,14 @@ class MDP:
         return self.env.action_space.shape
 
     def run(self, agent, min_n_samples=None, max_n_rollouts=None,
-            with_animation=False):
+            force_cpu=False, with_animation=False):
+
+        # default keywords
+        kwargs = {'min_n_samples':min_n_samples,
+                  'max_n_rollouts':max_n_rollouts,
+                  'force_cpu':force_cpu,
+                  'with_animation':with_animation}
+
         if self._n_processes>1: # parallel data collection
             if not hasattr(self, '_job_runner'):  # start the process
                 workers = [Worker(method=self._gen_ro) for _ in range(self._n_processes)]
@@ -59,25 +67,28 @@ class MDP:
                 max_n_rollouts = self._min_ro_per_process
             if min_n_samples is not None:
                 min_n_samples = int(min_n_samples/N)
-            kwargs = {'min_n_samples':min_n_samples,
-                      'max_n_rollouts':max_n_rollouts,
-                      'with_animation':False}
+            kwargs['min_n_samples'] = min_n_samples
+            kwargs['max_n_rollouts'] = max_n_rollouts
             # start data collection
             job = ((agent,), kwargs)
             res = self._job_runner.run([job]*N)
             ros, agents = [r[0] for r in res], [r[1] for r in res]
         else:
-            kwargs = {'min_n_samples':min_n_samples,
-                      'max_n_rollouts':max_n_rollouts,
-                      'with_animation':with_animation}
             ro, agent = self._gen_ro(agent, **kwargs)
             ros, agents = [ro], [agent]
         return ros, agents
 
     @staticmethod
-    def generate_rollout(agent, *args, **kwargs):  # a wrapper
-        ro = generate_rollout(agent.pi, agent.logp, *args,
-                            callback=agent.callback, **kwargs)
+    def generate_rollout(agent, *args, force_cpu=False, **kwargs):  # a wrapper
+        if force_cpu:  # requires tensorflow
+            import tensorflow as tf
+            with tf.device('/device:CPU:0'):
+                agent = copy.deepcopy(agent)
+                ro = generate_rollout(agent.pi, agent.logp, *args,
+                                      callback=agent.callback, **kwargs)
+        else:
+            ro = generate_rollout(agent.pi, agent.logp, *args,
+                                  callback=agent.callback, **kwargs)
         return ro, agent
 
 class Rollout:
