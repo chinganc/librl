@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 
 import tensorflow as tf
+from math import ceil
 from rl.core import function_approximators as fa
 from rl.core.function_approximators.supervised_learners import SupervisedLearner
 
@@ -33,7 +34,7 @@ def robust_keras_supervised_learner(cls):
                 xs, ys = self._dataset['xs'], self._dataset['ys']
 
             if epochs is None:
-                epochs = int(n_steps/max(1,len(ys)/batch_size))
+                epochs = ceil(n_steps*batch_size/len(ys))
 
             return self.kmodel.fit(xs, ys, sample_weight=self._dataset['ws'], verbose=0,
                                    batch_size=batch_size, epochs=epochs,**kwargs)
