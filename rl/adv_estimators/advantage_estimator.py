@@ -12,7 +12,6 @@ from rl.core.function_approximators.supervised_learners import SupervisedLearner
 from rl.core.datasets import Dataset
 from rl.core.utils.misc_utils import zipsame
 
-
 class AdvantageEstimator(FunctionApproximator):
     """ An abstract advantage function estimator based on replay buffer.
 
@@ -131,9 +130,15 @@ class ValueBasedAE(AdvantageEstimator):
 
     def weights(self, ro, policy=None):  # importance weight
         # ro is a Dataset or list of rollouts
+        w = self.weight(ro, policy)
+        idx = np.cumsum([len(rollout.acs) for rollout in ro])
+        return np.split(w, idx)[:-1]
+
+    def weight(self, ro, policy=None):  # importance weight
+        # ro is a Dataset or list of rollouts
         policy = policy or self.ref_policy
         assert isinstance(policy, Policy)
-        return [np.exp(policy.logp(rollout.obs_short, rollout.acs) - rollout.lps) for rollout in ro]
+        return  np.exp(policy.logp(ro['obs_short'], ro['acs']) - ro['lps'])
 
     def update(self, ro, **kwargs):
         """ Policy evaluation """
@@ -143,10 +148,11 @@ class ValueBasedAE(AdvantageEstimator):
         if len(ro)>0:
             print('Replay buffer: {} batches, {} rollouts, {} samples'.format(len(self.buffer), len(ro), ro.n_samples))
             ro_ws = np.concatenate([r.weight*np.ones((len(r),)) for r in ro])  # trajectory importance
-            w = np.concatenate(self.weights(ro)) if self.use_is else 1.0  # per-step importance due to off-policy
+            w = self.weight(ro) if self.use_is else 1.0  # per-step importance due to off-policy
+            obs_short = ro['obs_short']
             for i in range(self._n_pe_updates):
                 v_hat = (w*np.concatenate(self.qfns(ro, self.pe_lambd))).reshape([-1, 1])  # target
-                results, ev0, ev1 = self.vfn.update(ro['obs_short'], v_hat, ws=ro_ws, **kwargs)
+                results, ev0, ev1 = self.vfn.update(obs_short, v_hat, ws=ro_ws, **kwargs)
             return results, ev0, ev1
         else:
             return None, None, None
@@ -178,7 +184,10 @@ class ValueBasedAE(AdvantageEstimator):
         return qfns
 
     def vfns(self, ro):  # value function
-        return [np.squeeze(self.vfn.predict(rollout.obs)) for rollout in ro]
+        # vfns = [np.squeeze(self.vfn.predict(rollout.obs)) for rollout in ro]
+        vfn = np.squeeze(self.vfn(ro['obs']))
+        idx = np.cumsum([len(rollout.obs) for rollout in ro])
+        return np.split(vfn, idx)[:-1]
 
     # Required methods of FunctionApproximator
     def predict(self, xs, **kwargs):
