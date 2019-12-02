@@ -10,6 +10,13 @@ import tensorflow as tf
 from contextlib import contextmanager
 
 
+def profile():
+    import line_profiler
+    import atexit
+    pf = line_profiler.LineProfiler()
+    atexit.register(pf.print_stats)
+    return pf
+
 def safe_assign(obj, *args):
     assert any([isinstance(obj, cls) for cls in args])
     return obj
