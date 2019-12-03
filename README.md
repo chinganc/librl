@@ -3,30 +3,26 @@
 ### Installation ###
 Tested in Ubuntu 16.04 and Ubuntu 18.04 with python 3.5, 3.6, 3.7.
 
-#### Install rlfamily and most of the requirements ####
-Prepare python3 virtual environment:
-```
-sudo apt-get install python3-pip
-sudo pip3 install virtualenv
-virtualenv --system-site-packages -p python3 ./venv
-source ./venv/bin/activate
-pip install --upgrade -r requirements.txt
-```
+#### Install librl and most of the requirements ####
 Install this repo and requirements:
 ```
 git clone https://github.com/cacgt/librl.git
-git checkout develop
 pip install --upgrade -r requirements.txt
 ```
 You may need to run
 ```
 export PYTHONPATH="{PYTHONPATH}:[the parent folder of librl repo]"
 ```
+The current version requires also tensorflow2.
+```
+pip install --upgrade tensorflow
+```
 
-#### Install Dart ####
+#### Install DART ####
 The Ubuntu package is too new for PyDart2, so we install it manually. 
 
-First install the requirements following the instructions of Install DART from source at https://dartsim.github.io/install_dart_on_ubuntu.html. We compile and install it manually, because PyDart2 only supports Dart before 6.8.
+First install the requirements following the instructions of Install DART from source at https://dartsim.github.io/install_dart_on_ubuntu.html. 
+Next we compile and install DART manually, because PyDart2 only supports DART before 6.8.
 ```
 git clone git://github.com/dartsim/dart.git
 cd dart
@@ -37,7 +33,7 @@ cmake ..
 make -j4
 sudo make install
 ```
-Someitmes you may need to link library manually.
+Someitmes the library may need to be linked manually.
 ```
 echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib:/usr/lib:/usr/local/lib" >> ~/.bashrc
 ```
