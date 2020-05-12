@@ -73,7 +73,7 @@ class FunctionApproximator(Oracle):
         """ Perform update the parameters.
 
             This can include updating internal normalizers, etc.
-            Return a report, if any.
+            Return a report, in any.
         """
         # callable, but does nothing by default
 
