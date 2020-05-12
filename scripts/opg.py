@@ -7,7 +7,7 @@ import numpy as np
 from scripts.utils import parser as ps
 from rl import experimenter as Exp
 from rl.algorithms import OptimisticPolicyGradient
-from rl.core.function_approximators.policies.tf2_policies import RobustKerasMLPGassian
+from rl.core.function_approximators.policies import RobustKerasMLPGassian
 from rl.core.function_approximators.supervised_learners import SuperRobustKerasMLP
 
 
@@ -65,10 +65,10 @@ def main(c):
     # Create algorithm
     ro_by_n_samples = c['experimenter']['ro_kwargs'] is not None
     alg = OptimisticPolicyGradient(policy, vfn,
-                                    experts=experts,
-                                    horizon=mdp.horizon, gamma=mdp.gamma,
-                                    mix_unroll_kwargs={'ro_by_n_samples':ro_by_n_samples},
-                                    **c['algorithm'])
+                                   experts=experts,
+                                   horizon=mdp.horizon, gamma=mdp.gamma,
+                                   mix_unroll_kwargs={'ro_by_n_samples':ro_by_n_samples},
+                                   **c['algorithm'])
 
     # Let's do some experiments!
     exp = Exp.Experimenter(alg, mdp, c['experimenter']['ro_kwargs'])
@@ -84,7 +84,7 @@ CONFIG = {
         'horizon': 1000,  # the max length of rollouts in training
         'gamma': 1.0,
         'n_processes': 4,
-        'min_ro_per_process': 2,
+        'min_ro_per_process': 2,  # needs to be at least 2 so the experts will be rollout
     },
     'experimenter': {
         'run_kwargs': {

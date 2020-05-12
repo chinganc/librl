@@ -33,16 +33,25 @@ class ContextualEpsilonGreedy(Bandit):
     @online_compatible
     def decision(self, xs, models=None, explore=False, **kwargs):
         assert models is not None
-        # epsilon-greedy choice
+        # epsilon-greedy choice (batch mode)
         N = len(xs)
         K = len(models)
         vals = [m(xs, **kwargs) for m in models]
         vals = np.concatenate(vals, axis=1)
-        k_star = np.argmax(vals, axis=1)
+        k_star = np.argmax(vals, axis=1)  # greedy action
         if explore:
+            # The greedy choice is selected with probability (1-\eps)+eps/K.
+            # Other choices are selected with probability eps/K.
+
+            # Choose uniform actions with probability epsilon
+            k_star_0 = k_star.copy()
             ind = np.where(np.random.rand(N)<=self.eps)
             k_star[ind] = np.random.randint(0,K,size=(len(ind),))
-            return k_star
+            # Compute the probability of the selected action
+            prob = np.ones(k_star.shape)*(1-self.eps+self.eps/K)
+            prob[ind] = self.eps/K
+            prob[k_star[ind]==k_star_0[ind]] = 1-self.eps+self.eps/K
+            return k_star, prob
         else:
             val_star = np.amax(vals, axis=1).reshape([-1,1])
             return k_star, val_star
@@ -63,7 +72,8 @@ class Uniform(Bandit):
         vals = np.concatenate(vals, axis=1)
         k_star = np.random.randint(0,K,(N,))
         if explore:
-            return k_star
+            prob = np.ones(k_star.shape)/K
+            return k_star, prob
         else:
             val_star = vals.flatten()[k_star+np.arange(N)*K].reshape([-1,1])
             return k_star, val_star
@@ -111,6 +121,7 @@ class MaxValueFunction(SupervisedLearner):
     def variable(self):
         return np.concatenate([v.variable for v in self.vfns])
 
+    # TODO: this definition is note symmetric
     @variable.setter
     def variable(self, vals):
         [setattr(v,'variable',val) for v, val in zip(self.vfns, vals)]
@@ -121,11 +132,11 @@ class OptimisticPolicyGradient(PolicyGradient):
 
     def __init__(self, policy, vfn,
                  experts=None,
-                 eps=0.5,  # for episilon greedy
+                 eps=0.5,  # for epsilon greedy
                  uniform=False, # expert selection strategy
                  max_n_batches_experts=1000,  # for the experts
                  policy_as_expert=True,
-                 mix_unroll_kwargs=None,
+                 mix_unroll_kwargs=None,  # extra kwargs for ExpertsAgent
                  **kwargs):
 
         if experts is None:
@@ -138,17 +149,20 @@ class OptimisticPolicyGradient(PolicyGradient):
         if policy_as_expert:
             experts += [policy]
             vfns += [vfn]
-        self.experts = experts
-        vfn_max = MaxValueFunction(vfns, eps=eps, uniform=uniform)  # max over values
-        if policy_as_expert:
             print('Using {} experts, including its own policy'.format(len(vfns)))
         else:
             print('Using {} experts'.format(len(vfns)))
+        self.experts = experts
+        vfn_max = MaxValueFunction(vfns, eps=eps, uniform=uniform)  # max over values
         self.policy_as_expert = policy_as_expert
 
-        # The main update is policy gradient but with vfn_max as vfn
+        # The main update is policy gradient but with vfn_max as vfn.
+        # The algorithm here is basically GAE with a general baseline function.
+        # Therefore, we reuse most features from PolicyGradient but change the
+        # update rule of the value estimate, because it's now the max over
+        # experts' values.
         super().__init__(policy, vfn_max, **kwargs)
-        self.ae.update = None  # its update should not be called
+        self.ae.update = None  # The update wrt vfn_max should not be called
 
         # Create aes for manually updating value functions
         create_ae = partial(type(self.ae), gamma=self.ae.gamma,
@@ -178,7 +192,7 @@ class OptimisticPolicyGradient(PolicyGradient):
         # Aggregate data
         data = [a.split(ro, self.policy_as_expert) for ro,a in zip(ros, agents)]
         ro_exps = [d[0] for d in data]
-        ro_exps = list(map(list, zip(*ro_exps)))  # transpose
+        ro_exps = list(map(list, zip(*ro_exps)))  # transpose, s.t. len(ro_exps)==len(self.experts)
         ro_exps = [self.merge(ros) for ros in ro_exps]
         ro_pol = [d[1] for d in data]
         ro_pol = self.merge(ro_pol)
@@ -189,23 +203,24 @@ class OptimisticPolicyGradient(PolicyGradient):
             self.policy.update(xs=ro['obs_short'])
 
         with timed('Update oracle'):
-            # Update oracle
-            self.oracle.update(ro_pol, update_vfn=False, policy=self.policy)
-
-            # Update value functions (after oracle update so it unbiased)
+            # Update the value function of the experts
             EV0, EV1 = [], []
             for k, ro_exp in enumerate(ro_exps):
                 if len(ro_exp)>0:
                     _, ev0, ev1 = self.aes[k].update(ro_exp)
                     EV0.append(ev0)
                     EV1.append(ev1)
+            # Update oracle
+            self.oracle.update(ro_pol, update_vfn=False, policy=self.policy)
+
+            # Update the value function the learner (after oracle update so it unbiased)
             if self.policy_as_expert:
                 _, ev0, ev1 = self.aes[-1].update(ro_pol)
 
             # For adaptive sampling
             self._avg_n_steps.update(np.mean([len(r) for r in ro_pol]))
 
-        with timed('Compute policy gradient'):
+        with timed('Compute gradient'):
             g = self.oracle.grad(self.policy.variable)
 
         with timed('Policy update'):
@@ -239,7 +254,7 @@ class OptimisticPolicyGradient(PolicyGradient):
         elif mode=='behavior':
             return ExpertsAgent(self.policy,
                                 self.experts,
-                                self.vfn,
+                                self.vfn.as_funcapp(),
                                 horizon=self.ae.horizon,
                                 gamma=self.ae.gamma,
                                 avg_n_steps=self._avg_n_steps.val,
@@ -256,22 +271,27 @@ class ExpertsAgent(Agent):
         the end of each rollout.
     """
 
-    def __init__(self, policy, experts, vfn_max,
-                 horizon, gamma, avg_n_steps,
-                 sampling_rule='exponential', # define how random switching time is generated
+    def __init__(self,
+                 policy,  # the learner policy
+                 experts,  # a list of expert policies
+                 vfn_max,  # maximum over the experts' value functions
+                 horizon,  # problem horizon
+                 gamma,   # discount factor
+                 avg_n_steps,  # average number of steps the policy can survive
+                 sampling_rule='geometric', # define how random switching time is generated
                  cyclic_rate=2, # the rate of forward training, relative to the number of iterations
                  ro_by_n_samples=False, # 'sample' or 'rollout'
                  ):
 
         self.policy = policy
         self.experts = experts
-        self.vfn = vfn_max.as_funcapp()
+        self.vfn = vfn_max
 
         # For defining swtiching time
         assert horizon<float('Inf') or gamma<1.
         self._setup = {'gamma':gamma, 'horizon':horizon}
 
-        assert sampling_rule in ['exponential','cyclic','uniform']
+        assert sampling_rule in ['geometric','cyclic','uniform']
         self._sampling_rule = sampling_rule
         self._cyclic_rate = cyclic_rate
         self._avg_n_steps = avg_n_steps  # number of steps the policy can survive
@@ -299,11 +319,11 @@ class ExpertsAgent(Agent):
         if self._ro_with_policy:  # just run the learner
             return self.policy(ob)
         else:  # roll-in policy and roll-out expert
-            if t==0:  # sample t_switch in [1, horizon)
+            if t==0:  # sample t_switch in [1, horizon)   # NOTE why not starting from 0??
                 if self._sampling_rule=='cyclic':
                     t_switch, scale = au.cyclic_t(self._cyclic_rate, **self._setup)
-                elif self._sampling_rule=='exponential':
-                    t_switch, scale = au.exponential_t(self._avg_n_steps, **self._setup)
+                elif self._sampling_rule=='geometric':
+                    t_switch, scale = au.geometric_t(self._avg_n_steps, **self._setup)
                 else:  # sampling according to the discount factor
                     t_switch, scale = au.natural_t(**self._setup)
                 self._t_switch.append(t_switch)
@@ -314,9 +334,10 @@ class ExpertsAgent(Agent):
                 return self.policy(ob)
             else:
                 if t==self._t_switch[-1]: # select the expert to rollout
-                    k_star = self.vfn.decision(ob, explore=True)
+                    k_star, prob = self.vfn.decision(ob, explore=True)
                     self._k_star[-1] = k_star
-                    #TODO update scale
+                    # rescale the importance based on the exploration probability
+                    self._scale[-1] *= 1/len(self.experts)/prob
                 k_star = self._k_star[-1]
                 return self.experts[k_star](ob)
 
@@ -372,7 +393,7 @@ class ExpertsAgent(Agent):
             assert len(r)>=t  # because t >= 1
             if not policy_as_expert or k<len(self.experts)-1:
                 # we assume the last expert is the learner
-                r = r[t-1:] # we take one more time step
+                r = r[t:]
             r.scale = s
             ro_exps[k].append(r)
         if policy_as_expert:

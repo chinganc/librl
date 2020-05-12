@@ -26,47 +26,61 @@ def get_learner(optimizer, policy, scheduler, max_kl=None):
     else:
         raise NotImplementedError
 
-# For sampling random step to rollout
+# Different schemes for sampling the switch time step in RIRO
 def natural_t(horizon, gamma):
+    # Sampling according the problem's original weighting
     if horizon < float('Inf'):
         p0 = gamma**np.arange(horizon)
         sump0 = np.sum(p0)
         p0 = p0/sump0
         ind = np.random.multinomial(1,p0)
-        t_switch =  np.where(ind==1)[0][0]+1
+        t_switch = np.where(ind==1)[0][0]+1
         p = p0[t_switch-1]
     else:
         gamma = min(gamma, 0.999999)
         t_switch = np.random.geometric(p=1-gamma)[0]
         p = gamma**t_switch*(1-gamma)
-    return  _normalize_sampling(t_switch, p, horizon, gamma)
+    prob, scale = compute_prob_and_scale(t_switch, horizon, gamma)
+    return t_switch, prob/p
 
 def cyclic_t(rate, horizon, gamma):
     if getattr(cyclic_t, '_itr', None) is None:
         cyclic_t._itr = 0
     assert horizon < float('Inf')
-    t_switch = (int(rate*cyclic_t._itr)%horizon)+1
+    t_switch = (int(rate*cyclic_t._itr)%horizon)+1  # start from 1
     p = 1./horizon
     cyclic_t._itr +=1
-    return _correct_scale(t_switch, p, horizon, gamma)
+    prob, scale = compute_prob_and_scale(t_switch, horizon, gamma)
+    return t_switch, prob/p
 
-def exponential_t(beta, horizon, gamma):
-    t_switch = int(np.ceil(np.random.exponential(beta)))
-    p = 1./beta*np.exp(-t_switch/beta)
-    return _normalize_sampling(t_switch, p, horizon, gamma)
+def geometric_t(mean, horizon, gamma):
+    prob = 1/mean
+    t_switch = np.random.geometric(prob)  # starts from 1
+    if t_switch>horizon-1:
+        t_switch=horizon-1
+        p = (1-prob)**t_switch  # tail probability
+    else:
+        p = (1-prob)**(t_switch-1)*prob
+    prob, scale = compute_prob_and_scale(t_switch, horizon, gamma)
+    return t_switch, prob/p
 
-def _normalize_sampling(t_switch, p, horizon, gamma):
-    # correct for potential discount factor
-    t_switch = min(t_switch, horizon-1)
+def compute_prob_and_scale(t, horizon, gamma):
+    """ Treat the weighting in a problem as probability. Compute the
+        probability for a time step and the sum of the weights.
+
+        For the objective below,
+            \sum_{t=0}^{T-1} \gamma^t c_t
+        where T is finite and \gamma in [0,1], or T is infinite and gamma<1.
+        It computes
+            scale = \sum_{t=0}^{T-1} \gamma^t
+            prob = \gamma^t / scale
+    """
+    assert t<=horizon-1
     if horizon < float('Inf'):
         p0 = gamma**np.arange(horizon)
         sump0 = np.sum(p0)
-        p0 = p0/sump0
-        pp = p0[t_switch]
+        prob = p0[t]/sump0
     else:
         sump0 = 1/(1-gamma)
-        pp = gamma**t_switch*(1-gamma)
-    scale = (pp/p)*sump0
-    return t_switch, scale
-
-
+        prob = gamma**t_switch*(1-gamma)
+    return prob, sump0
