@@ -127,7 +127,7 @@ class MaxValueFunction(SupervisedLearner):
         [setattr(v,'variable',val) for v, val in zip(self.vfns, vals)]
 
 
-class OptimisticPolicyGradient(PolicyGradient):
+class Mamba(PolicyGradient):
     """ Use max_k V^k as the value function. It overwrites the behavior policy. """
 
     def __init__(self, policy, vfn,

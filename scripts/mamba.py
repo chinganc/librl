@@ -6,7 +6,7 @@ import tensorflow as tf
 import numpy as np
 from scripts.utils import parser as ps
 from rl import experimenter as Exp
-from rl.algorithms import OptimisticPolicyGradient
+from rl.algorithms import Mamba
 from rl.core.function_approximators.policies import RobustKerasMLPGassian
 from rl.core.function_approximators.supervised_learners import SuperRobustKerasMLP
 
@@ -64,11 +64,11 @@ def main(c):
 
     # Create algorithm
     ro_by_n_samples = c['experimenter']['ro_kwargs'] is not None
-    alg = OptimisticPolicyGradient(policy, vfn,
-                                   experts=experts,
-                                   horizon=mdp.horizon, gamma=mdp.gamma,
-                                   mix_unroll_kwargs={'ro_by_n_samples':ro_by_n_samples},
-                                   **c['algorithm'])
+    alg = Mamba(policy, vfn,
+                experts=experts,
+                horizon=mdp.horizon, gamma=mdp.gamma,
+                mix_unroll_kwargs={'ro_by_n_samples':ro_by_n_samples},
+                **c['algorithm'])
 
     # Let's do some experiments!
     exp = Exp.Experimenter(alg, mdp, c['experimenter']['ro_kwargs'])
