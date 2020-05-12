@@ -106,7 +106,7 @@ class ValueBasedAE(AdvantageEstimator):
         self.pe_lambd = pe_lambd  # user-defined self.pe_lambda-weighted td error
         if np.isclose(self.pe_lambd, 1.0):
             n_pe_updates = 1
-        assert n_pe_updates >= 1, 'Policy evaluation needs at least one udpate.'
+        assert n_pe_updates >= 1, 'Policy evaluation needs at least one update.'
         self._n_pe_updates = n_pe_updates
         assert isinstance(vfn, SupervisedLearner)
         self.vfn = vfn
