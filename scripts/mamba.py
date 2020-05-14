@@ -88,7 +88,7 @@ CONFIG = {
     },
     'experimenter': {
         'run_kwargs': {
-            'n_itrs': 50,
+            'n_itrs': 100,
             'pretrain': True,
             'final_eval': False,
             'eval_freq': 1,
@@ -107,7 +107,7 @@ CONFIG = {
         'lambd':0.5,
         'max_n_batches':2,
         'n_warm_up_itrs':None,
-        'n_pretrain_itrs':2,
+        'n_pretrain_itrs':3,
         # new kwargs
         'eps':0.5,
         'uniform':False,
