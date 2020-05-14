@@ -12,7 +12,7 @@ Process = ctx.Process
 DEBUG = False
 
 class Logger(object):
-    # for debuggin
+    # for debugging
     def __init__(self, name, src, output_dir='logging'):
         self.terminal = src
         os.makedirs(output_dir, exist_ok=True)
@@ -52,10 +52,9 @@ class Worker(Process):
 
         while True:
             item = self.in_queue.get()
-
             if item=='KILL':
-                print('Terminating Process.')
                 self.out_queue.put(True)
+                print('Terminating Process.')
                 return
             if self._method is None:
                 method, args, kwargs = item
@@ -64,6 +63,7 @@ class Worker(Process):
                 args, kwargs = item
                 output = self._method(*args, **kwargs)
             self.out_queue.put(output)
+
 
 
 class JobRunner:
