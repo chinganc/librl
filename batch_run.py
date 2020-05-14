@@ -136,8 +136,8 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
                 # so that we set the desired flag.
                 assert key[-1] in entry, 'missing {} in the config'.format(key[-1])
                 entry[key[-1]] = value
-                if key[-1]=='seed':
-                    continue # do not include seed number
+                if key[-1]=='seed' or key[-1]=='top_log_dir':
+                    continue # do not include seed number or the log directory
                 else:
                     if value is True:
                         value = 'T'

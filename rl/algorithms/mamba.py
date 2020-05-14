@@ -15,18 +15,16 @@ from rl.core.utils.mvavg import PolMvAvg
 from rl.core.function_approximators import online_compatible
 from rl.core.function_approximators.supervised_learners import SupervisedLearner
 
-class Bandit:
+class Exploration:
     """ Maximization """
-    def update(self, k, *args, **kwargs):
-        pass
     def decision(self, xs, explore=False, **kwargs):
         """ Return the chosen arm. """
         pass
 
 
-class ContextualEpsilonGreedy(Bandit):
+class EpsilonGreedy(Exploration):
 
-    def __init__(self, x_shape, models, eps):
+    def __init__(self, x_shape, eps):
         self.x_shape = x_shape # for online
         self.eps = eps
 
@@ -57,7 +55,7 @@ class ContextualEpsilonGreedy(Bandit):
             return k_star, val_star
 
 
-class Uniform(Bandit):
+class Uniform(Exploration):
 
     def __init__(self, x_shape):
         self.x_shape = x_shape
@@ -91,13 +89,13 @@ class MaxValueFunction(SupervisedLearner):
         assert all([isinstance(v, SupervisedLearner) for v in vfns])
         super().__init__(vfns[0].x_shape, vfns[0].y_shape, name=name)
         if uniform:
-            self.bandit = Uniform(self.x_shape, vfns)
+            self.explorer = Uniform(self.x_shape)
         else:
-            self.bandit = ContextualEpsilonGreedy(self.x_shape, vfns, eps=eps)
+            self.explorer = EpsilonGreedy(self.x_shape, eps=eps)
         self.vfns = vfns
 
     def decision(self, xs, explore=False, **kwargs):
-        return self.bandit.decision(xs, models=self.vfns, explore=explore, **kwargs)
+        return self.explorer.decision(xs, models=self.vfns, explore=explore, **kwargs)
 
     def as_funcapp(self):
         new = super().as_funcapp()

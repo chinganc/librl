@@ -6,12 +6,14 @@ from scripts import ranges as R
 
 
 range_common = [
-    [['seed'], [x * 100 for x in range(4)]],
+    [['seed'], [x * 100 for x in range(8)]],
 ]
 
 range_lambd = [
+    [['top_log_dir'], ['log_mamba']],
     [['algorithm', 'lambd'], [0., 0.1, 0.5, 0.9, 0.98]],
-    [['n_experts'], [1, 4, 8]]
+    [['n_experts'], [1, 2, 4, 8]],
+    [['algorithm', 'policy_as_expert'], [False]],
 ]
 range_lambd = R.merge_ranges(range_common, range_lambd)
 
@@ -25,8 +27,9 @@ range_pg = R.merge_ranges(range_common, range_pg)
 
 
 range_uniform = [
-    [['algorithm', 'lambd'], [0., 0.1, 0.5, 0.9, 1.]],
-    [['n_experts'], [1,4,8]],
+    [['top_log_dir'], ['log_uniform']],      
+    [['algorithm', 'lambd'], [0., 0.1, 0.5, 0.9, 0.98]],
+    [['n_experts'], [1, 2, 4, 8]],
     [['algorithm', 'uniform'], [True]],
     [['algorithm', 'policy_as_expert'], [False]],
 ]
@@ -43,6 +46,7 @@ range_aggrevate = R.merge_ranges(range_common, range_aggrevate)
 
 
 range_debug = [
+    [['top_log_dir'], ['log_debug']],            
     [['seed'], [x * 100 for x in range(2)]],
     [['algorithm', 'lambd'], [0.9, 0.98]],
     [['n_experts'], [8]]

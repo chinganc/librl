@@ -83,7 +83,7 @@ CONFIG = {
         'envid': 'DartCartPole-v1',
         'horizon': 1000,  # the max length of rollouts in training
         'gamma': 1.0,
-        'n_processes': 4,
+        'n_processes': 2,
         'min_ro_per_process': 2,  # needs to be at least 2 so the experts will be rollout
     },
     'experimenter': {
