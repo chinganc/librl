@@ -76,7 +76,7 @@ def main(c):
 
 
 CONFIG = {
-    'top_log_dir': 'log_opg',
+    'top_log_dir': 'log_mamba',
     'exp_name': 'cp',
     'seed': 0,
     'mdp': {
@@ -88,7 +88,7 @@ CONFIG = {
     },
     'experimenter': {
         'run_kwargs': {
-            'n_itrs': 100,
+            'n_itrs': 50,
             'pretrain': True,
             'final_eval': False,
             'eval_freq': 1,
@@ -107,7 +107,7 @@ CONFIG = {
         'lambd':0.5,
         'max_n_batches':2,
         'n_warm_up_itrs':None,
-        'n_pretrain_itrs':5,
+        'n_pretrain_itrs':2,
         # new kwargs
         'eps':0.5,
         'uniform':False,

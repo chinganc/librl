@@ -6,21 +6,21 @@ from scripts import ranges as R
 
 
 range_common = [
-    [['seed'], [x * 100 for x in range(16)]],
+    [['seed'], [x * 100 for x in range(4)]],
 ]
 
 range_lambd = [
-    [['algorithm', 'lambd'], [0., 0.1, 0.5, 0.9, 1.]],
+    [['algorithm', 'lambd'], [0., 0.1, 0.5, 0.9, 0.98]],
     [['n_experts'], [1, 4, 8]]
 ]
-
 range_lambd = R.merge_ranges(range_common, range_lambd)
 
+
 range_pg = [
-    [['algorithm', 'lambd'], [0.98]],
+    [['top_log_dir'], ['log_pg']],
+    [['algorithm', 'lambd'], [0.98, 1.00]],
     [['use_experts'], [False]],
 ]
-
 range_pg = R.merge_ranges(range_common, range_pg)
 
 
@@ -30,8 +30,8 @@ range_uniform = [
     [['algorithm', 'uniform'], [True]],
     [['algorithm', 'policy_as_expert'], [False]],
 ]
-
 range_uniform = R.merge_ranges(range_common, range_uniform)
+
 
 range_aggrevate = [
     [['algorithm', 'lambd'], [0, 0.1, 0.5, 0.9, 1.]],
@@ -39,8 +39,15 @@ range_aggrevate = [
     [['algorithm', 'uniform'], [False]],
     [['algorithm', 'policy_as_expert'], [False]],
 ]
-
 range_aggrevate = R.merge_ranges(range_common, range_aggrevate)
+
+
+range_debug = [
+    [['seed'], [x * 100 for x in range(2)]],
+    [['algorithm', 'lambd'], [0.9, 0.98]],
+    [['n_experts'], [8]]
+]
+
 
 
 
