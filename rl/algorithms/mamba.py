@@ -57,8 +57,9 @@ class EpsilonGreedy(Exploration):
 
 class Uniform(Exploration):
 
-    def __init__(self, x_shape):
+    def __init__(self, x_shape, deterministic=True):
         self.x_shape = x_shape
+        self.deterministic=deterministic
 
     @online_compatible
     def decision(self, xs, models=None, explore=False, **kwargs):
@@ -68,30 +69,40 @@ class Uniform(Exploration):
         K = len(models)
         vals = [m(xs, **kwargs) for m in models]
         vals = np.concatenate(vals, axis=1)
-        k_star = np.random.randint(0,K,(N,))
+        k_star = np.random.randint(0,K,(N,))  # uniform random
         if explore:
             prob = np.ones(k_star.shape)/K
             return k_star, prob
         else:
-            val_star = vals.flatten()[k_star+np.arange(N)*K].reshape([-1,1])
+            if self.deterministic:  # return the average
+                val_star = np.mean(vals, axis=1)
+            else:  # randomly return one
+                val_star = vals.flatten()[k_star+np.arange(N)*K].reshape([-1,1])
             return k_star, val_star
 
 
-class MaxValueFunction(SupervisedLearner):
+class AggregatedValueFunction(SupervisedLearner):
     """ Statewise maximum over a set of value functions.
 
         It uses a contextual bandit algoithm to help learn the best expert to
         follow at a visited state
     """
-    def __init__(self, vfns, eps=0.5, uniform=False, name='max_vfn'):
+    def __init__(self, vfns, eps=0.5, strategy='max', name='agg_vfn'):
         assert all([v.x_shape==vfns[0].x_shape for v in vfns])
         assert all([v.y_shape==vfns[0].y_shape for v in vfns])
         assert all([isinstance(v, SupervisedLearner) for v in vfns])
         super().__init__(vfns[0].x_shape, vfns[0].y_shape, name=name)
-        if uniform:
-            self.explorer = Uniform(self.x_shape)
-        else:
+
+        assert strategy in ['max', 'uniform', 'mean']
+        # TODO unified this part
+        if strategy=='uniform':
+            self.explorer = Uniform(self.x_shape, deterministic=False)
+        elif strategy=='mean':
+            self.explorer = Uniform(self.x_shape, deterministic=True)
+        elif strategy=='max':
             self.explorer = EpsilonGreedy(self.x_shape, eps=eps)
+        else:
+            raise ValueError('Unknown strategy')
         self.vfns = vfns
 
     def decision(self, xs, explore=False, **kwargs):
@@ -131,7 +142,7 @@ class Mamba(PolicyGradient):
     def __init__(self, policy, vfn,
                  experts=None,
                  eps=0.5,  # for epsilon greedy
-                 uniform=False, # expert selection strategy
+                 strategy='max',  # max, mean, or uniform
                  max_n_batches_experts=1000,  # for the experts
                  policy_as_expert=True,
                  mix_unroll_kwargs=None,  # extra kwargs for ExpertsAgent
@@ -151,16 +162,16 @@ class Mamba(PolicyGradient):
         else:
             print('Using {} experts'.format(len(vfns)))
         self.experts = experts
-        vfn_max = MaxValueFunction(vfns, eps=eps, uniform=uniform)  # max over values
+        vfn_agg = AggregatedValueFunction(vfns, eps=eps, strategy=strategy)  # max over values
         self.policy_as_expert = policy_as_expert
 
-        # The main update is policy gradient but with vfn_max as vfn.
+        # The main update is policy gradient but with vfn_agg as vfn.
         # The algorithm here is basically GAE with a general baseline function.
         # Therefore, we reuse most features from PolicyGradient but change the
         # update rule of the value estimate, because it's now the max over
         # experts' values.
-        super().__init__(policy, vfn_max, **kwargs)
-        self.ae.update = None  # The update wrt vfn_max should not be called
+        super().__init__(policy, vfn_agg, **kwargs)
+        self.ae.update = None  # The update wrt vfn_agg should not be called
 
         # Create aes for manually updating value functions
         create_ae = partial(type(self.ae), gamma=self.ae.gamma,
@@ -272,7 +283,7 @@ class ExpertsAgent(Agent):
     def __init__(self,
                  policy,  # the learner policy
                  experts,  # a list of expert policies
-                 vfn_max,  # maximum over the experts' value functions
+                 vfn_agg,  # aggregation of the experts' value functions
                  horizon,  # problem horizon
                  gamma,   # discount factor
                  avg_n_steps,  # average number of steps the policy can survive
@@ -283,7 +294,7 @@ class ExpertsAgent(Agent):
 
         self.policy = policy
         self.experts = experts
-        self.vfn = vfn_max
+        self.vfn = vfn_agg
 
         # For defining swtiching time
         assert horizon<float('Inf') or gamma<1.

@@ -9,14 +9,8 @@ range_common = [
     [['seed'], [x * 100 for x in range(8)]],
 ]
 
-range_lambd = [
-    [['top_log_dir'], ['log_mamba']],
-    [['algorithm', 'lambd'], [0., 0.1, 0.5, 0.9, 0.98]],
-    [['n_experts'], [1, 2, 4, 8]],
-    [['algorithm', 'policy_as_expert'], [False]],
-]
-range_lambd = R.merge_ranges(range_common, range_lambd)
 
+# basic baseline
 
 range_pg = [
     [['top_log_dir'], ['log_pg']],
@@ -25,28 +19,49 @@ range_pg = [
 ]
 range_pg = R.merge_ranges(range_common, range_pg)
 
+range_aggrevated = [
+    [['top_log_dir'], ['log_aggrevated']],
+    [['algorithm', 'lambd'], [0, 0.1, 0.5, 0.9, 1.]],
+    [['n_experts'], [1]],
+    [['algorithm', 'strategy'], ['mean']],
+    [['algorithm', 'policy_as_expert'], [False]],
+]
+range_aggrevated = R.merge_ranges(range_common, range_aggrevated)
 
-range_uniform = [
-    [['top_log_dir'], ['log_uniform']],      
+
+# aggregation
+
+range_lambd = [
+    [['top_log_dir'], ['log_mamba']],
     [['algorithm', 'lambd'], [0., 0.1, 0.5, 0.9, 0.98]],
     [['n_experts'], [1, 2, 4, 8]],
-    [['algorithm', 'uniform'], [True]],
+    [['algorithm', 'strategy'], ['max']],
+    [['algorithm', 'policy_as_expert'], [False]],
+]
+range_lambd = R.merge_ranges(range_common, range_lambd)
+
+range_uniform = [
+    [['top_log_dir'], ['log_uniform']],
+    [['algorithm', 'lambd'], [0., 0.1, 0.5, 0.9, 0.98]],
+    [['n_experts'], [1, 2, 4, 8]],
+    [['algorithm', 'strategy'], ['uniform']],
     [['algorithm', 'policy_as_expert'], [False]],
 ]
 range_uniform = R.merge_ranges(range_common, range_uniform)
 
-
-range_aggrevate = [
-    [['algorithm', 'lambd'], [0, 0.1, 0.5, 0.9, 1.]],
-    [['n_experts'], [1]],
-    [['algorithm', 'uniform'], [False]],
+range_mean = [
+    [['top_log_dir'], ['log_mean']],
+    [['algorithm', 'lambd'], [0., 0.1, 0.5, 0.9, 0.98]],
+    [['n_experts'], [1, 2, 4, 8]],
+    [['algorithm', 'strategy'], ['mean']],
     [['algorithm', 'policy_as_expert'], [False]],
 ]
-range_aggrevate = R.merge_ranges(range_common, range_aggrevate)
+range_mean = R.merge_ranges(range_common, range_mean)
 
+# debug
 
 range_debug = [
-    [['top_log_dir'], ['log_debug']],            
+    [['top_log_dir'], ['log_debug']],
     [['seed'], [x * 100 for x in range(2)]],
     [['algorithm', 'lambd'], [0.9, 0.98]],
     [['n_experts'], [8]]

@@ -110,7 +110,7 @@ CONFIG = {
         'n_pretrain_itrs':3,
         # new kwargs
         'eps':0.5,
-        'uniform':False,
+        'strategy':'max',
         'policy_as_expert': True,
         'max_n_batches_experts':100,
     },
