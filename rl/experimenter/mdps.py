@@ -69,6 +69,7 @@ class MDP:
                 min_n_samples = int(min_n_samples/N)
             kwargs['min_n_samples'] = min_n_samples
             kwargs['max_n_rollouts'] = max_n_rollouts
+            kwargs['min_n_rollouts'] = self._min_ro_per_process
             # start data collection
             job = ((agent,), kwargs)
             res = self._job_runner.run([job]*N)
@@ -162,7 +163,9 @@ def generate_rollout(pi, logp, env,
                      callback=None,
                      v_end=None,
                      t_state=None,
-                     min_n_samples=None, max_n_rollouts=None,
+                     min_n_samples=None,
+                     max_n_rollouts=None,
+                     min_n_rollouts=0,
                      max_rollout_len=None,
                      with_animation=False):
 
@@ -198,7 +201,9 @@ def generate_rollout(pi, logp, env,
 
             `min_n_samples`: the minimal number of samples to collect
 
-            `max_n_rollouts`: the maximal number of rollouts
+            `max_n_rollouts`: the maximal number of rollouts,
+
+            `min_n_rollouts`: the minimal number of rollouts,
 
             `with_animation`: display animiation of the first rollout
 
@@ -207,6 +212,7 @@ def generate_rollout(pi, logp, env,
     assert (min_n_samples is not None) or (max_n_rollouts is not None)  # so we can stop
     min_n_samples = min_n_samples or float('Inf')
     max_n_rollouts = max_n_rollouts or float('Inf')
+    min_n_rollouts = min(min_n_rollouts, max_n_rollouts)
     max_rollout_len = max_rollout_len or float('Inf')
     max_episode_steps = getattr(env, '_max_episode_steps', float('Inf'))
     max_rollout_len = min(max_episode_steps, max_rollout_len)
@@ -262,8 +268,7 @@ def generate_rollout(pi, logp, env,
         rollouts.append(rollout)
         n_samples += len(rollout)
         if (n_samples >= min_n_samples) or (len(rollouts) >= max_n_rollouts):
-            break
+            if len(rollouts)>= min_n_rollouts:
+                break
     ro = Dataset(rollouts)
     return ro
-
-
