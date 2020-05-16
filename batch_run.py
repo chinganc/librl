@@ -106,8 +106,6 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
     # It defaults to the cpu count of your machine.
     if n_processes == -1:
         n_processes = mp.cpu_count()
-    print('# of CPU (threads): {}'.format(mp.cpu_count()))
-
     script = importlib.import_module('scripts.'+script_name)
     template = load_config(script_name, config_name)
 
@@ -120,8 +118,18 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
     tps = []
     for range_name in range_names:
         r = getattr(script_ranges, 'range_'+range_name)
-        save_range(r, template['top_log_dir'])
         combs, keys = get_combs_and_keys(r)
+
+        # Save the range file
+        last_keys = [key[-1] for key in keys]
+        if 'top_log_dir' in last_keys:
+            ind = last_keys.index('top_log_dir')
+            assert all(combs[0][ind]==comb[ind] for comb in combs), 'multiple top_log_dir found'
+            top_log_dir = combs[0][ind]
+        else:
+            top_log_dir = template['top_log_dir']
+        save_range(r, top_log_dir)
+
         print('Total number of combinations: {}'.format(len(combs)))
         for _, comb in enumerate(combs):
             tp = copy.deepcopy(template)
@@ -136,8 +144,11 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
                 # so that we set the desired flag.
                 assert key[-1] in entry, 'missing {} in the config'.format(key[-1])
                 entry[key[-1]] = value
-                if key[-1]=='seed' or key[-1]=='top_log_dir':
+                if key[-1]=='seed':
                     continue # do not include seed number or the log directory
+                elif key[-1]=='top_log_dir':
+                    save_range(r, key[-1])
+                    continue
                 else:
                     if value is True:
                         value = 'T'
@@ -148,6 +159,9 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
             tps.append(tp)
 
     # Launch the experiments.
+    n_processes = min(n_processes, len(combs))
+    print('# of CPU (threads): {}. Running {} processes'.format(mp.cpu_count(), n_processes))
+
     # with mp.Pool(processes=n_processes, maxtasksperchild=1) as p:
     #     p.map(script.main, tps, chunksize=1)
     #     # p.map(func, tps, chunksize=1)
@@ -156,7 +170,6 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
     # job_runner = JobRunner(workers)
     # jobs = [((tp,),{}) for tp in tps]
     # job_runner.run(jobs)
-
 
     workers = [Worker() for _ in range(n_processes)]
     job_runner = JobRunner(workers)

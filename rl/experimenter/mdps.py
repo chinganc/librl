@@ -12,7 +12,7 @@ from rl.core.utils.mp_utils import Worker, JobRunner
 class MDP:
     """ A wrapper for gym env. """
     def __init__(self, env, gamma=1.0, horizon=None, use_time_info=True, v_end=None,
-                 n_processes=1, min_ro_per_process=1):
+                 n_processes=1, min_ro_per_process=1, max_run_calls=None):
         self.env = env  # a gym-like env
         self.gamma = gamma
         horizon = float('Inf') if horizon is None else horizon
@@ -28,6 +28,7 @@ class MDP:
                                max_rollout_len=horizon)
         self._n_processes = n_processes
         self._min_ro_per_process = int(max(1, min_ro_per_process))
+        self._max_run_calls=max_run_calls  # for freeing memory
 
     def initialize(self):
         try:  # try to reset the env
@@ -59,7 +60,7 @@ class MDP:
         if self._n_processes>1: # parallel data collection
             if not hasattr(self, '_job_runner'):  # start the process
                 workers = [Worker(method=self._gen_ro) for _ in range(self._n_processes)]
-                self._job_runner = JobRunner(workers)
+                self._job_runner = JobRunner(workers, max_run_calls=self._max_run_calls)
             # determine rollout configs
             N = self._n_processes  # number of jobs
             if max_n_rollouts is not None:
