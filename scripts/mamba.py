@@ -85,7 +85,7 @@ CONFIG = {
         'gamma': 1.0,
         'n_processes': 2,
         'min_ro_per_process': 2,  # needs to be at least 2 so the experts will be rollout
-        'max_run_calls':1,
+        'max_run_calls':50,
     },
     'experimenter': {
         'run_kwargs': {
