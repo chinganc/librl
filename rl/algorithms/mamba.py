@@ -75,7 +75,7 @@ class Uniform(Exploration):
             return k_star, prob
         else:
             if self.deterministic:  # return the average
-                val_star = np.mean(vals, axis=1)
+                val_star = np.mean(vals, axis=1).reshape([-1,1])
             else:  # randomly return one
                 val_star = vals.flatten()[k_star+np.arange(N)*K].reshape([-1,1])
             return k_star, val_star

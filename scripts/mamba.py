@@ -12,12 +12,27 @@ from rl.core.function_approximators.supervised_learners import SuperRobustKerasM
 
 
 import os
-def create_experts(path, name):
+
+
+def load_policy(path, name):
+    policy = RobustKerasMLPGassian((1,), (1,), init_lstd=0, name='dummy')
+    policy.restore(path, name=name)
+    return policy
+
+def load_vfn(path, name):
+    vfn = SuperRobustKerasMLP((1,), (1,), name='dummy')
+    vfn.restore(path, name=name)
+    return vfn
+
+
+def create_experts(envid, name, path=None):
     def load_expert(path, name):
-        expert = RobustKerasMLPGassian((1,), (1,), init_lstd=0, name='dummy')
-        expert.restore(path, name=name)
-        expert.name = 'expert'
+        expert = load_policy(path, name)
+        expert.name = 'expert_policy'
         return expert
+
+    if path is None:
+        path = os.path.join('experts',envid)
 
     for f in os.scandir(path):  # for a single expert
         if f.name.endswith(name):
@@ -29,6 +44,34 @@ def create_experts(path, name):
             experts.append(load_expert(os.path.join(path,d.name,'saved_policies'), name))
             experts[-1].name = 'expert_'+str(len(experts))
     return experts
+
+def create_learner(envid, seed, policy0, vfn0):
+    # Try to load the initial policy and value function
+    policy_name = 'learner_policy_'+str(seed)
+    vfn_name = 'learner_vfn_'+str(seed)
+    policy=vfn=None
+
+    path = os.path.join('init_learner',envid)
+    if os.path.exists(path):
+        for f in os.scandir(path):
+            if f.name.endswith(policy_name):
+                policy = load_policy(path, policy_name)
+            if f.name.endswith(vfn_name):
+                vfn = load_vfn(path, vfn_name)
+    if policy is None:
+        print("Cannot find existing initial policy. Create a new one.")
+        policy = policy0
+        policy.save(path, name=policy_name)
+    if vfn is None:
+        print("Cannot find existing initial vfn. Create a new one.")
+        vfn = vfn0
+        vfn.save(path, name=vfn_name)
+
+    policy.name = 'learner_policy'
+    vfn.name = 'learner_vfn'
+
+    return policy, vfn
+
 
 def main(c):
 
@@ -45,16 +88,16 @@ def main(c):
         ob_shape = (np.prod(ob_shape)+1,)
 
     # Define the learner
-    policy = RobustKerasMLPGassian(ob_shape, ac_shape, name='policy',
-                                   init_lstd=c['init_lstd'],
-                                   units=c['policy_units'])
-
-    vfn = SuperRobustKerasMLP(ob_shape, (1,), name='value function',
-                              units=c['value_units'])
+    policy = RobustKerasMLPGassian(ob_shape, ac_shape, name='learner_policy',
+                                    init_lstd=c['init_lstd'],
+                                    units=c['policy_units'])
+    vfn = SuperRobustKerasMLP(ob_shape, (1,), name='learner_vfn',
+                                units=c['value_units'])
+    policy, vfn = create_learner(c['mdp']['envid'], c['seed'], policy, vfn)
 
     # Define experts
     if c['use_experts']:
-        experts = create_experts(c['expert_path'],c['expert_name'])
+        experts = create_experts(c['mdp']['envid'],c['expert_name'])
         if c['n_experts'] is not None and len(experts)>c['n_experts']:
             experts = experts[:c['n_experts']]
         if len(experts)<1:
@@ -85,7 +128,7 @@ CONFIG = {
         'gamma': 1.0,
         'n_processes': 2,
         'min_ro_per_process': 2,  # needs to be at least 2 so the experts will be rollout
-        'max_run_calls':50,
+        'max_run_calls':25,
     },
     'experimenter': {
         'run_kwargs': {
@@ -108,9 +151,9 @@ CONFIG = {
         'lambd':0.5,
         'max_n_batches':2,
         'n_warm_up_itrs':None,
-        'n_pretrain_itrs':3,
+        'n_pretrain_itrs':2,
         # new kwargs
-        'eps':0.5,
+        'eps':1.0,
         'strategy':'max',
         'policy_as_expert': True,
         'max_n_batches_experts':100,
@@ -120,8 +163,7 @@ CONFIG = {
     'init_lstd': -1,
     #
     'use_experts':True,
-    'expert_path':'./experts/cp_experts', #'./experts'
-    'expert_name':'policy_best', # 'cp1000_mlp_policy_64_seed_9',
+    'expert_name':'policy_best',
     'n_experts': 2, # None,
 }
 
