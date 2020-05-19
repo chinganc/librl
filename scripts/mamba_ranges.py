@@ -41,20 +41,20 @@ range_lambd = [
 range_lambd = R.merge_ranges(range_common, range_lambd)
 
 range_uniform = [
-    [['top_log_dir'], ['log_uniform']],
+    [['top_log_dir'], ['log_uniform_s']],
     [['algorithm', 'lambd'], [0., 0.1, 0.5, 0.9, 0.98]],
     [['n_experts'], [1, 2, 4, 8]],
     [['algorithm', 'strategy'], ['uniform']],
-    [['algorithm', 'policy_as_expert'], [False]],
+    [['algorithm', 'policy_as_expert'], [True]],
 ]
 range_uniform = R.merge_ranges(range_common, range_uniform)
 
 range_mean = [
-    [['top_log_dir'], ['log_mean']],
+    [['top_log_dir'], ['log_mean_s']],
     [['algorithm', 'lambd'], [0., 0.1, 0.5, 0.9, 0.98]],
     [['n_experts'], [1, 2, 4, 8]],
     [['algorithm', 'strategy'], ['mean']],
-    [['algorithm', 'policy_as_expert'], [False]],
+    [['algorithm', 'policy_as_expert'], [True]],
 ]
 range_mean = R.merge_ranges(range_common, range_mean)
 
@@ -62,9 +62,11 @@ range_mean = R.merge_ranges(range_common, range_mean)
 
 range_debug = [
     [['top_log_dir'], ['log_debug']],
-    [['seed'], [x * 100 for x in range(2)]],
-    [['algorithm', 'lambd'], [0.9, 0.98]],
-    [['n_experts'], [8]]
+    [['seed'], [x * 100 for x in range(3)]],
+    [['algorithm', 'lambd'], [0., 0.5]],
+    [['algorithm', 'policy_as_expert'], [False]],
+    [['algorithm', 'strategy'], ['max', 'mean', 'uniform']],
+    [['n_experts'], [1]]
 ]
 
 

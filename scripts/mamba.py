@@ -124,15 +124,15 @@ CONFIG = {
     'seed': 0,
     'mdp': {
         'envid': 'DartCartPole-v1',
-        'horizon': 1000,  # the max length of rollouts in training
+        'horizon': 100,  # the max length of rollouts in training
         'gamma': 1.0,
-        'n_processes': 2,
+        'n_processes': 1,
         'min_ro_per_process': 2,  # needs to be at least 2 so the experts will be rollout
-        'max_run_calls':25,
+        'max_run_calls': None,
     },
     'experimenter': {
         'run_kwargs': {
-            'n_itrs': 100,
+            'n_itrs': 10,
             'pretrain': True,
             'final_eval': False,
             'eval_freq': 1,
@@ -140,7 +140,7 @@ CONFIG = {
         },
         'ro_kwargs': {
             'min_n_samples': None,
-            'max_n_rollouts': 8,
+            'max_n_rollouts': 2,
         },
     },
     'algorithm': {
