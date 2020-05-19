@@ -57,9 +57,10 @@ class EpsilonGreedy(Exploration):
 
 class Uniform(Exploration):
 
-    def __init__(self, x_shape, deterministic=True):
+    def __init__(self, x_shape, strategy='max'):
         self.x_shape = x_shape
-        self.deterministic=deterministic
+        self.strategy = strategy
+        assert strategy in ['max', 'uniform', 'mean']
 
     @online_compatible
     def decision(self, xs, models=None, explore=False, **kwargs):
@@ -74,10 +75,14 @@ class Uniform(Exploration):
             prob = np.ones(k_star.shape)/K
             return k_star, prob
         else:
-            if self.deterministic:  # return the average
+            if self.strategy=='mean':  # return the average
                 val_star = np.mean(vals, axis=1).reshape([-1,1])
-            else:  # randomly return one
+            elif self.strategy=='max':  # return the max
+                val_star = np.max(vals, axis=1).reshape([-1,1])
+            elif self.strategy=='uniform':  # randomly return one
                 val_star = vals.flatten()[k_star+np.arange(N)*K].reshape([-1,1])
+            else:
+                raise ValueError('Unknown strategy {}'.format(self.strategy))
             return k_star, val_star
 
 
@@ -93,16 +98,17 @@ class AggregatedValueFunction(SupervisedLearner):
         assert all([isinstance(v, SupervisedLearner) for v in vfns])
         super().__init__(vfns[0].x_shape, vfns[0].y_shape, name=name)
 
-        assert strategy in ['max', 'uniform', 'mean']
-        # TODO unified this part
-        if strategy=='uniform':
-            self.explorer = Uniform(self.x_shape, deterministic=False)
-        elif strategy=='mean':
-            self.explorer = Uniform(self.x_shape, deterministic=True)
-        elif strategy=='max':
-            self.explorer = EpsilonGreedy(self.x_shape, eps=eps)
-        else:
-            raise ValueError('Unknown strategy')
+        self.explorer = Uniform(self.x_shape, strategy)
+        # assert strategy in ['max', 'uniform', 'mean']
+        # # TODO unified this part
+        # if strategy=='uniform':
+        #     self.explorer = Uniform(self.x_shape, deterministic=False)
+        # elif strategy=='mean':
+        #     self.explorer = Uniform(self.x_shape, deterministic=True)
+        # elif strategy=='max':
+        #     self.explorer = EpsilonGreedy(self.x_shape, eps=eps)
+        # else:
+        #     raise ValueError('Unknown strategy')
         self.vfns = vfns
 
     def decision(self, xs, explore=False, **kwargs):
