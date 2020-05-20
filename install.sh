@@ -42,6 +42,7 @@ mkdir lib
 mkdir lib/python3.7
 mkdir lib/python3.7/site-packages
 export PYTHONPATH=$PYTHONPATH:~/repos/lib/python3.7/site-packages
+echo "PYTHONPATH=$PYTHONPATH:~/repos/lib/python3.7/site-packages" >> ~/.bashrc
 git clone https://github.com/sehoonha/pydart2.git
 cd pydart2
 python setup.py build build_ext
