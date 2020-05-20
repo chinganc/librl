@@ -1,0 +1,120 @@
+# ==== Build a basic Ubuntu image with miniconda ====
+
+FROM ubuntu:bionic
+
+#  $ docker build . -t continuumio/miniconda3:latest -t continuumio/miniconda3:4.5.11
+#  $ docker run --rm -it continuumio/miniconda3:latest /bin/bash
+#  $ docker push continuumio/miniconda3:latest
+#  $ docker push continuumio/miniconda3:4.5.11
+
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
+ENV PATH /opt/conda/bin:$PATH
+
+RUN apt-get update --fix-missing && \
+    apt-get install -y wget bzip2 ca-certificates curl git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh -O ~/miniconda.sh && \
+    /bin/bash ~/miniconda.sh -b -p /opt/conda && \
+    rm ~/miniconda.sh && \
+    /opt/conda/bin/conda clean -tipsy && \
+    ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
+    echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
+    echo "conda activate base" >> ~/.bashrc
+
+ENV TINI_VERSION v0.16.1
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/bin/tini
+RUN chmod +x /usr/bin/tini
+
+# ENTRYPOINT [ "/usr/bin/tini", "--" ]
+# CMD [ "/bin/bash" ]
+
+
+# ==== Install Some Basics ====
+ 
+RUN apt-get update \
+ && apt-get upgrade -y \
+ && apt-get install git vim -y
+RUN conda create -n tfcpu python=3.7 pip -y
+# source activate tfcpu
+ENV PATH /opt/conda/envs/tfcpu/bin:$PATH
+RUN /bin/bash -c "source activate tfcpu"
+RUN pip install tensorflow-cpu
+
+ENV DEBIAN_FRONTEND noninteractive
+RUN mkdir ~/repos
+
+
+# ==== Install Dart ====
+RUN apt-get remove libdart* -y \
+ && apt-get install build-essential cmake pkg-config git -y \
+ && apt-get install libeigen3-dev libassimp-dev libccd-dev libfcl-dev libboost-regex-dev libboost-system-dev -y \
+ && apt-get install libopenscenegraph-dev -y \
+ && apt-get install libnlopt-dev -y \
+ && apt-get install coinor-libipopt-dev -y \
+ && apt-get install libbullet-dev -y \
+ && apt-get install libode-dev -y \
+ && apt-get install liboctomap-dev -y \
+ && apt-get install libflann-dev -y \
+ && apt-get install libtinyxml2-dev -y \
+ && apt-get install liburdfdom-dev -y \
+ && apt-get install libxi-dev libxmu-dev freeglut3-dev -y \
+ && apt-get install libopenscenegraph-dev -y
+ 
+RUN cd ~/repos \
+ && git clone git://github.com/dartsim/dart.git \
+ && cd dart \
+ && git checkout tags/v6.7.2 \
+ && mkdir build \
+ && cd build \
+ && cmake .. \ 
+ && make -j16 \
+ && make install 
+
+RUN echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib:/usr/lib:/usr/local/lib" >> ~/.bashrc 
+
+# # # ==== Install PyDart2 ====
+RUN apt-get install swig -y \
+# create a new directory because anaconda might be installed by the root
+ && cd ~/repos \
+ && export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib:/usr/lib:/usr/local/lib \
+ #&& mkdir lib
+ #&& mkdir lib/python3.7
+ #&& mkdir lib/python3.7/site-packages
+ #&& export PYTHONPATH=$PYTHONPATH:~/repos/lib/python3.7/site-packages
+ && git clone https://github.com/sehoonha/pydart2.git \
+ && cd pydart2 \
+ && python setup.py build build_ext \
+ && python setup.py develop
+
+# ==== Install DartEnv ====
+RUN cd ~/repos \
+ && git clone https://github.com/gtrll/dartenv.git \
+ && cd dartenv \
+ && git checkout nodisplay \
+ && pip install -e .[dart] 
+
+# ==== Instal librl ====
+RUN mkdir ~/codes \
+ && cd ~/codes \
+ && git clone https://github.com/cacgt/librl.git \
+ && cd librl \
+ && pip install --upgrade -r requirements.txt \
+ && git checkout --track origin/experts
+
+# # # # The below will create your user in your container which you can use to run jobs
+# # # RUN echo "${domain}.domain users:x:${did}:${domain}.${alias}" >> /etc/group \
+# # # && echo "${domain}.${alias}:x:${uid}:${did}:${alias},,,:/home/${alias}:/bin/bash" >> /etc/passwd \
+# # # && echo "${domain}.${alias}:*:17575:0:99999:7:::" >> /etc/shadow \
+# # # && echo "${domain}.${alias} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${alias} \
+# # # && echo "  " >> /etc/sudoers.d/${alias}
+
+COPY install.sh ~/install.sh
+COPY .inputrc /root/.inputrc
+COPY .vimrc /root/.vimrc
+
+ENTRYPOINT [ "/usr/bin/tini", "--" ]
+CMD [ "/bin/bash" ]
+
+
