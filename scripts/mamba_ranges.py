@@ -62,7 +62,7 @@ range_mean = R.merge_ranges(range_common, range_mean)
 
 range_debug = [
     [['top_log_dir'], ['log_debug']],
-    [['seed'], [x * 100 for x in range(3)]],
+    [['seed'], [x * 100 for x in range(1)]],
     [['algorithm', 'lambd'], [0., 0.5]],
     [['algorithm', 'policy_as_expert'], [False]],
     [['algorithm', 'strategy'], ['max', 'mean', 'uniform']],
