@@ -38,7 +38,7 @@ range_softmax = [
     [['algorithm', 'strategy'], [1.0]],
     [['algorithm', 'policy_as_expert'], [False]],
 ]
-range_lambd = R.merge_ranges(range_common, range_lambd)
+range_softmax = R.merge_ranges(range_common, range_softmax)
 
 range_max = [
     [['top_log_dir'], ['log_max']],
