@@ -204,7 +204,8 @@ class Mamba(PolicyGradient):
                 for k, expert in enumerate(self.experts):
                     ros, _ = gen_ro(PolicyAgent(expert))
                     ro = self.merge(ros)
-                    self.aes[k].update(ro)
+                    _, ev0, ev1 = self.aes[k].update(ro)
+                    print('pretrain explained variances', ev0, ev1)
                     self.policy.update(ro['obs_short'])
 
     def update(self, ros, agents):  # agents are behavior policies

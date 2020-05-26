@@ -1,6 +1,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
+import numpy as np
 import tensorflow as tf
 from math import ceil
 from rl.core import function_approximators as fa
@@ -19,6 +20,9 @@ def robust_keras_supervised_learner(cls):
             self._metrics = metrics
             self.kmodel.compile(optimizer=tf.keras.optimizers.Adam(lr),
                                 loss=loss, metrics=list(metrics))
+            self.bias = 0.
+            self.scale = 1.0
+
 
         def update_funcapp(self, clip_y=False,
                             batch_size=128, n_steps=500,
@@ -33,6 +37,11 @@ def robust_keras_supervised_learner(cls):
             else:
                 xs, ys = self._dataset['xs'], self._dataset['ys']
 
+            # whiten the output for supervised learning
+            self.bias = np.mean(ys, axis=0)
+            self.scale = max(1.0, np.std(ys,axis=0))
+            ys = (ys-self.bias)/self.scale
+
             if epochs is None:
                 epochs = ceil(n_steps*batch_size/len(ys))
 
@@ -46,7 +55,7 @@ def robust_keras_supervised_learner(cls):
 
         def predict(self, *args, **kwargs):
             # prevent memory-leak
-            return self.k_predict(*args, **kwargs)
+            return self.k_predict(*args, **kwargs)*self.scale+self.bias
 
 
 
@@ -67,4 +76,3 @@ class SuperRobustKerasMLP(fa.RobustKerasMLP):
 @robust_keras_supervised_learner
 class SuperKerasMLP(fa.KerasMLP):
     pass
-
