@@ -37,7 +37,7 @@ def main(c):
                          **c['algorithm'])
 
     # Let's do some experiments!
-    exp = Exp.Experimenter(alg, mdp, c['experimenter']['rollout_kwargs'])
+    exp = Exp.Experimenter(alg, mdp, c['experimenter']['ro_kwargs'])
     exp.run(**c['experimenter']['run_kwargs'])
 
 
@@ -58,7 +58,7 @@ CONFIG = {
             'final_eval': False,
             'save_freq': 5,
         },
-        'rollout_kwargs': {
+        'ro_kwargs': {
             'min_n_samples': 2000,
             'max_n_rollouts': None,
             'force_cpu': False,
