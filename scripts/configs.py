@@ -71,7 +71,7 @@ config_reacher = {
     },
 }
 
-config_reacher3d_traj = def_traj_config(config_reacher3d)
+config_reacher3d_traj = def_traj_config(config_reacher)
 
 
 config_reacher3d = {
