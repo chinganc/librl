@@ -22,7 +22,7 @@ config_cp = {
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 100},
-        'rollout_kwargs': {'min_n_samples': 2000},
+        'ro_kwargs': {'min_n_samples': 2000},
     },
 }
 
@@ -37,7 +37,7 @@ config_dip = {
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 200},
-        'rollout_kwargs': {'min_n_samples': 2000},
+        'ro_kwargs': {'min_n_samples': 2000},
     },
 }
 
@@ -52,7 +52,7 @@ config_hopper = {
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 200},
-        'rollout_kwargs': {'min_n_samples': 16000},
+        'ro_kwargs': {'min_n_samples': 16000},
     },
 }
 
@@ -67,7 +67,7 @@ config_reacher = {
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 200},
-        'rollout_kwargs': {'min_n_samples': 16000},
+        'ro_kwargs': {'min_n_samples': 16000},
     },
 }
 
@@ -83,7 +83,7 @@ config_reacher3d = {
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 200},
-        'rollout_kwargs': {'min_n_samples': 16000},
+        'ro_kwargs': {'min_n_samples': 16000},
     },
 }
 
@@ -98,7 +98,7 @@ config_halfcheetah = {
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 200},
-        'rollout_kwargs': {'min_n_samples': 16000},
+        'ro_kwargs': {'min_n_samples': 16000},
     },
 }
 
@@ -113,7 +113,7 @@ config_dog = {
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 1000},
-        'rollout_kwargs': {'min_n_samples': 16000},
+        'ro_kwargs': {'min_n_samples': 16000},
     },
 }
 
@@ -128,7 +128,7 @@ config_humanwalker = {
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 1000},
-        'rollout_kwargs': {'min_n_samples': 16000},
+        'ro_kwargs': {'min_n_samples': 16000},
     },
 }
 
@@ -143,7 +143,7 @@ config_walker2d = {
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 500},
-        'rollout_kwargs': {'min_n_samples': 16000},
+        'ro_kwargs': {'min_n_samples': 16000},
     },
 }
 
@@ -158,7 +158,7 @@ config_walker3d = {
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 1000},
-        'rollout_kwargs': {'min_n_samples': 16000},
+        'ro_kwargs': {'min_n_samples': 16000},
     },
 }
 
@@ -173,7 +173,7 @@ config_snake = {
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 200},
-        'rollout_kwargs': {'min_n_samples': 16000},
+        'ro_kwargs': {'min_n_samples': 16000},
     },
 }
 
