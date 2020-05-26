@@ -31,14 +31,23 @@ range_aggrevated = R.merge_ranges(range_common, range_aggrevated)
 
 # aggregation
 
-range_lambd = [
-    [['top_log_dir'], ['log_mamba']],
+range_softmax = [
+    [['top_log_dir'], ['log_softmax']],
+    [['algorithm', 'lambd'], [0., 0.1, 0.5, 0.9, 0.98]],
+    [['n_experts'], [1, 2, 4, 8]],
+    [['algorithm', 'strategy'], [1.0]],
+    [['algorithm', 'policy_as_expert'], [False]],
+]
+range_lambd = R.merge_ranges(range_common, range_lambd)
+
+range_max = [
+    [['top_log_dir'], ['log_max']],
     [['algorithm', 'lambd'], [0., 0.1, 0.5, 0.9, 0.98]],
     [['n_experts'], [1, 2, 4, 8]],
     [['algorithm', 'strategy'], ['max']],
     [['algorithm', 'policy_as_expert'], [False]],
 ]
-range_lambd = R.merge_ranges(range_common, range_lambd)
+range_max = R.merge_ranges(range_common, range_max)
 
 range_uniform = [
     [['top_log_dir'], ['log_uniform']],
