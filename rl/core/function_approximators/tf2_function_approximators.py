@@ -3,6 +3,7 @@
 # Licensed under the MIT License.
 
 import copy
+from functools import partial
 import numpy as np
 import tensorflow as tf
 from abc import abstractmethod
@@ -245,6 +246,34 @@ class RobustKerasFuncApp(tfRobustFuncApp, KerasFuncApp):
 
 # Some examples
 
+
+def _keras_mlp(x_shape, y_shape,
+                units=(),
+                activation='tanh',
+                hidden_layer_init_scale=1.0,
+                output_layer_init_scale=1.0,
+                init_distribution='uniform'):
+
+        initializer = partial(tf.keras.initializers.VarianceScaling,
+                      mode='fan_avg', distribution=init_distribution)
+
+        ts_in = tf.keras.Input(x_shape)
+        ts_xs = tf.keras.layers.Reshape((np.prod(x_shape),))(ts_in)
+        # build the hidden layers
+        for unit in units:
+            init = initializer(scale=hidden_layer_init_scale**2)
+            ts_xs = tf.keras.layers.Dense(unit, activation=activation,
+                        kernel_initializer=init)(ts_xs)
+        # build the last linear layer
+        init = initializer(scale=output_layer_init_scale**2)
+        ts_ys = tf.keras.layers.Dense(np.prod(y_shape), activation='linear',
+                    kernel_initializer=init)(ts_xs)
+        ts_out = tf.keras.layers.Reshape(y_shape)(ts_ys)
+        kmodel = tf.keras.Model(ts_in, ts_out)
+        return kmodel
+
+
+
 class KerasMLP(KerasFuncApp):
     """ Basic MLP using tf.keras.layers """
 
@@ -254,15 +283,7 @@ class KerasMLP(KerasFuncApp):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
     def _build_kmodel(self, x_shape, y_shape):
-        # the last layer is linear
-        ts_in = tf.keras.Input(x_shape)
-        ts_xs = tf.keras.layers.Reshape((np.prod(x_shape),))(ts_in)
-        for unit in self.units:
-            ts_xs = tf.keras.layers.Dense(unit, activation=self.activation)(ts_xs)
-        ts_ys = tf.keras.layers.Dense(np.prod(y_shape), activation='linear')(ts_xs)
-        ts_out = tf.keras.layers.Reshape(y_shape)(ts_ys)
-        kmodel = tf.keras.Model(ts_in, ts_out)
-        return kmodel
+        return _keras_mlp(x_shape, y_shape, units=self.units, activation=self.activation)
 
 class RobustKerasMLP(RobustKerasFuncApp):
     """ Basic MLP using tf.keras.layers """
@@ -273,15 +294,7 @@ class RobustKerasMLP(RobustKerasFuncApp):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
     def _build_kmodel(self, x_shape, y_shape):
-        # the last layer is linear
-        ts_in = tf.keras.Input(x_shape)
-        ts_xs = tf.keras.layers.Reshape((np.prod(x_shape),))(ts_in)
-        for unit in self.units:
-            ts_xs = tf.keras.layers.Dense(unit, activation=self.activation)(ts_xs)
-        ts_ys = tf.keras.layers.Dense(np.prod(y_shape), activation='linear')(ts_xs)
-        ts_out = tf.keras.layers.Reshape(y_shape)(ts_ys)
-        kmodel = tf.keras.Model(ts_in, ts_out)
-        return kmodel
+        return _keras_mlp(x_shape, y_shape, units=self.units, activation=self.activation)
 
 
 class tfMLP(tfFuncApp):

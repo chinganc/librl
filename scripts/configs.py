@@ -28,6 +28,21 @@ config_cp = {
 
 config_cp_traj = def_traj_config(config_cp)
 
+config_dip = {
+    'exp_name': 'dip',
+    'mdp': {
+        'envid': 'DartDoubleInvertedPendulumEnv-v1',
+        'horizon': 1000,
+        'gamma': 1.0
+    },
+    'experimenter': {
+        'run_kwargs': {'n_itrs': 200},
+        'rollout_kwargs': {'min_n_samples': 2000},
+    },
+}
+
+config_dip_traj = def_traj_config(config_dip)
+
 config_hopper = {
     'exp_name': 'hopper',
     'mdp': {
