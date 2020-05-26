@@ -8,9 +8,9 @@ import copy
 
 def def_traj_config(c):
     c = copy.deepcopy(c)
-    c['experimenter']['rollout_kwargs']['max_n_rollouts'] = \
-        c['experimenter']['rollout_kwargs']['min_n_samples']/c['mdp']['horizon']
-    c['experimenter']['rollout_kwargs']['min_n_samples'] = None
+    c['experimenter']['ro_kwargs']['max_n_rollouts'] = \
+        c['experimenter']['ro_kwargs']['min_n_samples']/c['mdp']['horizon']
+    c['experimenter']['ro_kwargs']['min_n_samples'] = None
     return c
 
 config_cp = {
@@ -57,6 +57,22 @@ config_hopper = {
 }
 
 config_hopper_traj = def_traj_config(config_hopper)
+
+config_reacher = {
+    'exp_name': 'reacher',
+    'mdp': {
+        'envid': 'DartReacher-v1',
+        'horizon': 500,
+        'gamma': 1.0,
+    },
+    'experimenter': {
+        'run_kwargs': {'n_itrs': 200},
+        'rollout_kwargs': {'min_n_samples': 16000},
+    },
+}
+
+config_reacher3d_traj = def_traj_config(config_reacher3d)
+
 
 config_reacher3d = {
     'exp_name': 'reacher3d',
