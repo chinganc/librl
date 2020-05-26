@@ -3,6 +3,7 @@
 
 import copy
 import numpy as np
+from scipy.special import softmax
 from functools import partial, reduce
 from rl.algorithms import PolicyGradient
 from rl.algorithms.algorithm import PolicyAgent, Agent
@@ -60,7 +61,7 @@ class Uniform(Exploration):
     def __init__(self, x_shape, strategy='max'):
         self.x_shape = x_shape
         self.strategy = strategy
-        assert strategy in ['max', 'uniform', 'mean']
+        assert strategy in ['max', 'uniform', 'mean'] or isinstance(strategy,float)
 
     @online_compatible
     def decision(self, xs, models=None, explore=False, **kwargs):
@@ -81,6 +82,9 @@ class Uniform(Exploration):
                 val_star = np.max(vals, axis=1).reshape([-1,1])
             elif self.strategy=='uniform':  # randomly return one
                 val_star = vals.flatten()[k_star+np.arange(N)*K].reshape([-1,1])
+            elif isinstance(self.strategy, float):  # softmax
+                beta = self.strategy
+                val_star = np.sum(softmax(vals*beta,axis=1)*vals, axis=1).reshape([-1,1])
             else:
                 raise ValueError('Unknown strategy {}'.format(self.strategy))
             return k_star, val_star
