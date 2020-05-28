@@ -66,7 +66,7 @@ config_reacher = {
         'gamma': 1.0,
     },
     'experimenter': {
-        'run_kwargs': {'n_itrs': 200},
+        'run_kwargs': {'n_itrs': 500},
         'ro_kwargs': {'min_n_samples': 16000},
     },
 }
@@ -82,7 +82,7 @@ config_reacher3d = {
         'gamma': 1.0,
     },
     'experimenter': {
-        'run_kwargs': {'n_itrs': 200},
+        'run_kwargs': {'n_itrs': 500},
         'ro_kwargs': {'min_n_samples': 16000},
     },
 }
