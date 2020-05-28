@@ -97,7 +97,7 @@ def main(c):
 
     # Define experts
     if c['use_experts']:
-        experts = create_experts(c['mdp']['envid'],c['expert_name'])
+        experts = create_experts(c['mdp']['envid'],c['expert_name'], path=c['expert_path'])
         if c['n_experts'] is not None and len(experts)>c['n_experts']:
             experts = experts[:c['n_experts']]
         if len(experts)<1:
@@ -164,6 +164,7 @@ CONFIG = {
     #
     'use_experts':True,
     'expert_name':'policy_best',
+    'expert_path': None, #os.path.join('experts','DartCartPole-v1','600','saved_policies'),
     'n_experts': 2, # None,
 }
 
