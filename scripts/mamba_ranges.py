@@ -38,7 +38,7 @@ range_aggrevated = [
     [['n_experts'], [1]],
     [['algorithm', 'strategy'], ['max']],
     [['algorithm', 'policy_as_expert'], [False]],
-]i
+]
 range_aggrevated = R.merge_ranges(range_common, range_aggrevated)
 
 # aggregation
