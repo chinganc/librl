@@ -34,14 +34,17 @@ def create_experts(envid, name, path=None):
     if path is None:
         path = os.path.join('experts',envid)
 
-    for f in os.scandir(path):  # for a single expert
-        if f.name.endswith(name):
+    dirs = os.listdir(path)
+    dirs.sort()
+
+    for d in dirs:  # for a single expert
+        if d==name:
             experts = [load_expert(path, name)]
             break
     else: # for a set of experts
         experts = []
-        for d in os.scandir(path):
-            experts.append(load_expert(os.path.join(path,d.name,'saved_policies'), name))
+        for d in dirs:
+            experts.append(load_expert(os.path.join(path,d,'saved_policies'), name))
             experts[-1].name = 'expert_'+str(len(experts))
     return experts
 
@@ -164,7 +167,7 @@ CONFIG = {
     #
     'use_experts':True,
     'expert_name':'policy_best',
-    'expert_path': None, #os.path.join('experts','DartCartPole-v1','600','saved_policies'),
+    'expert_path': None, # os.path.join('experts','DartCartPole-v1','600','saved_policies'),
     'n_experts': 2, # None,
 }
 
