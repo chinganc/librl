@@ -151,7 +151,10 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
                         value = 'T'
                     if value is False:
                         value = 'F'
-                    value_strs.append(str(value).split('/')[0])
+                    value = str(value).replace('/','-')
+                    value_strs.append(value)
+                    # value_strs.append(str(value).split('/')[0])
+                   
             tp['exp_name'] = '-'.join(value_strs)
             tps.append(tp)
 
