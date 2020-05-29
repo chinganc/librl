@@ -40,7 +40,7 @@ def robust_keras_supervised_learner(cls):
 
             # whiten the output for supervised learning
             self._output_bias = np.mean(ys, axis=0)
-            self._output_scale = max(1.0, np.std(ys,axis=0))
+            self._output_scale = np.maximum(1.0, np.std(ys,axis=0))
             ys = (ys-self._output_bias)/self._output_scale
 
             if epochs is None:
