@@ -20,7 +20,7 @@ range_pg = R.merge_ranges(range_common, range_pg)
 
 
 def get_path(seed):
-	return 'experts/DartCartPole-v1/'+str(seed)+'/saved_policies'
+    return 'experts/DartCartPole-v1/'+str(seed)+'/saved_policies'
 
 range_aggrevated = [
     [['top_log_dir'], ['log_aggrevated']],
@@ -38,7 +38,7 @@ range_agg_lambda = [
     [['n_experts'], [1]],
     [['algorithm', 'strategy'], ['max']],
     [['algorithm', 'policy_as_expert'], [False]],
-    [['expert_path'],[ get_path(100)]
+    [['expert_path'],[get_path(100)]],
 ]
 range_agg_lambda = R.merge_ranges(range_common, range_agg_lambda)
 
