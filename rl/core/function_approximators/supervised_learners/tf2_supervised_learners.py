@@ -14,14 +14,15 @@ def robust_keras_supervised_learner(cls):
 
         def __init__(self, x_shape, y_shape, name='k_robust_super_learner',
                      lr=0.001, loss='mse', metrics=('mae','mse'), **kwargs):
+
             super().__init__(x_shape, y_shape, name=name, **kwargs)
             self._lr =lr
             self._loss = loss
             self._metrics = metrics
             self.kmodel.compile(optimizer=tf.keras.optimizers.Adam(lr),
                                 loss=loss, metrics=list(metrics))
-            self.bias = 0.
-            self.scale = 1.0
+            self._output_bias = 0.
+            self._output_scale = 1.0
 
 
         def update_funcapp(self, clip_y=False,
@@ -38,9 +39,9 @@ def robust_keras_supervised_learner(cls):
                 xs, ys = self._dataset['xs'], self._dataset['ys']
 
             # whiten the output for supervised learning
-            self.bias = np.mean(ys, axis=0)
-            self.scale = max(1.0, np.std(ys,axis=0))
-            ys = (ys-self.bias)/self.scale
+            self._output_bias = np.mean(ys, axis=0)
+            self._output_scale = max(1.0, np.std(ys,axis=0))
+            ys = (ys-self._output_bias)/self._output_scale
 
             if epochs is None:
                 epochs = ceil(n_steps*batch_size/len(ys))
@@ -55,8 +56,10 @@ def robust_keras_supervised_learner(cls):
 
         def predict(self, *args, **kwargs):
             # prevent memory-leak
-            return self.k_predict(*args, **kwargs)*self.scale+self.bias
+            return self.k_predict(*args, **kwargs)
 
+        def k_predict(self, xs, **kwargs):
+            return super().k_predict(xs, **kwargs)*self._output_scale+self._output_bias
 
 
     # to make them look the same as intended
