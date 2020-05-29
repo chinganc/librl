@@ -10,6 +10,7 @@ from rl.algorithms import Mamba
 from rl.core.function_approximators.policies import RobustKerasMLPGassian
 from rl.core.function_approximators.supervised_learners import SuperRobustKerasMLP
 
+from utils.plot import read_attr
 
 import os
 
@@ -42,10 +43,27 @@ def create_experts(envid, name, path=None):
             experts = [load_expert(path, name)]
             break
     else: # for a set of experts
-        experts = []
+        expert_and_vals = []
         for d in dirs:
-            experts.append(load_expert(os.path.join(path,d,'saved_policies'), name))
-            experts[-1].name = 'expert_'+str(len(experts))
+            d_path = os.path.join(path,d)
+            # load expert
+            expert = load_expert(os.path.join(d_path, 'saved_policies'), name)
+            # load its MeanSumOfRewards
+            score = read_attr(os.path.join(d_path, 'log.txt'), 'MeanSumOfRewards')
+            if name=='policy_best':
+                val = np.max(score)
+            else:
+                itr = int(name.split('_')[-1])
+                val= score[itr]
+
+            expert_and_vals.append([expert, val, d])
+
+        # sort from the best to the worst
+        expert_and_vals.sort(reverse=True, key=lambda i:i[1])
+        experts = [expert for expert, val, d in expert_and_vals]
+        for i, expert in enumerate(experts):
+            expert.name = 'expert_'+str(i)
+
     return experts
 
 def create_learner(envid, seed, policy0, vfn0):
