@@ -176,7 +176,7 @@ CONFIG = {
         # new kwargs
         'eps':1.0,
         'strategy':'max',
-        'policy_as_expert': True,
+        'policy_as_expert': False,
         'max_n_batches_experts':100,
     },
     'policy_units': (128,128),

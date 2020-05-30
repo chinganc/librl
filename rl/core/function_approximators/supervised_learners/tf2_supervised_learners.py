@@ -26,7 +26,7 @@ def robust_keras_supervised_learner(cls):
 
 
         def update_funcapp(self, clip_y=False,
-                            batch_size=128, n_steps=500,
+                            batch_size=128, n_steps=50,
                             epochs=None, **kwargs):  # for keras.Model.fit
             """ `clip_y`: whether to clip the targe """
 
@@ -38,6 +38,11 @@ def robust_keras_supervised_learner(cls):
             else:
                 xs, ys = self._dataset['xs'], self._dataset['ys']
 
+            # shuffle
+            ind = np.random.permutation(len(xs))
+            xs = xs[ind,:]
+            ys = ys[ind,:]
+
             # whiten the output for supervised learning
             self._output_bias = np.mean(ys, axis=0)
             self._output_scale = np.maximum(1.0, np.std(ys,axis=0))
@@ -45,9 +50,12 @@ def robust_keras_supervised_learner(cls):
 
             if epochs is None:
                 epochs = ceil(n_steps*batch_size/len(ys))
+            steps_per_epoch = n_steps if epochs==1 else None
 
             return self.kmodel.fit(xs, ys, sample_weight=self._dataset['ws'], verbose=0,
-                                   batch_size=batch_size, epochs=epochs,**kwargs)
+                                   batch_size=batch_size, epochs=epochs,
+                                   steps_per_epoch=steps_per_epoch,
+                                   **kwargs)
 
         def __setstate__(self, d):
             super().__setstate__(d)
