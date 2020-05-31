@@ -10,6 +10,13 @@ import tensorflow as tf
 from contextlib import contextmanager
 
 
+def set_randomseed(seed):
+    if tf.__version__[0]=='2':
+        tf.random.set_seed(seed)
+    else:
+        tf.set_random_seed(seed)  # graph-level seed
+    np.random.seed(seed)
+
 def profile():
     import line_profiler
     import atexit
@@ -125,4 +132,3 @@ def zipsame(*seqs):
     length = len(seqs[0])
     assert all(len(seq) == length for seq in seqs[1:])
     return zip(*seqs)
-

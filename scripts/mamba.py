@@ -136,7 +136,7 @@ def main(c):
 
     # Let's do some experiments!
     exp = Exp.Experimenter(alg, mdp, c['experimenter']['ro_kwargs'])
-    exp.run(**c['experimenter']['run_kwargs'])
+    exp.run(seed=c['seed'], **c['experimenter']['run_kwargs'],)
 
 
 CONFIG = {
@@ -184,7 +184,7 @@ CONFIG = {
     'init_lstd': -1,
     'use_experts': True,
     'expert_name':'policy_best',
-    'expert_path': None, #os.path.join('experts','DartCartPole-v1','600','saved_policies'),
+    'expert_path': None, #'experts/DartCartPole-v1/'+str(100)+'/saved_policies',
     'n_experts': 2, # None,
 }
 

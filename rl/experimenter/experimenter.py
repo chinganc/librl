@@ -7,7 +7,7 @@ import time, os
 import numpy as np
 from rl.algorithms import Algorithm
 from rl.experimenter.mdps import MDP
-from rl.core.utils.misc_utils import safe_assign, timed
+from rl.core.utils.misc_utils import safe_assign, timed, set_randomseed
 from rl.core.utils import logz
 
 
@@ -100,11 +100,15 @@ class Experimenter:
 
         return ros_all, agents_all
 
-    def run(self, n_itrs, pretrain=True,
+    def run(self, n_itrs, pretrain=True, seed=None,
             save_freq=None, eval_freq=None, final_eval=False, final_save=True):
 
         eval_policy = eval_freq is not None
         save_policy = save_freq is not None
+
+        if seed is not None:
+            set_randomseed(seed)
+            self.mdp.env.seed(seed)
 
         start_time = time.time()
         if pretrain:
@@ -153,5 +157,3 @@ class Experimenter:
         path = os.path.join(logz.LOG.output_dir,'saved_policies')
         name = policy.name+'_'+str(suffix)
         policy.save(path, name=name)
-
-

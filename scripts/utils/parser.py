@@ -7,6 +7,7 @@ import tensorflow as tf
 import numpy as np
 from rl.experimenter import MDP
 from rl.core.utils import logz
+from rl.core.utils.misc_utils import set_randomseed
 
 
 def configure_log(config, unique_log_dir=False):
@@ -47,13 +48,7 @@ def setup_mdp(c, seed):
     env = create_env(envid, seed)
     tf.keras.backend.clear_session()
     # fix randomness
-    if tf.__version__[0]=='2':
-        tf.random.set_seed(seed)
-    else:
-        tf.set_random_seed(seed)  # graph-level seed
-    np.random.seed(seed)
+    set_randomseed(seed)
     del c['envid']
     mdp = MDP(env, **c)
     return mdp
-
-
