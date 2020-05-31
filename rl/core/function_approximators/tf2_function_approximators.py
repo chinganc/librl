@@ -125,7 +125,7 @@ class KerasFuncApp(tfFuncApp):
             self.kmodel = build_kmodel(self.x_shape, self.y_shape)
         # make sure the model is constructed
         ts_x = tf.zeros([1]+list(self.x_shape))
-        self.ts_predict(ts_x)
+        self.kmodel(ts_x)
 
     def _build_kmodel(self, x_shape, y_shape):
         """ Build the default kmodel.
@@ -191,7 +191,7 @@ class KerasFuncApp(tfFuncApp):
             self.kmodel = tf.keras.Sequential.from_config(config)
         # intialize the weights (keras bug...)
         ts_x = tf.zeros([1]+list(self.x_shape))
-        self.ts_predict(ts_x)
+        self.kmodel(ts_x)  #self.ts_predict(ts_x)
         self.kmodel.set_weights(weights)
 
 
@@ -385,4 +385,3 @@ class tfGradFun(tfFuncApp):
 
     def ts_predict(self, ts_xs, **kwargs):
         return self.base_fun.ts_grad(ts_xs, **kwargs)
-

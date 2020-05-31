@@ -19,16 +19,13 @@ def robust_keras_supervised_learner(cls):
             self._lr =lr
             self._loss = loss
             self._metrics = metrics
-            self.kmodel.compile(optimizer=tf.keras.optimizers.Adam(lr),
-                                loss=loss, metrics=list(metrics))
             self._output_bias = 0.
             self._output_scale = 1.0
 
-
         def update_funcapp(self, clip_y=False,
-                            batch_size=128, n_steps=50,
+                            batch_size=128, n_steps=100,
                             epochs=None, **kwargs):  # for keras.Model.fit
-            """ `clip_y`: whether to clip the targe """
+            """ `clip_y`: whether to clip the target """
 
             if isinstance(self, fa.RobustKerasFuncApp):
                 xs = self._x_nor(self._dataset['xs'])
@@ -52,6 +49,9 @@ def robust_keras_supervised_learner(cls):
                 epochs = ceil(n_steps*batch_size/len(ys))
             steps_per_epoch = n_steps if epochs==1 else None
 
+            # reset the optimizer
+            self.kmodel.compile(optimizer=tf.keras.optimizers.Adam(self._lr),
+                                loss=self._loss, metrics=list(self._metrics))
             return self.kmodel.fit(xs, ys, sample_weight=self._dataset['ws'], verbose=0,
                                    batch_size=batch_size, epochs=epochs,
                                    steps_per_epoch=steps_per_epoch,
@@ -69,6 +69,8 @@ def robust_keras_supervised_learner(cls):
         def k_predict(self, xs, **kwargs):
             return super().k_predict(xs, **kwargs)*self._output_scale+self._output_bias
 
+        def ts_predict(self, ts_xs, **kwargs):
+            return super().ts_predict(ts_xs, **kwargs)*self._output_scale+self._output_bias
 
     # to make them look the same as intended
     decorated_cls.__name__ = cls.__name__
