@@ -24,8 +24,10 @@ def robust_keras_supervised_learner(cls):
 
         def update_funcapp(self, clip_y=False,
                             batch_size=128, n_steps=100,
+                            normalize_output=None, # can be None, 'white', or 'rms'
                             epochs=None, **kwargs):  # for keras.Model.fit
             """ `clip_y`: whether to clip the target """
+
 
             if isinstance(self, fa.RobustKerasFuncApp):
                 xs = self._x_nor(self._dataset['xs'])
@@ -41,8 +43,14 @@ def robust_keras_supervised_learner(cls):
             ys = ys[ind,:]
 
             # whiten the output for supervised learning
-            self._output_bias = np.mean(ys, axis=0)
-            self._output_scale = np.maximum(1.0, np.std(ys,axis=0))
+            assert normalize_output in [None, 'white', 'rms']
+            if normalize_output=='white':
+                self._output_bias = np.mean(ys, axis=0)
+                self._output_scale = np.maximum(1.0, np.std(ys,axis=0))
+            elif normalize_output=='rms':
+                self._output_bias = 0.0
+                self._output_scale = np.maximum(1.0, np.sqrt(np.mean(ys**2,axis=0)))
+
             ys = (ys-self._output_bias)/self._output_scale
 
             if epochs is None:

@@ -11,19 +11,22 @@ from rl.core.utils.mp_utils import Worker, JobRunner
 
 class MDP:
     """ A wrapper for gym env. """
-    def __init__(self, env, gamma=1.0, horizon=None, use_time_info=True, v_end=None,
-                 n_processes=1, min_ro_per_process=1, max_run_calls=None):
+    def __init__(self, env, gamma=1.0, horizon=None, use_time_info=True,
+                 v_end=None, rw_scale=1.0, n_processes=1, min_ro_per_process=1,
+                 max_run_calls=None):
         self.env = env  # a gym-like env
         self.gamma = gamma
         horizon = float('Inf') if horizon is None else horizon
         self.horizon = horizon
         self.use_time_info = use_time_info
+        self.rw_scale = rw_scale
 
         # configs for rollouts
         t_state = partial(self.t_state, horizon=horizon) if use_time_info else None
         self._gen_ro = partial(self.generate_rollout,
                                env=self.env,
                                v_end=v_end,
+                               rw_shaping= lambda rw, ob, ac: rw*self.rw_scale,
                                t_state=t_state,
                                max_rollout_len=horizon)
         self._n_processes = n_processes
@@ -164,6 +167,7 @@ def generate_rollout(pi, logp, env,
                      callback=None,
                      v_end=None,
                      t_state=None,
+                     rw_shaping=None,
                      min_n_samples=None,
                      max_n_rollouts=None,
                      min_n_rollouts=0,
@@ -198,6 +202,8 @@ def generate_rollout(pi, logp, env,
 
             `t_state`: a function that maps time to desired features
 
+            `rw_shaping`: a function that maps a reward to the new reward
+
             `max_rollout_len`: the maximal length of a rollout (i.e. the problem's horizon)
 
             `min_n_samples`: the minimal number of samples to collect
@@ -220,6 +226,9 @@ def generate_rollout(pi, logp, env,
 
     if v_end is None:
         def v_end(ob, dn): return 0.
+
+    if rw_shaping is None:
+        def rw_shaping(rw, ob, ac): return rw
 
     def post_process(x, t):
         # Augment observation with time information, if needed.
@@ -255,6 +264,7 @@ def generate_rollout(pi, logp, env,
             obs.append(ob)
             acs.append(ac)
             ob, rw, dn, _ = step(ac, tm)
+            rw = rw_shaping(rw, ob, ac)
             rws.append(rw)
             tm += 1
             if dn or tm >= max_rollout_len:

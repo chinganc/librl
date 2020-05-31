@@ -60,6 +60,7 @@ class Experimenter:
 
             # Log
             ro = functools.reduce(lambda x,y: x+y, ros)
+            def scale_back_rws(rws): return [r/self.mdp.rw_scale for r in rws]
             if not eval_mode:
                 self._n_rollouts += len(ro)
                 self._n_samples += ro.n_samples
@@ -69,12 +70,17 @@ class Experimenter:
                 # current ro
                 gamma = m.gamma
                 sum_of_rewards = [ ((gamma**np.arange(len(r.rws)))*r.rws).sum() for r in ro]
-                performance = np.mean(sum_of_rewards)
                 if gamma<1.:
                     avg_of_rewards = [ (1-gamma)*sr for sr, r in zip(sum_of_rewards, ro)]
                 else:
                     avg_of_rewards = [ sr/len(r) for sr, r in zip(sum_of_rewards, ro)]
 
+                # scale back the reward in logging
+                sum_of_rewards = scale_back_rws(sum_of_rewards)
+                avg_of_rewards = scale_back_rws(avg_of_rewards)
+
+                # compute the statistics
+                performance = np.mean(sum_of_rewards)
                 performance_avg = np.mean(avg_of_rewards)
                 rollout_lens = [len(rollout) for rollout in ro]
                 n_samples = sum(rollout_lens)
