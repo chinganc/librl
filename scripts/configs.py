@@ -33,7 +33,8 @@ config_dip = {
     'mdp': {
         'envid': 'DartDoubleInvertedPendulumEnv-v1',
         'horizon': 1000,
-        'gamma': 1.0
+        'gamma': 1.0,
+        'rw_scale': 0.1,
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 200},
@@ -49,6 +50,7 @@ config_hopper = {
         'envid': 'DartHopper-v1',
         'horizon': 1000,
         'gamma': 1.0,
+        'rw_scale': 0.1,
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 200},
@@ -178,4 +180,3 @@ config_snake = {
 }
 
 config_sanke_traj = def_traj_config(config_snake)
-

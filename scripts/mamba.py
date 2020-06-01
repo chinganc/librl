@@ -150,6 +150,7 @@ CONFIG = {
         'n_processes': 1,
         'min_ro_per_process': 2,  # needs to be at least 2 so the experts will be rollout
         'max_run_calls':25,
+        'rw_scale':1.0,
     },
     'experimenter': {
         'run_kwargs': {
