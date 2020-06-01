@@ -50,7 +50,7 @@ config_hopper = {
         'envid': 'DartHopper-v1',
         'horizon': 1000,
         'gamma': 1.0,
-        'rw_scale': 0.1,
+        'rw_scale': 0.01,
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 200},
