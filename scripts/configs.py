@@ -66,6 +66,7 @@ config_reacher = {
         'envid': 'DartReacher-v1',
         'horizon': 500,
         'gamma': 1.0,
+        'rw_scale': 0.01,
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 500},
@@ -82,6 +83,7 @@ config_reacher3d = {
         'envid': 'DartReacher3d-v1',
         'horizon': 500,
         'gamma': 1.0,
+        'rw_scale': 0.01,
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 500},
@@ -146,6 +148,7 @@ config_walker2d = {
     'experimenter': {
         'run_kwargs': {'n_itrs': 500},
         'ro_kwargs': {'min_n_samples': 16000},
+        'rw_scale': 0.01,
     },
 }
 
