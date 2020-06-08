@@ -9,6 +9,15 @@ from rl.core.datasets import Dataset
 from rl.core.utils.mp_utils import Worker, JobRunner
 
 
+
+def linear_t_state(t, horizon):
+    return t/horizon
+
+def rw_scaling(rw, ob, ac, scale):
+    return rw*scale
+
+
+
 class MDP:
     """ A wrapper for gym env. """
     def __init__(self, env, gamma=1.0, horizon=None, use_time_info=True,
@@ -22,11 +31,12 @@ class MDP:
         self.rw_scale = rw_scale
 
         # configs for rollouts
-        t_state = partial(self.t_state, horizon=horizon) if use_time_info else None
+        t_state = partial(linear_t_state, horizon=self.horizon) if use_time_info else None
+        rw_shaping = partial(rw_scaling, scale=self.rw_scale)
         self._gen_ro = partial(self.generate_rollout,
                                env=self.env,
                                v_end=v_end,
-                               rw_shaping= lambda rw, ob, ac: rw*self.rw_scale,
+                               rw_shaping= rw_shaping,
                                t_state=t_state,
                                max_rollout_len=horizon)
         self._n_processes = n_processes
@@ -38,10 +48,6 @@ class MDP:
             self.env.initialize()
         except:
             pass
-
-    @staticmethod
-    def t_state(t, horizon):
-        return t/horizon
 
     @property
     def ob_shape(self):

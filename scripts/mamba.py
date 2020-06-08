@@ -26,7 +26,7 @@ def load_vfn(path, name):
     return vfn
 
 
-def create_experts(envid, name, path=None):
+def create_experts(envid, name, path=None, order=True):
     def load_expert(path, name):
         expert = load_policy(path, name)
         expert.name = 'expert_policy'
@@ -61,6 +61,11 @@ def create_experts(envid, name, path=None):
         # sort from the best to the worst
         expert_and_vals.sort(reverse=True, key=lambda i:i[1])
         experts = [expert for expert, val, d in expert_and_vals]
+
+        if not order:  # use a random order
+            ind = np.random.permutation(len(experts))
+            experts = [ experts[i] for i in ind]
+
         for i, expert in enumerate(experts):
             expert.name = 'expert_'+str(i)
 
@@ -118,7 +123,7 @@ def main(c):
 
     # Define experts
     if c['use_experts']:
-        experts = create_experts(c['mdp']['envid'],c['expert_name'], path=c['expert_path'])
+        experts = create_experts(c['mdp']['envid'], **c['expert_info'])
         if c['n_experts'] is not None and len(experts)>c['n_experts']:
             experts = experts[:c['n_experts']]
         if len(experts)<1:
@@ -184,8 +189,11 @@ CONFIG = {
     'value_units': (256,256),
     'init_lstd': -1,
     'use_experts': True,
-    'expert_name':'policy_best',
-    'expert_path': None, #'experts/DartCartPole-v1/'+str(100)+'/saved_policies',
+    'expert_info':{
+        'name':'policy_15',
+        'path': None, #'experts/DartCartPole-v1/'+str(100)+'/saved_policies',
+        'order': True,  # True to use the ordering of directory names; False to use a random ordering
+    },
     'n_experts': 2, # None,
 }
 
