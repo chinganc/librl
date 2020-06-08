@@ -18,7 +18,7 @@ def configure_plot(fontsize, usetex):
     matplotlib.rc("font", family="Times New Roman")
     matplotlib.rcParams["font.family"] = "serif"
     matplotlib.rcParams["font.serif"] = "Times"
-    matplotlib.rcParams["figure.figsize"] = 10, 8
+    matplotlib.rcParams["figure.figsize"] = 12, 8
     matplotlib.rc("xtick", labelsize=fontsize)
     matplotlib.rc("ytick", labelsize=fontsize)
 
@@ -48,18 +48,27 @@ def read_attr(csv_path, attr):
 
 
 def main(logdir, value, output_dir=None, filename=None, style=None,
-         y_higher=None, y_lower=None, n_iters=None, legend_loc=0,
+         y_axis=None, y_higher=None, y_lower=None, n_iters=None, legend_loc=0,
          curve_style='percentile'):
 
     attr = value
+    y_axis = attr if y_axis is None else y_axis
     conf = Configs(style)
     subdirs = sorted(os.listdir(logdir))
     subdirs = [d for d in subdirs if d[0] != '.']  # filter out weird things, e.g. .DS_Store
     subdirs = conf.sort_dirs(subdirs)
-    fontsize = 32 if style else 12  # for non style plots, exp name can be quite long
-    usetex = True if style else False
+    fontsize = 36 if style else 12  # for non style plots, exp name can be quite long
+    usetex = False # True if style else False
     configure_plot(fontsize=fontsize, usetex=usetex)
-    linewidth = 4
+    linewidth = 10 if style else 4
+
+    if style:
+        fig, ax = plt.subplots()
+        plt.setp(ax.spines.values(), linewidth=3)
+
+        #for axis in ['top','bottom','left','right']:
+        #ax.spines[axis].set_linewidth(0.5)
+
     n_curves = 0
     for exp_name in subdirs:
         exp_dir = os.path.join(logdir, exp_name)
@@ -89,20 +98,25 @@ def main(logdir, value, output_dir=None, filename=None, style=None,
 
         mask =  np.isfinite(mid)
         plt.plot(iters[mask], mid[mask], label=conf.label(exp_name), color=color, linewidth=linewidth)
-        plt.fill_between(iters[mask], low[mask], high[mask], alpha=0.25, facecolor=color)
+        plt.fill_between(iters[mask], low[mask], high[mask], alpha=0.0, facecolor=color)
     if n_curves == 0:
         print('Nothing to plot.')
         return 0
-    if not style:
-        plt.xlabel('Iteration', fontsize=fontsize)
-        plt.ylabel(value, fontsize=fontsize)
-    legend = plt.legend(loc=legend_loc, fontsize=fontsize, frameon=False)
+    #if not style:
+    plt.xlabel('Iteration', fontsize=fontsize)
+    plt.ylabel(y_axis, fontsize=fontsize)
+
+    if not (logdir.endswith('dip_all_55_4_exps') or logdir.endswith('dip_experts_effects_55_09')):
+        legend = plt.legend(loc=legend_loc, fontsize=fontsize-4, frameon=False)
+        for line in legend.get_lines():
+            line.set_linewidth(6.0)
+
     plt.autoscale(enable=True, tight=True)
     plt.tight_layout()
     plt.ylim(y_lower, y_higher)
-    plt.grid(linestyle='--', linewidth='0.2')
-    for line in legend.get_lines():
-        line.set_linewidth(6.0)
+    if not style:
+        plt.grid(linestyle='--', linewidth='0.2')
+
     output_dir = output_dir or logdir
     output_filename = filename or '{}.pdf'.format(value)
     output_path = os.path.join(output_dir, output_filename)
@@ -114,19 +128,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-d','--dir', help='The dir of experiments', type=str)
     parser.add_argument('-v', '--value', help='The column name in the log.txt file', type=str)
+    parser.add_argument('-y', '--y_axis', help='Name of the y-axis', type=str, default=None)
     parser.add_argument('-o', '--output_dir', type=str, help='Output directory')
     parser.add_argument('-f,','--filename', type=str, default='', help='Output filename')
     parser.add_argument('--style', type=str, default='', help='Plotting style')
     parser.add_argument('--y_higher', nargs='?', type=float)
     parser.add_argument('--y_lower', nargs='?', type=float)
     parser.add_argument('--n_iters', nargs='?', type=int)
-    parser.add_argument('--legend_loc', type=int, default=0)
+    parser.add_argument('--legend_loc', type=int, default=4)
     parser.add_argument('--curve', type=str, default='percentile', help='percentile, std')
 
     args = parser.parse_args()
 
     main(logdir=args.dir,
          value=args.value,
+         y_axis=args.y_axis,
          output_dir=args.output_dir,
          filename=args.filename,
          style=args.style,

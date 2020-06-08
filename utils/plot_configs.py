@@ -4,31 +4,43 @@
 from matplotlib import cm
 from itertools import chain
 
+
+SET1COLORS = cm.get_cmap('Set1').colors
 SET2COLORS = cm.get_cmap('Set2').colors
-SET2 = {'darkgreen': SET2COLORS[0],
-        'orange': SET2COLORS[1],
-        'blue': SET2COLORS[2],
+
+COLOR = {
+        'red': SET1COLORS[0],
+        'blue': SET1COLORS[1],
+        'lightblue': SET2COLORS[2],
+        'green': SET1COLORS[2],
+        'purple': SET1COLORS[3],
+        'grey': SET1COLORS[8],
+        'darkgreen': SET2COLORS[0],
+        'orange': SET1COLORS[4],
         'pink': SET2COLORS[3],
         'lightgreen': SET2COLORS[4],
         'gold': SET2COLORS[5],
-        'brown': SET2COLORS[6],
-        'grey': SET2COLORS[7],
+        'brown': SET1COLORS[6],
         }
 
-icml_piccolo_final_configs = {
-    'model-free': ('Base Algorithm',  SET2['grey']),
-    'last': (r'\textsc{Last}', SET2['blue']),
-    'replay': (r'\textsc{Replay}', SET2['pink']),
-    'sim': (r'\textsc{TrueDyn}', SET2['lightgreen']),
-    'sim0.5-VI': (r'\textsc{BiasedDyn0.5-vi}', SET2['orange']),
-    'sim0.8-VI': (r'\textsc{BiasedDyn0.8-vi}', SET2['pink']),
-    'last-VI': (r'\textsc{Last-vi}', SET2['orange']),
-    'sim0.2-VI': (r'\textsc{BiasedDyn0.2-vi}', SET2['darkgreen']),
-    'pcl-adv': (r'\textsc{PicCoLO-Adversarial}', SET2['blue']),
-    'dyna-adv': (r'\textsc{DYNA-Adversarial}', SET2['pink']),
-    'order': [
-        'model-free', 'last', 'replay', 'sim', 'sim0.2-VI', 'sim0.5-VI', 'sim0.8-VI', 'last-VI',
-        'sim0.2-VI', 'pcl-adv', 'dyna-adv']
+
+mamba_configs = {
+    'aggrevated': ('AggreVaTeD',  COLOR['green']),
+    'mamba-0.9-max': ('MAMBA-0.9-max',  COLOR['red']),
+    'mamba-0.9-mean': ('MAMBA-0.9-mean',  COLOR['blue']),
+    'mamba-0.9-max(8)': ('MAMBA-0.9-max(8)',  COLOR['red']),
+    'mamba-0.9-max(4)': ('MAMBA-0.9-max(4)',  COLOR['orange']),
+    'mamba-0.9-max(2)': ('MAMBA-0.9-max(2)',  COLOR['lightblue']),
+    'mamba-0.9-max(1)': ('MAMBA-0.9-max(1)',  COLOR['purple']),
+    'mamba-0.9-max_': ('MAMBA-0.9-max',  COLOR['purple']),
+    'mamba-0.5-max': ('MAMBA-0.5-max',  COLOR['gold']),
+    'mamba-0.1-max': ('MAMBA-0.1-max',  COLOR['pink']),
+    'pg-gae-0.9': ('PG-GAE-0.9', COLOR['grey']),
+    'order': ['mamba-0.9-max', 'mamba-0.9-mean',
+              'mamba-0.9-max(8)', 'mamba-0.9-max(4)', 'mamba-0.9-max(2)', 'mamba-0.9-max(1)',
+              'mamba-0.9-max_', 'mamba-0.5-max', 'mamba-0.1-max',
+              'aggrevated', 'pg-gae-0.9',
+    ]
 }
 
 
@@ -36,7 +48,7 @@ class Configs(object):
     def __init__(self, style=None, colormap=None):
         if not style:
             self.configs = None
-            if colormap is None: 
+            if colormap is None:
                 c1 = iter(cm.get_cmap('Set1').colors)
                 c2 = iter(cm.get_cmap('Set2').colors)
                 c3 = iter(cm.get_cmap('Set3').colors)
