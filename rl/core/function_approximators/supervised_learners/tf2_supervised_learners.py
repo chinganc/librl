@@ -21,6 +21,8 @@ def robust_keras_supervised_learner(cls):
             self._metrics = metrics
             self._output_bias = 0.
             self._output_scale = 1.0
+            self.kmodel.compile(optimizer=tf.keras.optimizers.Adam(self._lr),
+                                loss=self._loss, metrics=list(self._metrics))
 
         def update_funcapp(self, clip_y=False,
                             batch_size=128, n_steps=100,
@@ -57,13 +59,12 @@ def robust_keras_supervised_learner(cls):
                 epochs = ceil(n_steps*batch_size/len(ys))
             steps_per_epoch = n_steps if epochs==1 else None
 
-            # reset the optimizer
-            self.kmodel.compile(optimizer=tf.keras.optimizers.Adam(self._lr),
-                                loss=self._loss, metrics=list(self._metrics))
-            return self.kmodel.fit(xs, ys, sample_weight=self._dataset['ws'], verbose=0,
+            results = self.kmodel.fit(xs, ys, sample_weight=self._dataset['ws'], verbose=0,
                                    batch_size=batch_size, epochs=epochs,
                                    steps_per_epoch=steps_per_epoch,
                                    **kwargs)
+            tf.keras.backend.clear_session()
+            return results
 
         def __setstate__(self, d):
             super().__setstate__(d)
