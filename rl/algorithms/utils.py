@@ -34,7 +34,7 @@ def natural_t(horizon, gamma):
         sump0 = np.sum(p0)
         p0 = p0/sump0
         ind = np.random.multinomial(1,p0)
-        t_switch = np.where(ind==1)[0][0]+1
+        t_switch = np.where(ind==1)[0][0]
         p = p0[t_switch-1]
     else:
         gamma = min(gamma, 0.999999)
