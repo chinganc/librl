@@ -183,3 +183,41 @@ config_snake = {
 }
 
 config_sanke_traj = def_traj_config(config_snake)
+
+
+config_humanoid = {
+    'exp_name': 'humanoid',
+    'mdp': {
+        'envid': 'Humanoid-v2',
+        'horizon': 1000,
+        'gamma': 1.0,
+        'rw_scale': 0.01,
+    },
+    'experimenter': {
+        'run_kwargs': {'n_itrs': 1000},
+        'ro_kwargs': {'min_n_samples': 50000,
+                      'max_n_rollouts': None},
+    },
+}
+
+config_humanoid_traj = def_traj_config(config_humanoid)
+
+
+config_bhumanoid = {
+    'exp_name': 'bhumanoid',
+    'mdp': {
+        'envid': 'HumanoidPyBulletEnv-v0',
+        'horizon': 1000,
+        'gamma': 1.0,
+        'rw_scale': 0.01,
+    },
+    'experimenter': {
+        'run_kwargs': {'n_itrs': 1000},
+        'ro_kwargs': {'min_n_samples': 50000,
+                      'max_n_rollouts': None},
+    },
+}
+
+config_bhumanoid_traj = def_traj_config(config_bhumanoid)
+
+

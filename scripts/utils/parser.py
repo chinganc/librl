@@ -10,6 +10,12 @@ from rl.core.utils import logz
 from rl.core.utils.misc_utils import set_randomseed
 
 
+try:
+    import pybulletgym
+except ImportError:
+    pass
+
+
 def configure_log(config, unique_log_dir=False):
     """ Configure output directory for logging. """
 
