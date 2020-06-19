@@ -192,7 +192,7 @@ CONFIG = {
     'expert_info':{
         'name':'policy_15',
         'path': None, #'experts/DartCartPole-v1/'+str(100)+'/saved_policies',
-        'order': True,  # True to use the ordering of directory names; False to use a random ordering
+        'order': True,  # True to use the ordering based on performance; False to use a random ordering
     },
     'n_experts': 2, # None,
 }
