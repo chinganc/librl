@@ -9,7 +9,7 @@ import itertools
 def data_namedtuple(*args, **kwargs):
     CLS = namedtuple(*args, **kwargs)
     def newlen(self):
-        x = [len(f) for f in self._fields]
+        x = [len(getattr(self,f)) for f in self._fields]
         assert x.count(x[0]) == len(x)
         return x[0]
     CLS.__len__ = newlen
