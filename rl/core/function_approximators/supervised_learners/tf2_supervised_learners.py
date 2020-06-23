@@ -80,6 +80,8 @@ def robust_keras_supervised_learner(cls):
 
         def predict(self, *args, **kwargs):
             # prevent memory-leak
+            if 'batch_size' not in kwargs:
+                kwargs['batch_size'] = 1024
             return self.k_predict(*args, **kwargs)
 
         def k_predict(self, xs, **kwargs):
