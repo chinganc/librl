@@ -132,7 +132,7 @@ def main(c):
         experts=None
 
     # Create algorithm
-    ro_by_n_samples = c['experimenter']['ro_kwargs'] is not None
+    ro_by_n_samples = c['experimenter']['ro_kwargs']['min_n_samples'] is not None
     alg = Mamba(policy, vfn,
                 experts=experts,
                 horizon=mdp.horizon, gamma=mdp.gamma,
