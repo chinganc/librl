@@ -204,8 +204,8 @@ class Mamba(PolicyGradient):
                 for k, expert in enumerate(self.experts):
                     ros, _ = gen_ro(PolicyAgent(expert))
                     ro = self.merge(ros)
-                    _, ev0, ev1 = self.aes[k].update(ro)
-                    print('pretrain explained variances', ev0, ev1)
+                    _, err0, err1 = self.aes[k].update(ro)
+                    print('pretrain nrmse', err0, err1)
                     self.policy.update(ro['obs_short'])
 
     def update(self, ros, agents):  # agents are behavior policies
@@ -227,15 +227,15 @@ class Mamba(PolicyGradient):
             EV0, EV1 = [], []
             for k, ro_exp in enumerate(ro_exps):
                 if len(ro_exp)>0:
-                    _, ev0, ev1 = self.aes[k].update(ro_exp)
-                    EV0.append(ev0)
-                    EV1.append(ev1)
+                    _, err0, err1 = self.aes[k].update(ro_exp)
+                    EV0.append(err0)
+                    EV1.append(err1)
             # Update oracle
             self.oracle.update(ro_pol, update_vfn=False, policy=self.policy)
 
             # Update the value function the learner (after oracle update so it unbiased)
             if self.policy_as_expert:
-                _, ev0, ev1 = self.aes[-1].update(ro_pol)
+                _, err0, err1 = self.aes[-1].update(ro_pol)
 
             # For adaptive sampling
             self._avg_n_steps.update(np.mean([len(r) for r in ro_pol]))
@@ -258,10 +258,10 @@ class Mamba(PolicyGradient):
         logz.log_tabular('std', np.mean(np.exp(2.*self.policy.lstd)))
         logz.log_tabular('g_norm', np.linalg.norm(g))
         if self.policy_as_expert:
-            logz.log_tabular('ExplainVarianceBefore(AE)', ev0)
-            logz.log_tabular('ExplainVarianceAfter(AE)', ev1)
-        logz.log_tabular('MeanExplainVarianceBefore(AE)', np.mean(EV0))
-        logz.log_tabular('MeanExplainVarianceAfter(AE)', np.mean(EV1))
+            logz.log_tabular('NrmseBefore(AE)', err0)
+            logz.log_tabular('NrmseAfter(AE)', err1)
+        logz.log_tabular('MeanNrmseBefore(AE)', np.mean(EV0))
+        logz.log_tabular('MeanNrmseAfter(AE)', np.mean(EV1))
         logz.log_tabular('NumberOfExpertRollouts', np.sum([len(ro) for ro in ro_exps]))
         logz.log_tabular('NumberOfLearnerRollouts', len(ro_pol))
 
@@ -414,7 +414,7 @@ class ExpertsAgent(Agent):
             if not policy_as_expert or k<len(self.experts)-1:
                 # we assume the last expert is the learner
                 r = r[t:]
-            r.scale = s
+            r.weight = s  # FIXED
             ro_exps[k].append(r)
         if policy_as_expert:
             ro_pol += ro_exps[-1]

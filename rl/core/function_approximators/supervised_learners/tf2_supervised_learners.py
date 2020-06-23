@@ -38,11 +38,14 @@ def robust_keras_supervised_learner(cls):
                     ys = self._y_nor(ys)
             else:
                 xs, ys = self._dataset['xs'], self._dataset['ys']
+            ws = self._dataset['ws']
 
-            # shuffle
+            # shuffle and subsampling
             ind = np.random.permutation(len(xs))
+            ind = ind[:min(batch_size*n_steps, len(xs))]
             xs = xs[ind,:]
             ys = ys[ind,:]
+            ws = ws[ind]
 
             # whiten the output for supervised learning
             assert normalize_output in [None, 'white', 'rms']
@@ -52,14 +55,18 @@ def robust_keras_supervised_learner(cls):
             elif normalize_output=='rms':
                 self._output_bias = 0.0
                 self._output_scale = np.maximum(1.0, np.sqrt(np.mean(ys**2,axis=0)))
+            else:  # make sure it has not been changed
+                self._output_bias = 0.0
+                self._output_scale = 1.0
 
             ys = (ys-self._output_bias)/self._output_scale
 
+            # call tf.keras.Model.fit
             if epochs is None:
                 epochs = ceil(n_steps*batch_size/len(ys))
             steps_per_epoch = n_steps if epochs==1 else None
 
-            results = self.kmodel.fit(xs, ys, sample_weight=self._dataset['ws'], verbose=0,
+            results = self.kmodel.fit(xs, ys, sample_weight=ws, verbose=0,
                                    batch_size=batch_size, epochs=epochs,
                                    steps_per_epoch=steps_per_epoch,
                                    **kwargs)
