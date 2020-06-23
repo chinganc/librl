@@ -155,7 +155,7 @@ CONFIG = {
         'n_processes': 1,
         'min_ro_per_process': 2,  # needs to be at least 2 so the experts will be rollout
         'max_run_calls':25,
-        'rw_scale':1.0,
+        'rw_scale':0.01,
     },
     'experimenter': {
         'run_kwargs': {
@@ -175,7 +175,7 @@ CONFIG = {
         'lr':0.001,
         'max_kl':0.05,
         'delta':None,
-        'lambd':0.5,
+        'lambd':0.9,
         'max_n_batches':2,
         'n_warm_up_itrs':None,
         'n_pretrain_itrs':2,
