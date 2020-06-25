@@ -191,7 +191,7 @@ class ValueBasedAE(AdvantageEstimator):
 
     # Required methods of FunctionApproximator
     def predict(self, xs, **kwargs):
-        raise np.zeros((len(xs),1))
+        return NotImplementedError
 
     @property
     def variable(self):

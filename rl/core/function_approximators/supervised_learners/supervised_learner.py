@@ -46,6 +46,8 @@ class SupervisedLearner(FunctionApproximator):
         results = self.update_funcapp(**kwargs)  # return logs, if any
         error1 = nrmse(self(xs), ys)
 
+        self._dataset.remove_extra()  # remove unnecessary cache
+
         return results, error0, error1
 
     @abstractmethod

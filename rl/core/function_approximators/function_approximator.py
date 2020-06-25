@@ -8,7 +8,7 @@ import os, pickle, copy
 from collections import Iterable
 from rl.core.oracles.oracle import Oracle
 
-
+import numpy as np
 
 def online_compatible(f):
     def to_batch(x):  # add an extra dimension
@@ -28,15 +28,23 @@ def online_compatible(f):
         return y
     return decorated_f
 
-# TODO
-def predict_in_batches(fun):
-    """ for wrapping a predit method of FunctionApproximator objects """
-    @wraps(fun)
-    def wrapper(self, x):
-        return minibatch_utils.apply_in_batches(lambda _x: fun(self, _x),
-                                                x, self._batch_size_for_prediction, [self.y_dim])
-    return wrapper
-
+def minibatch(batchsize=1024, n_args=1):
+    def inner_decorator(f):
+        @wraps(f)
+        def decorated_f(self, *args, **kwargs):
+            xs = args[:n_args]
+            args = args[n_args:]
+            n = len(xs[0])
+            ind = np.arange(0, n, batchsize)
+            ind = np.append(ind, n)
+            ys = []
+            for i in np.arange(len(ind)-1):
+                xs_i = (x[ind[i]:ind[i+1]] for x in xs)
+                y_i = f(self, *xs_i, *args, **kwargs)
+                ys.append(y_i)
+            return np.concatenate(ys)
+        return decorated_f
+    return inner_decorator
 
 class FunctionApproximator(Oracle):
     """ An abstract interface of function approximators.

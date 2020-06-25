@@ -59,7 +59,7 @@ class Dataset:
     """
 
     def __init__(self, batches=None, max_n_batches=None, max_n_samples=None,
-                       single_batch=False):
+                       single_batch=False, use_cache=False):
         """
             Args:
                 `batches`: a list of initial batch(es)
@@ -85,6 +85,7 @@ class Dataset:
         self.max_n_batches = max_n_batches
         self.max_n_samples = max_n_samples
         self._cache ={}
+        self._use_cache = use_cache
 
     def append(self, data):
         """ Add new data into the dataset. """
@@ -164,10 +165,14 @@ class Dataset:
             return self._batches[key]
         else:
             assert isinstance(key, str) or key is None
-            # try to use cache
-            if self._cache.get(key, None) is None:
-                self._cache[key] = get_item(key)
-            return self._cache[key]
+            if hasattr(self,'_use_cache'):  # for backward compatibility
+                if self._use_cache:
+                    # try to use cache
+                    if self._cache.get(key, None) is None:
+                        self._cache[key] = get_item(key)
+                    return self._cache[key]
+            return get_item(key)
+
 
     def __iter__(self):
         for batch in self._batches:
@@ -183,6 +188,10 @@ class Dataset:
         return len(self._batches)
 
     # utils
+    def remove_extra(self):
+        self._make_room_for_batches(0)
+        self._limit_n_samples()
+
     def _make_room_for_batches(self, n_batches):
         """ Delete old batches so that it can fit n_batches of new batches. """
         if self.max_n_batches is not None:
@@ -213,5 +222,3 @@ class Dataset:
         assert type(self)==type(other)
         if len(self)>0 and len(other)>0:
             self._assert_data_type(other._batches[0])
-
-
