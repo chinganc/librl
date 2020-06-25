@@ -27,12 +27,18 @@ def ts_to_array(ts_x):
     else:
         return ts_x.numpy()
 
+def tf_constant(x, dtype):
+    if type(x) is not tf.Tensor:
+        return tf.constant(x, dtype)
+    else:
+        return tf.cast(x, dtype)
+
 def array_to_ts(x):
     # convert np.ndarray(s) to tf.Tensor(s)
     if isinstance(x, list) or isinstance(x, tuple):
-        return [tf.constant(xx, dtype=tf_float) for xx in x]
+        return [tf_constant(xx, dtype=tf_float) for xx in x]
     else:
-        return tf.constant(x, dtype=tf_float)
+        return tf_constant(x, dtype=tf_float)
 
 def var_assign(ts_var, x):
     # convert np.ndarray(s) to tf.Tensor(s)

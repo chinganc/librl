@@ -134,7 +134,7 @@ class MvpQuad(Quad):
         # NOTE this could cause potential bugs due to user modifying _mvp
         # outside, without calling update.
         if self._cache is not None and self._use_cache:
-            ratio = u / self._cache['u']
+            ratio = u / (self._cache['u']+1e-12)
             if np.allclose(ratio, ratio[0]):  # use the cached result
                 print('--use cached primalmap for efficiency')
                 return self._cache['x_'] * ratio[0] / self.scale

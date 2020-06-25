@@ -7,6 +7,7 @@ from math import ceil
 from rl.core import function_approximators as fa
 from rl.core.function_approximators.supervised_learners import SupervisedLearner
 
+
 def robust_keras_supervised_learner(cls):
     """ A decorator for creating basic supervised learners from RobustKerasFuncApp. """
     assert issubclass(cls, fa.KerasFuncApp)
@@ -80,8 +81,6 @@ def robust_keras_supervised_learner(cls):
 
         def predict(self, *args, **kwargs):
             # prevent memory-leak
-            if 'batch_size' not in kwargs:
-                kwargs['batch_size'] = 1024
             return self.k_predict(*args, **kwargs)
 
         def k_predict(self, xs, **kwargs):

@@ -7,7 +7,7 @@ from functools import partial
 import numpy as np
 import tensorflow as tf
 from abc import abstractmethod
-from rl.core.function_approximators.function_approximator import FunctionApproximator
+from rl.core.function_approximators.function_approximator import FunctionApproximator, minibatch
 from rl.core.function_approximators.normalizers import tfNormalizerMax
 from rl.core.utils.tf2_utils import array_to_ts, tf_float, ts_to_array, identity
 from rl.core.utils.misc_utils import flatten, unflatten, zipsame
@@ -27,8 +27,12 @@ class tfFuncApp(FunctionApproximator):
         self._var_shapes = None  # cache
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
+    @minibatch()
     def predict(self, xs, **kwargs):
-        return self.ts_predict(array_to_ts(xs), **kwargs).numpy()
+        return self.__ts_predict(array_to_ts(xs), **kwargs).numpy()
+
+    def __ts_predict(self, ts_xs, **kwargs):
+        return self.ts_predict(ts_xs, **kwargs)
 
     def grad(self, xs, **kwargs):
         """ Derivative with respect to xs. """
@@ -147,10 +151,11 @@ class KerasFuncApp(tfFuncApp):
         return self.kmodel.trainable_variables
 
     # New methods of KerasFuncApp
-
+    @minibatch()
     def k_predict(self, xs, **kwargs):
         """ Batch prediction using the keras implementation. """
-        return self.kmodel.predict(xs, **kwargs)
+        # return self.kmodel.predict(xs, **kwargs)
+        return self.kmodel.predict_on_batch(xs)
 
     # utilities (tf.keras.Model needs to be serialized)
     def assign(self, other, excludes=()):
@@ -231,7 +236,6 @@ class tfRobustFuncApp(tfFuncApp):
         if ys is not None:
             self._y_nor.update(ys)
         return super().update(xs=xs, ys=ys, *args, **kwargs)
-
 
 class RobustKerasFuncApp(tfRobustFuncApp, KerasFuncApp):
 
@@ -322,7 +326,6 @@ class tfMLP(tfFuncApp):
     def ts_variables(self):
         return self.ts_w+self.ts_b
 
-    #@tf.function
     def ts_predict(self, ts_xs):
         # the last layer is linear
         ts_xs = tf.reshape(ts_xs,(-1,np.prod(self.x_shape)))

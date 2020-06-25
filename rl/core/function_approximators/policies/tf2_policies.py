@@ -106,7 +106,7 @@ def gaussian_kl(ms_1, lstds_1, ms_2, lstds_2):
     axis= tf.range(1,tf.rank(ms_1))
     vars_1, vars_2 = tf.exp(lstds_1*2.), tf.exp(lstds_2*2.)
     kls = lstds_2 - lstds_1 - 0.5
-    kls += (vars_1 + tf.square(ms_1-ms_2)) / (2.0*vars_2)
+    kls = kls + (vars_1 + tf.square(ms_1-ms_2)) / (2.0*vars_2)
     kls = tf.reduce_sum(kls, axis=axis)
     return kls
 
