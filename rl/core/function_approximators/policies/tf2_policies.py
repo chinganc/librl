@@ -102,16 +102,12 @@ class tfPolicy(tfFuncApp, Policy):
 
     def ts_fvp0(self, ts_xs, ts_ys, ts_gs):
         """ Computes F(self.pi)*g based on the expected outer product. """
+        dummy = tf.ones(shape=(len(ts_xs,)))
         with tf.GradientTape(watch_accessed_variables=False) as gt:
-            gt.watch(self.ts_variables)
-            ts_logps = self.ts_logp(ts_xs, ts_ys)  # shape (N,)
-            dummy = tf.ones(shape=ts_logps.shape)
-            with tf.GradientTape(watch_accessed_variables=False) as gt2:
-                gt2.watch(dummy)
-                ts_sum_logp = tf.reduce_sum(ts_logps*dummy)
-                ts_sum_logp_grads = gt.gradient(ts_sum_logp, self.ts_variables)  # list
-                ts_pd = tf.add_n([tf.reduce_sum(u*v) for (u, v) in zipsame(ts_sum_logp_grads, ts_gs)])
-        ts_fs = gt2.gradient(ts_pd, dummy)  # shape (N,)
+            gt.watch(dummy)
+            ts_sum_logp_grads = self.ts_logp_grad(ts_xs, ts_ys, dummy)
+            ts_pd = tf.add_n([tf.reduce_sum(u*v) for (u, v) in zipsame(ts_sum_logp_grads, ts_gs)])
+        ts_fs = gt.gradient(ts_pd, dummy)  # shape (N,)
         N = tf.constant(len(dummy),dtype=tf_float)
         return self.ts_logp_grad(ts_xs, ts_ys, ts_fs/N)
 
