@@ -281,9 +281,9 @@ class tfGaussianPolicy(tfPolicy):
     def ts_fvp(self, ts_xs, ts_gs):
         """ Computes F(self.pi)*g, where F is the Fisher information matrix and
         g is a np.ndarray in the same shape as self.variable """
-        with tf.GradientTape() as gt:
+        with tf.GradientTape(watch_accessed_variables=False) as gt:
             gt.watch(self.ts_variables)
-            with tf.GradientTape() as gt2:
+            with tf.GradientTape(watch_accessed_variables=False) as gt2:
                 gt2.watch(self.ts_variables)  #  TODO add sample weight below??
                 ts_kl = self.ts_kl(self, ts_xs, p1_sg=True)
             ts_kl_grads = gt2.gradient(ts_kl, self.ts_variables)
@@ -309,4 +309,3 @@ class tfGaussian(tfGaussianPolicy, tfConstant):
     def __init__(self, x_shape, y_shape, name='tfGaussian', **kwargs):
         """ The user needs to provide init_lstd and optionally min_std. """
         super().__init__(x_shape, y_shape, name=name, **kwargs)
-

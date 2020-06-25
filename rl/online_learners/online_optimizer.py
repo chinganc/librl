@@ -20,7 +20,7 @@ class Reg:
     # Regularization based on KL divergence between policies
     def __init__(self, policy,
                  default_damping=0.1,
-                 samples_limit=1000000):
+                 samples_limit=100000):
         """
         refpol:
             reference point to compute gradient.
@@ -56,7 +56,7 @@ class Reg:
         self.refpol.assign(policy)
         self.varpol.assign(policy)
         if len(obs) > self.samples_limit:
-            obs = obs[np.random.choice(len(obs), limit, replace=False)]
+            obs = obs[np.random.choice(len(obs), self.samples_limit, replace=False)]
         self.obs = np.copy(obs)
 
     @property
@@ -74,8 +74,8 @@ class FisherOnlineOptimizer(OO.BasicOnlineOptimizer):
     def __init__(self,  base_alg, p=0.0,
                  policy=None,
                  fisher_damping=0.1,
-		 fisher_sample_limit=100000,
-		 **kwargs):
+                 fisher_sample_limit=20000,
+                 **kwargs):
         """ `policy` needs to be provided. """
         assert isinstance(base_alg, BA.SecondOrderUpdate)
         super().__init__(base_alg, p=p, **kwargs)

@@ -258,10 +258,10 @@ class Mamba(PolicyGradient):
         logz.log_tabular('std', np.mean(np.exp(2.*self.policy.lstd)))
         logz.log_tabular('g_norm', np.linalg.norm(g))
         if self.policy_as_expert:
-            logz.log_tabular('NrmseBefore(AE)', err0)
-            logz.log_tabular('NrmseAfter(AE)', err1)
-        logz.log_tabular('MeanNrmseBefore(AE)', np.mean(EV0))
-        logz.log_tabular('MeanNrmseAfter(AE)', np.mean(EV1))
+            logz.log_tabular('NrmseBefore', err0)
+            logz.log_tabular('NrmseAfter', err1)
+        logz.log_tabular('MeanNrmseBefore', np.mean(EV0))
+        logz.log_tabular('MeanNrmseAfter', np.mean(EV1))
         logz.log_tabular('NumberOfExpertRollouts', np.sum([len(ro) for ro in ro_exps]))
         logz.log_tabular('NumberOfLearnerRollouts', len(ro_pol))
 
