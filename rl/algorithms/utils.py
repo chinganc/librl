@@ -14,15 +14,32 @@ def get_learner(optimizer, policy, scheduler, max_kl=None):
     elif optimizer=='natgrad':
         return ol.FisherOnlineOptimizer(
                     balg.AdaptiveSecondOrderUpdate(x0, scheduler),
-                    policy=policy)
+                    policy=policy, mode='hessian')
     elif optimizer=='rnatgrad':
         return ol.FisherOnlineOptimizer(
                     balg.RobustAdaptiveSecondOrderUpdate(x0, scheduler, max_dist=max_kl),
-                    policy=policy)
+                    policy=policy, mode='hessian')
+
     elif 'trpo' in optimizer:
         return ol.FisherOnlineOptimizer(
                     balg.TrustRegionSecondOrderUpdate(x0, scheduler),
-                    policy=policy)
+                    policy=policy, mode='hessian')
+
+    elif optimizer=='natgrad0':
+        return ol.FisherOnlineOptimizer(
+                    balg.AdaptiveSecondOrderUpdate(x0, scheduler),
+                    policy=policy, mode='outer_product')
+
+    elif optimizer=='rnatgrad0':
+        return ol.FisherOnlineOptimizer(
+                    balg.RobustAdaptiveSecondOrderUpdate(x0, scheduler, max_dist=max_kl),
+                    policy=policy, mode='outer_product')
+    elif 'trpo0' in optimizer:
+        return ol.FisherOnlineOptimizer(
+                    balg.TrustRegionSecondOrderUpdate(x0, scheduler),
+                    policy=policy, mode='outer_product')
+
+
     else:
         raise NotImplementedError
 

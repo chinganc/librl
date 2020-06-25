@@ -20,7 +20,8 @@ class Reg:
     # Regularization based on KL divergence between policies
     def __init__(self, policy,
                  default_damping=0.1,
-                 samples_limit=100000):
+                 samples_limit=100000,
+                 mode='hessian'): # 'hessian' or 'outer_product'
         """
         refpol:
             reference point to compute gradient.
@@ -31,15 +32,23 @@ class Reg:
         self.refpol = copy.deepcopy(policy)
         self.varpol = copy.deepcopy(policy)  # just a placeholder for evaluation
         self.obs = None
+        self.acs = None
         self._damping0 = default_damping
         self.samples_limit = samples_limit
+        assert mode in ['hessian', 'outer_product']
+        self._mode = mode
 
     def kl(self, x):
         self.varpol.variable = x
         return self.refpol.kl(self.varpol, self.obs, reversesd=False)
 
     def fvp(self, g):
-        return self.refpol.fvp(self.obs, g) + self.damping * g
+        if self._mode=='hessian':
+            return self.refpol.fvp(self.obs, g) + self.damping * g
+        elif self._mode=='outer_product':
+            return self.refpol.fvp0(self.obs, self.acs, g) + self.damping * g
+        else:
+            raise ValueError
 
     @property
     def std(self):
@@ -50,14 +59,19 @@ class Reg:
         self.refpol.assign(reg.refpol)
         self.varpol.assign(self.refpol)
         self.obs = np.copy(reg.obs)
+        self.acs = np.copy(reg.acs)
         self._damping0 = np.copy(reg._damping0)
 
-    def update(self, obs, policy):
+    def update(self, obs, acs, policy):
         self.refpol.assign(policy)
         self.varpol.assign(policy)
+        assert len(obs)==len(acs)
         if len(obs) > self.samples_limit:
-            obs = obs[np.random.choice(len(obs), self.samples_limit, replace=False)]
+            ind = np.random.choice(len(obs), self.samples_limit, replace=False)
+            obs = obs[ind]
+            acs = acs[ind]
         self.obs = np.copy(obs)
+        self.acs = np.copy(acs)
 
     @property
     def damping(self):
@@ -75,18 +89,20 @@ class FisherOnlineOptimizer(OO.BasicOnlineOptimizer):
                  policy=None,
                  fisher_damping=0.1,
                  fisher_sample_limit=20000,
+                 mode='hessian', # 'hessian' or 'outer_product'
                  **kwargs):
         """ `policy` needs to be provided. """
         assert isinstance(base_alg, BA.SecondOrderUpdate)
         super().__init__(base_alg, p=p, **kwargs)
         self._reg = Reg(policy, default_damping=fisher_damping,
-                        samples_limit=fisher_sample_limit)
+                        samples_limit=fisher_sample_limit,
+                        mode=mode)
 
     def update(self, *args, ro=None, policy=None, **kwargs):
         assert ro is not None
         assert policy is not None
         assert np.all(np.isclose(policy.variable, self.x))
-        self._reg.update(ro['obs'], policy)
+        self._reg.update(ro['obs_short'], ro['acs'], policy)
         if isinstance(self._base_alg, BA.TrustRegionSecondOrderUpdate):
             super().update(*args, mvp=self._reg.fvp, dist_fun=self._reg.kl, **kwargs)
         elif isinstance(self._base_alg, BA.RobustAdaptiveSecondOrderUpdate):

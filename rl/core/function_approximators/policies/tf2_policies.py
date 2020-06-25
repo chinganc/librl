@@ -5,7 +5,7 @@
 import tensorflow as tf
 import numpy as np
 from rl.core.function_approximators.policies import Policy
-from rl.core.function_approximators.function_approximator import online_compatible
+from rl.core.function_approximators.function_approximator import online_compatible, minibatch
 from rl.core.function_approximators.tf2_function_approximators import tfFuncApp, RobustKerasMLP, KerasFuncApp, RobustKerasFuncApp, tfRobustMLP, tfConstant
 from rl.core.utils.misc_utils import zipsame
 from rl.core.utils.tf2_utils import tf_float, array_to_ts, ts_to_array
@@ -34,6 +34,7 @@ class tfPolicy(tfFuncApp, Policy):
     # Users may choose to implement `exp_fun`, `exp_grad`, `noise`, `derandomize`.
 
     @online_compatible
+    @minibatch(n_args=2)
     def logp(self, xs, ys, **kwargs):  # override
         return self.ts_logp(array_to_ts(xs), array_to_ts(ys), **kwargs).numpy()
 
@@ -47,11 +48,19 @@ class tfPolicy(tfFuncApp, Policy):
         return ts_to_array(self.ts_kl(other, array_to_ts(xs), reversesd=reversesd))
 
     def fvp(self, xs, g, **kwargs):
-        """ Return the product between a vector g (in the same formast as
-        self.variable) and the Fisher information defined by the average
-        over xs. """
+        """ Computes F(self.pi)*g, where F is the Fisher information matrix and
+        g is a np.ndarray in the same shape as self.variable, were the Fisher
+        information defined by the average over xs. """
         gs = unflatten(g, shapes=self.var_shapes)
         ts_fvp = self.ts_fvp(array_to_ts(xs), array_to_ts(gs), **kwargs)
+        return flatten([v.numpy() for v in ts_fvp])
+
+    def fvp0(self, xs, ys, g, **kwargs):
+        """ Computes F(self.pi)*g, where F is the Fisher information matrix and
+        g is a np.ndarray in the same shape as self.variable, were the Fisher
+        information defined by the average over xs. """
+        gs = unflatten(g, shapes=self.var_shapes)
+        ts_fvp = self.ts_fvp0(array_to_ts(xs), array_to_ts(ys), array_to_ts(gs), **kwargs)
         return flatten([v.numpy() for v in ts_fvp])
 
     # New methods of tfPolicy
@@ -66,7 +75,7 @@ class tfPolicy(tfFuncApp, Policy):
 
     def ts_logp_grad(self, ts_xs, ts_ys, ts_fs):
         """ Sum over samples. """
-        with tf.GradientTape() as gt:
+        with tf.GradientTape(watch_accessed_variables=False) as gt:
             gt.watch(self.ts_variables)
             ts_logp = self.ts_logp(ts_xs, ts_ys)
             ts_fun = tf.reduce_sum(ts_logp*ts_fs)
@@ -79,11 +88,32 @@ class tfPolicy(tfFuncApp, Policy):
         """
         raise NotImplementedError
 
-    def ts_fvp(self, ts_xs, ts_gs, **kwargs):
-        """ Computes F(self.pi)*g, where F is the Fisher information matrix and
-        g is a np.ndarray in the same shape as self.variable """
-        raise NotImplementedError
+    def ts_fvp(self, ts_xs, ts_gs):
+        """ Computes F(self.pi)*g based on the Hessian of the entropy. """
+        with tf.GradientTape(watch_accessed_variables=False) as gt:
+            gt.watch(self.ts_variables)
+            with tf.GradientTape(watch_accessed_variables=False) as gt2:
+                gt2.watch(self.ts_variables)  #  TODO add sample weight below??
+                ts_kl = self.ts_kl(self, ts_xs, p1_sg=True)
+            ts_kl_grads = gt2.gradient(ts_kl, self.ts_variables)
+            ts_pd = tf.add_n([tf.reduce_sum(kg*v) for (kg, v) in zipsame(ts_kl_grads, ts_gs)])
+        ts_fvp = gt.gradient(ts_pd, self.ts_variables)
+        return ts_fvp
 
+    def ts_fvp0(self, ts_xs, ts_ys, ts_gs):
+        """ Computes F(self.pi)*g based on the expected outer product. """
+        with tf.GradientTape(watch_accessed_variables=False) as gt:
+            gt.watch(self.ts_variables)
+            ts_logps = self.ts_logp(ts_xs, ts_ys)  # shape (N,)
+            dummy = tf.ones(shape=ts_logps.shape)
+            with tf.GradientTape(watch_accessed_variables=False) as gt2:
+                gt2.watch(dummy)
+                ts_sum_logp = tf.reduce_sum(ts_logps*dummy)
+                ts_sum_logp_grads = gt.gradient(ts_sum_logp, self.ts_variables)  # list
+                ts_pd = tf.add_n([tf.reduce_sum(u*v) for (u, v) in zipsame(ts_sum_logp_grads, ts_gs)])
+        ts_fs = gt2.gradient(ts_pd, dummy)  # shape (N,)
+        N = tf.constant(len(dummy),dtype=tf_float)
+        return self.ts_logp_grad(ts_xs, ts_ys, ts_fs/N)
 
 class _RobustKerasPolicy(tfPolicy, RobustKerasFuncApp):
     pass  # for debugging
@@ -278,18 +308,7 @@ class tfGaussianPolicy(tfPolicy):
         else:
             return tf.reduce_mean(gaussian_kl(ts_ms_2, ts_lstds_2, ts_ms_1, ts_lstds_1))
 
-    def ts_fvp(self, ts_xs, ts_gs):
-        """ Computes F(self.pi)*g, where F is the Fisher information matrix and
-        g is a np.ndarray in the same shape as self.variable """
-        with tf.GradientTape(watch_accessed_variables=False) as gt:
-            gt.watch(self.ts_variables)
-            with tf.GradientTape(watch_accessed_variables=False) as gt2:
-                gt2.watch(self.ts_variables)  #  TODO add sample weight below??
-                ts_kl = self.ts_kl(self, ts_xs, p1_sg=True)
-            ts_kl_grads = gt2.gradient(ts_kl, self.ts_variables)
-            ts_pd = tf.add_n([tf.reduce_sum(kg*v) for (kg, v) in zipsame(ts_kl_grads, ts_gs)])
-        ts_fvp = gt.gradient(ts_pd, self.ts_variables)
-        return ts_fvp
+
 
 
 class RobustKerasMLPGassian(tfGaussianPolicy, RobustKerasMLP):
