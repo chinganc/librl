@@ -152,10 +152,8 @@ class tfGaussianPolicy(tfPolicy):
         which creates a Gaussian policy with the mean specified by `A`.
     """
     def __init__(self, x_shape, y_shape, name='tf_gaussian_policy',
-                 init_lstd=None, min_std=1e-12,  # new attribues
+                 init_lstd=-1, min_std=1e-12,  # new attribues
                  **kwargs):
-        """ The user needs to provide init_lstd. """
-        assert init_lstd is not None
         init_lstd = np.broadcast_to(init_lstd, y_shape)
         self._ts_lstd = tf.Variable(array_to_ts(init_lstd), dtype=tf_float)
         self._ts_min_lstd = tf.constant(np.log(min_std), dtype=tf_float)

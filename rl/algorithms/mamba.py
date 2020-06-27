@@ -16,6 +16,9 @@ from rl.core.utils.mvavg import PolMvAvg
 from rl.core.function_approximators import online_compatible
 from rl.core.function_approximators.supervised_learners import SupervisedLearner
 
+
+from rl.algorithms.dagger import DAgger
+
 class Exploration:
     """ Maximization """
     def decision(self, xs, explore=False, **kwargs):
@@ -155,6 +158,7 @@ class Mamba(PolicyGradient):
                  strategy='max',  # max, mean, or uniform
                  max_n_batches_experts=1000,  # for the experts
                  policy_as_expert=True,
+                 use_bc=False,
                  mix_unroll_kwargs=None,  # extra kwargs for ExpertsAgent
                  **kwargs):
 
@@ -194,6 +198,8 @@ class Mamba(PolicyGradient):
                 aes.append(create_ae(e, v, max_n_batches=max_n_batches_experts))
         self.aes = aes  # of the experts
 
+
+        self._use_bc = use_bc
         # For rollout
         self._avg_n_steps = PolMvAvg(1,weight=1)
         self.mix_unroll_kwargs = mix_unroll_kwargs or {}
@@ -204,9 +210,16 @@ class Mamba(PolicyGradient):
                 for k, expert in enumerate(self.experts):
                     ros, _ = gen_ro(PolicyAgent(expert))
                     ro = self.merge(ros)
+                    if k == 0 and self._use_bc:  # assumed to be the best
+                        dagger = DAgger(self.policy, init_ro=ro)
+                        _, err0, err1 = dagger.pretrain()
+                        print('bc',err0, err1)
+                    else:
+                        self.policy.update(ro['obs_short'])
                     _, err0, err1 = self.aes[k].update(ro)
                     print('pretrain nrmse', err0, err1)
-                    self.policy.update(ro['obs_short'])
+            # sync the online optimizer
+            self.learner.x = self.policy.variable
 
     def update(self, ros, agents):  # agents are behavior policies
         # Aggregate data

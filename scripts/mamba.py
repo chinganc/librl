@@ -184,6 +184,7 @@ CONFIG = {
         'strategy':'max',
         'policy_as_expert': False,
         'max_n_batches_experts':100,
+        'use_bc': False,
     },
     'policy_units': (128,128),
     'value_units': (256,256),
