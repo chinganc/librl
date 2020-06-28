@@ -10,3 +10,7 @@ config_dip = copy.deepcopy(CONFIG)
 config_dip = dict_update(config_dip, dc.config_dip_traj)
 config_dip['experimenter']['ro_kwargs']['max_n_rollouts']=8
 
+config_humanoid = copy.deepcopy(CONFIG)
+config_humanoid = dict_update(config_humanoid, dc.config_humanoid_traj)
+config_humanoid['experimenter']['ro_kwargs']['max_n_rollouts']=20
+
