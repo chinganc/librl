@@ -14,3 +14,8 @@ config_humanoid = copy.deepcopy(CONFIG)
 config_humanoid = dict_update(config_humanoid, dc.config_humanoid_traj)
 config_humanoid['experimenter']['ro_kwargs']['max_n_rollouts']=50
 
+
+config_humanoid_expert = copy.deepcopy(CONFIG)
+config_humanoid_expert = dict_update(config_humanoid_expert, dc.config_humanoid)
+config_humanoid_expert['experimenter']['n_itrs']=3000
+
