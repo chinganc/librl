@@ -18,6 +18,13 @@ range_pg = [
 ]
 range_pg = R.merge_ranges(range_common, range_pg)
 
+range_pg_expert = [
+    [['top_log_dir'], ['log_pg_expert']],
+    [['algorithm', 'lambd'], [0.9, 0.98, 1.00]],
+    [['init_lstd'], [-1, 0, 1]],
+    [['use_experts'], [False]],
+]
+range_pg_expert = R.merge_ranges(range_common, range_pg_expert)
 
 def get_path(seed):
     return 'experts/DartCartPole-v1/'+str(seed)+'/saved_policies'
