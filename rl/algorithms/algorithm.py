@@ -3,8 +3,12 @@
 # Licensed under the MIT License.
 
 from abc import abstractmethod, ABC
+import functools
 from rl.core.online_learners import OnlineLearner
 
+def merge_ros(ros):
+    """ Merge a list of Dataset instances. """
+    return functools.reduce(lambda x,y: x+y, ros)
 
 class Algorithm(ABC):
     """ An abtract interface required by Experimenter. """
@@ -18,7 +22,7 @@ class Algorithm(ABC):
             Agent that collects it.
         """
     @abstractmethod
-    def update(self, ro, agent):
+    def update(self, ros, agents):
         """ Update the policy based on rollouts. """
 
     # Outcome of an algorithm

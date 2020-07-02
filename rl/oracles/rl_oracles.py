@@ -129,10 +129,8 @@ class ValuedBasedParameterExploringPolicyGradient(ValueBasedPolicyGradient):
         self._distribution.assign(distribution)
         # Compute adv.
         self._ro = ro
-        def compute_adv(r):
-            advs, _ = self._ae.advs([r], use_is=self._use_is)
-            return advs[0][0] # we only concern the adv at the first time step
-        adv = np.array([compute_adv(r) for r in self.ro])
+        advs, _ = self._ae.advs(self.ro, use_is=self._use_is)
+        adv =  np.array([a[0] for a in advs])  # we only concern the adv at the first time step
 
         # Update the loss function.
         # NOTE the weight here is for `distribution`
@@ -148,4 +146,3 @@ class ValuedBasedParameterExploringPolicyGradient(ValueBasedPolicyGradient):
         # Update the value function at the end, so it's unbiased.
         if update_vfn:
             return self.update_vfn(ro, **kwargs)
-

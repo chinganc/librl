@@ -93,7 +93,7 @@ class ParameterExploringPolicyGradient(Algorithm):
 
         # Below we update `distribution` where the variables are hosted.
         with timed('Update oracle'):
-            _, ev0, ev1 = self.oracle.update(ro, self.distribution)  # dist.
+            _, err0, err1 = self.oracle.update(ro, self.distribution)  # dist.
 
         with timed('Compute policy gradient'):
             g = self.oracle.grad(self.distribution.variable)  # dist.
@@ -113,8 +113,8 @@ class ParameterExploringPolicyGradient(Algorithm):
         if hasattr(self.distribution,'lstd'):
             logz.log_tabular('std', np.mean(np.exp(self.distribution.lstd)))
         logz.log_tabular('g_norm', np.linalg.norm(g))
-        logz.log_tabular('ExplainVarianceBefore(AE)', ev0)
-        logz.log_tabular('ExplainVarianceAfter(AE)', ev1)
+        logz.log_tabular('NrmseBefore(AE)', err0)
+        logz.log_tabular('NrmseAfter(AE)', err1)
 
         self._itr +=1
 

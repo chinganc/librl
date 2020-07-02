@@ -12,7 +12,7 @@ Process = ctx.Process
 DEBUG = False
 
 class Logger(object):
-    # for debuggin
+    # for debugging
     def __init__(self, name, src, output_dir='logging'):
         self.terminal = src
         os.makedirs(output_dir, exist_ok=True)
@@ -52,10 +52,9 @@ class Worker(Process):
 
         while True:
             item = self.in_queue.get()
-
             if item=='KILL':
-                print('Terminating Process.')
                 self.out_queue.put(True)
+                print('Terminating Process.')
                 return
             if self._method is None:
                 method, args, kwargs = item
@@ -66,22 +65,49 @@ class Worker(Process):
             self.out_queue.put(output)
 
 
+
 class JobRunner:
 
-    def __init__(self, workers, queue_size_ratio=1000):
+    def __init__(self, workers, queue_size_ratio=1000, max_run_calls=None):
+        """
+            Create queues to communiate with workers. The workers will be
+            recreated after the `run` function is called every
+            `max_run_calls` times.
+        """
+        self.max_run_calls = float('inf') if max_run_calls is None else max_run_calls
+        self._n_calls = 0
         queue_size = len(workers)*queue_size_ratio
+
         self.in_queue = Queue(queue_size)
         self.out_queue = Queue(queue_size)
         self.workers = workers
-        [worker.start(self.in_queue, self.out_queue) for worker in workers]
+        self.start()
 
     def __del__(self):
         """ Kill all the workers. """
-        self.run(['KILL']*len(self))
+        self._run(['KILL']*len(self))
         [worker.join() for worker in self.workers]
+
+    def start(self):
+        [worker.start(self.in_queue, self.out_queue) for worker in self.workers]
+
+    def restart(self):
+        """ Kill all the workers and restart a new batch in order to free memory. """
+        print("Recreate {} workers to free memory".format(len(self.workers)))
+        self.__del__()
+        self.workers = [Worker(method=w._method, init_fun=w._init_fun) for w in self.workers]
+        self.start()
 
     def run(self, jobs):
         """ Run the jobs in parallel. """
+        # restart the workers
+        if self._n_calls>=self.max_run_calls:
+            self.restart()
+            self._n_calls=0
+        self._n_calls+=1
+        return self._run(jobs)
+
+    def _run(self, jobs):
         N = len(jobs)
         n = 0
         results = []
@@ -117,5 +143,3 @@ class JobRunner:
 
     def __len__(self):
         return len(self.workers)
-
-

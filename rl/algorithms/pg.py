@@ -68,7 +68,7 @@ class PolicyGradient(Algorithm):
             self.policy.update(xs=ro['obs_short'])
 
         with timed('Update oracle'):
-            _, ev0, ev1 = self.oracle.update(ro, self.policy)
+            _, err0, err1 = self.oracle.update(ro, self.policy)
 
         with timed('Compute policy gradient'):
             g = self.oracle.grad(self.policy.variable)
@@ -88,8 +88,8 @@ class PolicyGradient(Algorithm):
         if hasattr(self.policy,'lstd'):
             logz.log_tabular('std', np.mean(np.exp(self.policy.lstd)))
         logz.log_tabular('g_norm', np.linalg.norm(g))
-        logz.log_tabular('ExplainVarianceBefore(AE)', ev0)
-        logz.log_tabular('ExplainVarianceAfter(AE)', ev1)
+        logz.log_tabular('NrmseBefore(AE)', err0)
+        logz.log_tabular('NrmseAfter(AE)', err1)
 
         self._itr +=1
 

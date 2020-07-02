@@ -9,35 +9,45 @@ from rl.core.datasets import Dataset
 from rl.core.utils.mp_utils import Worker, JobRunner
 
 
+
+def linear_t_state(t, horizon):
+    return t/horizon
+
+def rw_scaling(rw, ob, ac, scale):
+    return rw*scale
+
+
+
 class MDP:
     """ A wrapper for gym env. """
-    def __init__(self, env, gamma=1.0, horizon=None, use_time_info=True, v_end=None,
-                 n_processes=1, min_ro_per_process=1):
+    def __init__(self, env, gamma=1.0, horizon=None, use_time_info=True,
+                 v_end=None, rw_scale=1.0, n_processes=1, min_ro_per_process=1,
+                 max_run_calls=None):
         self.env = env  # a gym-like env
         self.gamma = gamma
         horizon = float('Inf') if horizon is None else horizon
         self.horizon = horizon
         self.use_time_info = use_time_info
+        self.rw_scale = rw_scale
 
         # configs for rollouts
-        t_state = partial(self.t_state, horizon=horizon) if use_time_info else None
+        t_state = partial(linear_t_state, horizon=self.horizon) if use_time_info else None
+        rw_shaping = partial(rw_scaling, scale=self.rw_scale)
         self._gen_ro = partial(self.generate_rollout,
                                env=self.env,
                                v_end=v_end,
+                               rw_shaping= rw_shaping,
                                t_state=t_state,
                                max_rollout_len=horizon)
         self._n_processes = n_processes
         self._min_ro_per_process = int(max(1, min_ro_per_process))
+        self._max_run_calls=max_run_calls  # for freeing memory
 
     def initialize(self):
         try:  # try to reset the env
             self.env.initialize()
         except:
             pass
-
-    @staticmethod
-    def t_state(t, horizon):
-        return t/horizon
 
     @property
     def ob_shape(self):
@@ -59,7 +69,7 @@ class MDP:
         if self._n_processes>1: # parallel data collection
             if not hasattr(self, '_job_runner'):  # start the process
                 workers = [Worker(method=self._gen_ro) for _ in range(self._n_processes)]
-                self._job_runner = JobRunner(workers)
+                self._job_runner = JobRunner(workers, max_run_calls=self._max_run_calls)
             # determine rollout configs
             N = self._n_processes  # number of jobs
             if max_n_rollouts is not None:
@@ -69,6 +79,7 @@ class MDP:
                 min_n_samples = int(min_n_samples/N)
             kwargs['min_n_samples'] = min_n_samples
             kwargs['max_n_rollouts'] = max_n_rollouts
+            kwargs['min_n_rollouts'] = self._min_ro_per_process
             # start data collection
             job = ((agent,), kwargs)
             res = self._job_runner.run([job]*N)
@@ -162,7 +173,10 @@ def generate_rollout(pi, logp, env,
                      callback=None,
                      v_end=None,
                      t_state=None,
-                     min_n_samples=None, max_n_rollouts=None,
+                     rw_shaping=None,
+                     min_n_samples=None,
+                     max_n_rollouts=None,
+                     min_n_rollouts=0,
                      max_rollout_len=None,
                      with_animation=False):
 
@@ -194,11 +208,15 @@ def generate_rollout(pi, logp, env,
 
             `t_state`: a function that maps time to desired features
 
+            `rw_shaping`: a function that maps a reward to the new reward
+
             `max_rollout_len`: the maximal length of a rollout (i.e. the problem's horizon)
 
             `min_n_samples`: the minimal number of samples to collect
 
-            `max_n_rollouts`: the maximal number of rollouts
+            `max_n_rollouts`: the maximal number of rollouts,
+
+            `min_n_rollouts`: the minimal number of rollouts,
 
             `with_animation`: display animiation of the first rollout
 
@@ -207,12 +225,16 @@ def generate_rollout(pi, logp, env,
     assert (min_n_samples is not None) or (max_n_rollouts is not None)  # so we can stop
     min_n_samples = min_n_samples or float('Inf')
     max_n_rollouts = max_n_rollouts or float('Inf')
+    min_n_rollouts = min(min_n_rollouts, max_n_rollouts)
     max_rollout_len = max_rollout_len or float('Inf')
     max_episode_steps = getattr(env, '_max_episode_steps', float('Inf'))
     max_rollout_len = min(max_episode_steps, max_rollout_len)
 
     if v_end is None:
         def v_end(ob, dn): return 0.
+
+    if rw_shaping is None:
+        def rw_shaping(rw, ob, ac): return rw
 
     def post_process(x, t):
         # Augment observation with time information, if needed.
@@ -248,6 +270,7 @@ def generate_rollout(pi, logp, env,
             obs.append(ob)
             acs.append(ac)
             ob, rw, dn, _ = step(ac, tm)
+            rw = rw_shaping(rw, ob, ac)
             rws.append(rw)
             tm += 1
             if dn or tm >= max_rollout_len:
@@ -262,8 +285,7 @@ def generate_rollout(pi, logp, env,
         rollouts.append(rollout)
         n_samples += len(rollout)
         if (n_samples >= min_n_samples) or (len(rollouts) >= max_n_rollouts):
-            break
+            if len(rollouts)>= min_n_rollouts:
+                break
     ro = Dataset(rollouts)
     return ro
-
-
