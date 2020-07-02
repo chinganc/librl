@@ -49,7 +49,11 @@ def make_tf_normalizer(cls):
             else:
                 # need to first scale it before clipping
                 ts_x = (ts_x - self._ts_bias) / self._ts_scale
-                ts_x = tf.clip_by_value(ts_x, self._ts_thre[0], self._ts_thre[1])
+                _ts_thre = self._ts_thre + tf.zeros(2)  # for handling the dummy case
+                if tf.size(self._ts_thre)>1:
+                    ts_x = tf.clip_by_value(ts_x, _ts_thre[0], _ts_thre[1])
+
+
                 # check if we need to scale it back
                 if self._ts_unscale:
                     ts_x = ts_x * self._ts_scale
@@ -104,5 +108,3 @@ class tfNormalizerStd(pynor.NormalizerStd):
 @make_tf_normalizer
 class tfNormalizerMax(pynor.NormalizerMax):
     pass
-
-

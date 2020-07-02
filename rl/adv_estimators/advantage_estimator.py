@@ -106,7 +106,7 @@ class ValueBasedAE(AdvantageEstimator):
         self.pe_lambd = pe_lambd  # user-defined self.pe_lambda-weighted td error
         if np.isclose(self.pe_lambd, 1.0):
             n_pe_updates = 1
-        assert n_pe_updates >= 1, 'Policy evaluation needs at least one udpate.'
+        assert n_pe_updates >= 1, 'Policy evaluation needs at least one update.'
         self._n_pe_updates = n_pe_updates
         assert isinstance(vfn, SupervisedLearner)
         self.vfn = vfn
@@ -160,7 +160,7 @@ class ValueBasedAE(AdvantageEstimator):
     def advs(self, ro, lambd=None, use_is=None, ref_policy=None):  # advantage function
         """ Compute adv (evaluated at ro) wrt to ref_policy.
 
-            ro: a list of Rollout isinstances
+            ro: a Dataset of Rollouts
 
             Note `ref_policy` argument is only considered when `self.use_is`
             is True; in this case, if `ref_policy` is None, it is wrt to

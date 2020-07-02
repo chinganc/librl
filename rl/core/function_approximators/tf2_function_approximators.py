@@ -3,10 +3,11 @@
 # Licensed under the MIT License.
 
 import copy
+from functools import partial
 import numpy as np
 import tensorflow as tf
 from abc import abstractmethod
-from rl.core.function_approximators.function_approximator import FunctionApproximator
+from rl.core.function_approximators.function_approximator import FunctionApproximator, minibatch
 from rl.core.function_approximators.normalizers import tfNormalizerMax
 from rl.core.utils.tf2_utils import array_to_ts, tf_float, ts_to_array, identity
 from rl.core.utils.misc_utils import flatten, unflatten, zipsame
@@ -26,8 +27,13 @@ class tfFuncApp(FunctionApproximator):
         self._var_shapes = None  # cache
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
+    @minibatch()
     def predict(self, xs, **kwargs):
-        return self.ts_predict(array_to_ts(xs), **kwargs).numpy()
+        return self.__ts_predict(array_to_ts(xs), **kwargs).numpy()
+
+    @tf.function
+    def __ts_predict(self, ts_xs, **kwargs):
+        return self.ts_predict(ts_xs, **kwargs)
 
     def grad(self, xs, **kwargs):
         """ Derivative with respect to xs. """
@@ -124,7 +130,7 @@ class KerasFuncApp(tfFuncApp):
             self.kmodel = build_kmodel(self.x_shape, self.y_shape)
         # make sure the model is constructed
         ts_x = tf.zeros([1]+list(self.x_shape))
-        self.ts_predict(ts_x)
+        self.kmodel(ts_x)
 
     def _build_kmodel(self, x_shape, y_shape):
         """ Build the default kmodel.
@@ -146,10 +152,11 @@ class KerasFuncApp(tfFuncApp):
         return self.kmodel.trainable_variables
 
     # New methods of KerasFuncApp
-
+    @minibatch()
     def k_predict(self, xs, **kwargs):
         """ Batch prediction using the keras implementation. """
-        return self.kmodel.predict(xs, **kwargs)
+        # return self.kmodel.predict(xs, **kwargs)
+        return self.kmodel.predict_on_batch(xs)
 
     # utilities (tf.keras.Model needs to be serialized)
     def assign(self, other, excludes=()):
@@ -190,7 +197,7 @@ class KerasFuncApp(tfFuncApp):
             self.kmodel = tf.keras.Sequential.from_config(config)
         # intialize the weights (keras bug...)
         ts_x = tf.zeros([1]+list(self.x_shape))
-        self.ts_predict(ts_x)
+        self.kmodel(ts_x)  #self.ts_predict(ts_x)
         self.kmodel.set_weights(weights)
 
 
@@ -231,7 +238,6 @@ class tfRobustFuncApp(tfFuncApp):
             self._y_nor.update(ys)
         return super().update(xs=xs, ys=ys, *args, **kwargs)
 
-
 class RobustKerasFuncApp(tfRobustFuncApp, KerasFuncApp):
 
     def __init__(self, x_shape, y_shape, name='robust_k_func_app', **kwargs):
@@ -245,6 +251,34 @@ class RobustKerasFuncApp(tfRobustFuncApp, KerasFuncApp):
 
 # Some examples
 
+
+def _keras_mlp(x_shape, y_shape,
+                units=(),
+                activation='tanh',
+                hidden_layer_init_scale=1.0,
+                output_layer_init_scale=1.0,
+                init_distribution='uniform'):
+
+        initializer = partial(tf.keras.initializers.VarianceScaling,
+                      mode='fan_avg', distribution=init_distribution)
+
+        ts_in = tf.keras.Input(x_shape)
+        ts_xs = tf.keras.layers.Reshape((np.prod(x_shape),))(ts_in)
+        # build the hidden layers
+        for unit in units:
+            init = initializer(scale=hidden_layer_init_scale**2)
+            ts_xs = tf.keras.layers.Dense(unit, activation=activation,
+                        kernel_initializer=init)(ts_xs)
+        # build the last linear layer
+        init = initializer(scale=output_layer_init_scale**2)
+        ts_ys = tf.keras.layers.Dense(np.prod(y_shape), activation='linear',
+                    kernel_initializer=init)(ts_xs)
+        ts_out = tf.keras.layers.Reshape(y_shape)(ts_ys)
+        kmodel = tf.keras.Model(ts_in, ts_out)
+        return kmodel
+
+
+
 class KerasMLP(KerasFuncApp):
     """ Basic MLP using tf.keras.layers """
 
@@ -254,15 +288,7 @@ class KerasMLP(KerasFuncApp):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
     def _build_kmodel(self, x_shape, y_shape):
-        # the last layer is linear
-        ts_in = tf.keras.Input(x_shape)
-        ts_xs = tf.keras.layers.Reshape((np.prod(x_shape),))(ts_in)
-        for unit in self.units:
-            ts_xs = tf.keras.layers.Dense(unit, activation=self.activation)(ts_xs)
-        ts_ys = tf.keras.layers.Dense(np.prod(y_shape), activation='linear')(ts_xs)
-        ts_out = tf.keras.layers.Reshape(y_shape)(ts_ys)
-        kmodel = tf.keras.Model(ts_in, ts_out)
-        return kmodel
+        return _keras_mlp(x_shape, y_shape, units=self.units, activation=self.activation)
 
 class RobustKerasMLP(RobustKerasFuncApp):
     """ Basic MLP using tf.keras.layers """
@@ -273,15 +299,7 @@ class RobustKerasMLP(RobustKerasFuncApp):
         super().__init__(x_shape, y_shape, name=name, **kwargs)
 
     def _build_kmodel(self, x_shape, y_shape):
-        # the last layer is linear
-        ts_in = tf.keras.Input(x_shape)
-        ts_xs = tf.keras.layers.Reshape((np.prod(x_shape),))(ts_in)
-        for unit in self.units:
-            ts_xs = tf.keras.layers.Dense(unit, activation=self.activation)(ts_xs)
-        ts_ys = tf.keras.layers.Dense(np.prod(y_shape), activation='linear')(ts_xs)
-        ts_out = tf.keras.layers.Reshape(y_shape)(ts_ys)
-        kmodel = tf.keras.Model(ts_in, ts_out)
-        return kmodel
+        return _keras_mlp(x_shape, y_shape, units=self.units, activation=self.activation)
 
 
 class tfMLP(tfFuncApp):
@@ -309,7 +327,6 @@ class tfMLP(tfFuncApp):
     def ts_variables(self):
         return self.ts_w+self.ts_b
 
-    #@tf.function
     def ts_predict(self, ts_xs):
         # the last layer is linear
         ts_xs = tf.reshape(ts_xs,(-1,np.prod(self.x_shape)))
@@ -372,4 +389,3 @@ class tfGradFun(tfFuncApp):
 
     def ts_predict(self, ts_xs, **kwargs):
         return self.base_fun.ts_grad(ts_xs, **kwargs)
-

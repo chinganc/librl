@@ -18,7 +18,7 @@ def normalize(arr):
     return arr_normalized
 
 
-def compute_explained_variance(ypred, y):
+def explained_variance(ypred, y):
     """
     Computes fraction of variance that ypred explains about y.
     Returns 1 - Var[y-ypred] / Var[y]
@@ -43,3 +43,15 @@ def compute_explained_variance(ypred, y):
         # else:
         variance[idx] = 1.0 - np.var(y_col - ypred_col) / vary
     return np.mean(variance)
+
+
+def rmse(ypred, y):
+    return np.sqrt(np.mean((ypred-y)**2))
+
+def nrmse(ypred, y):
+    """
+    Compute normalized root mean squared error
+    """
+    range_y = np.max(y) - np.min(y)
+    return rmse(ypred, y)/range_y
+
