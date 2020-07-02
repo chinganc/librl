@@ -96,7 +96,7 @@ class tfPolicy(tfFuncApp, Policy):
                 gt2.watch(self.ts_variables)  #  TODO add sample weight below??
                 ts_kl = self.ts_kl(self, ts_xs, p1_sg=True)
             ts_kl_grads = gt2.gradient(ts_kl, self.ts_variables)
-            ts_pd = tf.add_n([tf.reduce_sum(kg*v) for (kg, v) in zipsame(ts_kl_grads, ts_gs)])
+            ts_pd = tf.math.accumulate_n([tf.reduce_sum(kg*v) for (kg, v) in zipsame(ts_kl_grads, ts_gs)])
         ts_fvp = gt.gradient(ts_pd, self.ts_variables)
         return ts_fvp
 
@@ -106,7 +106,7 @@ class tfPolicy(tfFuncApp, Policy):
         with tf.GradientTape(watch_accessed_variables=False) as gt:
             gt.watch(dummy)
             ts_sum_logp_grads = self.ts_logp_grad(ts_xs, ts_ys, dummy)
-            ts_pd = tf.add_n([tf.reduce_sum(u*v) for (u, v) in zipsame(ts_sum_logp_grads, ts_gs)])
+            ts_pd = tf.math.accumulate_n([tf.reduce_sum(u*v) for (u, v) in zipsame(ts_sum_logp_grads, ts_gs)])
         ts_fs = gt.gradient(ts_pd, dummy)  # shape (N,)
         N = tf.constant(len(dummy),dtype=tf_float)
         return self.ts_logp_grad(ts_xs, ts_ys, ts_fs/N)
