@@ -8,7 +8,6 @@ from rl.core import function_approximators as fa
 from rl.core.function_approximators.supervised_learners import SupervisedLearner
 from rl.core.function_approximators.policies.tf2_policies import tfGaussianPolicy
 
-
 def robust_keras_supervised_learner(cls):
     """ A decorator for creating basic supervised learners from KerasFuncApp. """
     assert issubclass(cls, fa.KerasFuncApp)

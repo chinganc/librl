@@ -11,23 +11,26 @@ def load_policy(path, name):
     policy.restore(path, name=name)
     return policy
 
+import numpy as np 
+
 def main(envid,
          policy_path,
          policy_name,
-         horizon=1000,
-         seed=None):
+         horizon=1000):
 
     # Create mdp
     env = gym.make(envid)
-    env.seed(seed)
     mdp = MDP(env, horizon=horizon)
 
     # Load policy
-    policy = load_policy(policy_path, policy_name)
+    #policy = load_policy(policy_path, policy_name)
+    from hw_expert.load_hw_expert import load_hw_expert
+    policy = load_hw_expert()
+  
     agent = PolicyAgent(policy)
 
     # Run one rollout
-    ros, agents = mdp.run(agent, max_n_rollouts=1, with_animation=True)
+    ros, _ = mdp.run(agent, max_n_rollouts=1, with_animation=True)
     ro = ros[0]
     print('sum of reward', np.sum(ro['rws']))
 
@@ -39,7 +42,6 @@ if __name__ == '__main__':
     parser.add_argument('-n','--name', help='The name of policy', type=str, default='learner_policy_best')
     parser.add_argument('-e','--envid', help='The name of environment', type=str, default='Humanoid-v2')
     parser.add_argument('-t','--horizon', help='The problem horizon', type=int, default=1000)
-    parser.add_argument('-s','--seed', help='Seed for the environment', type=int, default=0)
 
     args = parser.parse_args()
 
