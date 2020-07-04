@@ -166,7 +166,7 @@ CONFIG = {
             'pretrain': True,
             'final_eval': False,
             'eval_freq': 1,
-            'save_freq': None,
+            'save_freq': 10,
         },
         'ro_kwargs': {
             'min_n_samples': None,
@@ -186,7 +186,7 @@ CONFIG = {
         'eps':1.0,
         'strategy':'max',
         'policy_as_expert': False,
-        'max_n_batches_experts':100,
+        'max_n_batches_experts':10,
         'use_bc': True,
     },
     'policy_units': (128,128),
