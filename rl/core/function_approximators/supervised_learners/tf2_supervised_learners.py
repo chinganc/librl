@@ -6,10 +6,11 @@ import tensorflow as tf
 from math import ceil
 from rl.core import function_approximators as fa
 from rl.core.function_approximators.supervised_learners import SupervisedLearner
+from rl.core.function_approximators.policies.tf2_policies import tfGaussianPolicy
 
 
 def robust_keras_supervised_learner(cls):
-    """ A decorator for creating basic supervised learners from RobustKerasFuncApp. """
+    """ A decorator for creating basic supervised learners from KerasFuncApp. """
     assert issubclass(cls, fa.KerasFuncApp)
     class decorated_cls(cls, SupervisedLearner):
 
@@ -93,6 +94,21 @@ def robust_keras_supervised_learner(cls):
     decorated_cls.__name__ = cls.__name__
     decorated_cls.__qualname__ = cls.__qualname__
     return decorated_cls
+
+
+def create_robust_keras_supervised_learner(funcapp):
+    """ Create a basic supervised learner from an instance of KerasFuncApp.
+        The attributes in the returned `super_funcapp` are referenced to `funcapp`.
+    """
+    assert isinstance(funcapp, fa.KerasFuncApp)
+    SuperFuncapp = robust_keras_supervised_learner(type(funcapp))
+    super_funcapp = SuperFuncapp(funcapp.x_shape, funcapp.y_shape)
+    super_funcapp.__dict__.update(funcapp.__dict__)
+    super_funcapp.kmodel.compile(optimizer=tf.keras.optimizers.Adam(super_funcapp._lr),
+                                 loss=super_funcapp._loss,
+                                 metrics=list(super_funcapp._metrics))
+    return super_funcapp
+
 
 
 @robust_keras_supervised_learner

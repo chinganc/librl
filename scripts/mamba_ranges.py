@@ -6,7 +6,7 @@ from scripts import ranges as R
 
 
 range_common = [
-    [['seed'], [x * 100 for x in range(8)]],
+    [['seed'], [x * 100 for x in range(4)]],
 ]
 
 # basic baseline
@@ -18,6 +18,13 @@ range_pg = [
 ]
 range_pg = R.merge_ranges(range_common, range_pg)
 
+range_pg_expert = [
+    [['top_log_dir'], ['log_pg_expert']],
+    [['algorithm', 'lambd'], [0.9, 0.98, 1.00]],
+    [['init_lstd'], [-1, 0, 1]],
+    [['use_experts'], [False]],
+]
+range_pg_expert = R.merge_ranges(range_common, range_pg_expert)
 
 def get_path(seed):
     return 'experts/DartCartPole-v1/'+str(seed)+'/saved_policies'
@@ -54,8 +61,8 @@ range_softmax = R.merge_ranges(range_common, range_softmax)
 
 range_max = [
     [['top_log_dir'], ['log_max']],
-    [['algorithm', 'lambd'], [0., 0.1, 0.5, 0.9]],
-    [['n_experts'], [1, 2, 4, 8]],
+    [['algorithm', 'lambd'], [0.9]],
+    [['n_experts'], [1]],
     [['algorithm', 'strategy'], ['max']],
     [['algorithm', 'policy_as_expert'], [False]],
 ]

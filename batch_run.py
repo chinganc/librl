@@ -175,6 +175,7 @@ def main(script_name, range_names, n_processes=-1, config_name=None):
     job_runner = JobRunner(workers)
     jobs = [(partial(run_script, script.main, tp),(), {}) for tp in tps]
     job_runner.run(jobs)
+    del job_runner
 
 def run_script(main, config):
     w = Worker(method=main)

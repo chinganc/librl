@@ -31,6 +31,7 @@ class tfFuncApp(FunctionApproximator):
     def predict(self, xs, **kwargs):
         return self.__ts_predict(array_to_ts(xs), **kwargs).numpy()
 
+    @tf.function
     def __ts_predict(self, ts_xs, **kwargs):
         return self.ts_predict(ts_xs, **kwargs)
 
