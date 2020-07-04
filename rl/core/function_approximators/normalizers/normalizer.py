@@ -59,18 +59,18 @@ class Normalizer(FunctionApproximator):
         # do something
         if self._thre is None:
             if not self._unbias:
-                x -= self._bias
+                x = x - self._bias
             if not self._unscale:
-                x /= self._scale
+                x = x / self._scale
         else:
             # need to first scale it before clipping
             x = (x - self._bias) / self._scale
             x = np.clip(x, self._thre[0], self._thre[1])
             # check if we need to scale it back
             if self._unscale:
-                x *= self._scale
+                x = x * self._scale
                 if self._unbias:
-                    x += self._bias
+                    x = x + self._bias
             else:
                 if self._unbias:
                     x = x + self._bias / self._scale
