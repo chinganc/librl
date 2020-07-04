@@ -41,7 +41,9 @@ class Policy(FunctionApproximator):
     @online_compatible
     def logp(self, xs, ys, **kwargs):
         """ Compute the log probabilities on batches of (xs, ys)."""
-        return np.log(self.predict(xs, **kwargs)==ys)  # default behavior
+        ind = np.isclose(self.predict(xs, **kwargs),ys)
+        axis = tuple(range(1,len(xs.shape)))
+        return np.log(np.prod(ind, axis=axis))  # default behavior
 
     def logp_grad(self, xs, ys, fs, **kwargs):
         """ Compute the \E[ f(x,y) \nabla log p(y|x) ] on batches of (xs, ys)."""
