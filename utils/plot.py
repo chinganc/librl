@@ -57,7 +57,7 @@ def main(logdir, value, output_dir=None, filename=None, style=None,
     subdirs = sorted(os.listdir(logdir))
     subdirs = [d for d in subdirs if d[0] != '.']  # filter out weird things, e.g. .DS_Store
     subdirs = conf.sort_dirs(subdirs)
-    fontsize = 30 # 36 if style else 12  # for non style plots, exp name can be quite long
+    fontsize = 36 if style else 12  # for non style plots, exp name can be quite long
     usetex = False # True if style else False
     configure_plot(fontsize=fontsize, usetex=usetex)
     linewidth = 10 if style else 4
