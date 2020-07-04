@@ -196,6 +196,9 @@ class Mamba(PolicyGradient):
                 aes.append(create_ae(e, v, max_n_batches=self.ae.max_n_batches))
             else:
                 aes.append(create_ae(e, v, max_n_batches=max_n_batches_experts))
+        for ae in aes:
+            ae.use_is = False
+
         self.aes = aes  # of the experts
 
 

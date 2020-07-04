@@ -123,11 +123,14 @@ def main(c):
 
     # Define experts
     if c['use_experts']:
-        experts = create_experts(c['mdp']['envid'], **c['expert_info'])
-        if c['n_experts'] is not None and len(experts)>c['n_experts']:
-            experts = experts[:c['n_experts']]
-        if len(experts)<1:
-            experts = None
+        # experts = create_experts(c['mdp']['envid'], **c['expert_info'])
+        # if c['n_experts'] is not None and len(experts)>c['n_experts']:
+        #     experts = experts[:c['n_experts']]
+        # if len(experts)<1:
+        #     experts = None
+        from hw_expert.load_hw_expert import load_hw_expert
+        experts = [load_hw_expert()]
+
     else:
         experts=None
 
@@ -149,10 +152,10 @@ CONFIG = {
     'exp_name': 'cp',
     'seed': 0,
     'mdp': {
-        'envid': 'DartCartPole-v1',
+        'envid': 'Humanoid-v2',
         'horizon': 1000,  # the max length of rollouts in training
         'gamma': 1.0,
-        'n_processes': 1,
+        'n_processes': 8,
         'min_ro_per_process': 2,  # needs to be at least 2 so the experts will be rollout
         'max_run_calls':25,
         'rw_scale':0.01,
@@ -171,8 +174,8 @@ CONFIG = {
         },
     },
     'algorithm': {
-        'optimizer':'adam',
-        'lr':0.001,
+        'optimizer':'rnatgrad0',
+        'lr':0.1,
         'max_kl':0.05,
         'delta':None,
         'lambd':0.9,
@@ -184,7 +187,7 @@ CONFIG = {
         'strategy':'max',
         'policy_as_expert': False,
         'max_n_batches_experts':100,
-        'use_bc': False,
+        'use_bc': True,
     },
     'policy_units': (128,128),
     'value_units': (256,256),
@@ -195,7 +198,7 @@ CONFIG = {
         'path': None, #'experts/DartCartPole-v1/'+str(100)+'/saved_policies',
         'order': True,  # True to use the ordering based on performance; False to use a random ordering
     },
-    'n_experts': 2, # None,
+    'n_experts': 1, # None,
 }
 
 if __name__ == '__main__':
