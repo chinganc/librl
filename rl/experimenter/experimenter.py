@@ -100,6 +100,8 @@ class Experimenter:
             if avg_performance >= self.best_performance:
                 self.best_policy = copy.deepcopy(self.alg.policy)
                 self.best_performance = avg_performance
+                self._save_policy(self.best_policy, 'best')
+
             logz.log_tabular(prefix + 'TotalNumberOfSamples', self._n_samples)
             logz.log_tabular(prefix + 'TotalNumberOfRollouts', self._n_rollouts)
             logz.log_tabular(prefix + 'BestSumOfRewards', self.best_performance)
