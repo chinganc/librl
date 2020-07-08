@@ -18,7 +18,7 @@ class Policy(FunctionApproximator):
 
     def predict(self, xs, stochastic=True, **kwargs):
         """ Predict the values on batches of xs. """
-        return super().predict(ts_xs, stochastic=stochastic, **kwargs)
+        return super().predict(xs, **kwargs)
 
     # New methods of Policy
     @online_compatible
