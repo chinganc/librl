@@ -49,7 +49,7 @@ def minibatch(batchsize=1024, n_args=1, use_padding=False):
                 xs_i = tuple((x[ind[i]:ind[i+1]] for x in xs))
                 need_padding = use_padding and len(xs_i[0])<batchsize
                 if need_padding:
-                    xs_i = tuple((pad_zeros(x, batchsize) for x in xs))
+                    xs_i = tuple((pad_zeros(x, batchsize) for x in xs_i))
                 y_i = f(self, *xs_i, *args, **kwargs)
                 if need_padding:
                     y_i = y_i[:ind[i+1]-ind[i]]
