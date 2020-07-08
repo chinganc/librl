@@ -28,20 +28,34 @@ def online_compatible(f):
         return y
     return decorated_f
 
-def minibatch(batchsize=1024, n_args=1):
+
+def pad_zeros(xs, desired_n):
+    if len(xs)<desired_n:
+        n_zeros = desired_n-len(xs)
+        zeros = np.zeros((n_zeros,)+xs.shape[1:])
+        xs = np.concatenate([xs, zeros])
+    return xs
+
+def minibatch(batchsize=1024, n_args=1, use_padding=False):
     def inner_decorator(f):
         @wraps(f)
         def decorated_f(self, *args, **kwargs):
             xs = args[:n_args]
             args = args[n_args:]
-            n = len(xs[0])
+            n = len(xs[0])  # number of data points
             ind = np.arange(0, n, batchsize)
             ind = np.append(ind, n)
             ys = []
-            for i in np.arange(len(ind)-1):
-                xs_i = (x[ind[i]:ind[i+1]] for x in xs)
+            for i in np.arange(len(ind)-1):  # loop over the batches
+                xs_i = tuple((x[ind[i]:ind[i+1]] for x in xs))
+                need_padding = use_padding and len(xs_i[0])<batchsize
+                if need_padding:
+                    xs_i = tuple((pad_zeros(x, batchsize) for x in xs_i))
                 y_i = f(self, *xs_i, *args, **kwargs)
+                if need_padding:
+                    y_i = y_i[:ind[i+1]-ind[i]]
                 ys.append(y_i)
+
             return np.concatenate(ys)
         return decorated_f
     return inner_decorator
