@@ -39,7 +39,7 @@ class tfPolicy(tfFuncApp, Policy):
     #   return self.ts_logp(array_to_ts(xs), array_to_ts(ys), **kwargs).numpy()
         return self._ts_logp(array_to_ts(xs), array_to_ts(ys), **kwargs).numpy()
 
-    @tf.function
+    # @tf.function
     def _ts_logp(self, *args, **kwargs):
         return self.ts_logp(*args, **kwargs)
 
