@@ -34,9 +34,14 @@ class tfPolicy(tfFuncApp, Policy):
     # Users may choose to implement `exp_fun`, `exp_grad`, `noise`, `derandomize`.
 
     @online_compatible
-    @minibatch(n_args=2)
+    @minibatch(n_args=2, use_padding=True, batchsize=64)
     def logp(self, xs, ys, **kwargs):  # override
-        return self.ts_logp(array_to_ts(xs), array_to_ts(ys), **kwargs).numpy()
+    #   return self.ts_logp(array_to_ts(xs), array_to_ts(ys), **kwargs).numpy()
+        return self._ts_logp(array_to_ts(xs), array_to_ts(ys), **kwargs).numpy()
+
+    @tf.function
+    def _ts_logp(self, *args, **kwargs):
+        return self.ts_logp(*args, **kwargs)
 
     def logp_grad(self, xs, ys, fs, **kwargs):
         ts_grad = self.ts_logp_grad(array_to_ts(xs), array_to_ts(ys),

@@ -52,6 +52,10 @@ class Oracle(ABC):
         assert type(self)==type(other)
         keys = [ k for k in other.__dict__ if not k in excludes ]
         for k in keys:
+            if hasattr(self.__dict__[k], 'assign'):
+                if callable(self.__dict__[k].assign):
+                    self.__dict__[k].assign(other.__dict__[k])
+                    continue
             self.__dict__[k] = copy.deepcopy(other.__dict__[k])
 
     def __deepcopy__(self, memo, excludes=()):

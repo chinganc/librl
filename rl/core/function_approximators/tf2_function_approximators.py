@@ -227,7 +227,7 @@ class tfRobustFuncApp(tfFuncApp):
     def ts_predict(self, ts_xs, clip_y=True, **kwargs):
         # include also input and output normalizeations
         ts_xs = self._x_nor.ts_predict(ts_xs)
-        ts_ys = super().ts_predict(ts_xs)
+        ts_ys = super().ts_predict(ts_xs, **kwargs)
         return self._y_nor.ts_predict(ts_ys) if clip_y else ts_ys
 
     def update(self, xs=None, ys=None, *args, **kwargs):
