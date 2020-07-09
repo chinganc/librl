@@ -52,11 +52,25 @@ class Oracle(ABC):
         assert type(self)==type(other)
         keys = [ k for k in other.__dict__ if not k in excludes ]
         for k in keys:
-            if hasattr(self.__dict__[k], 'assign'):
-                if callable(self.__dict__[k].assign):
-                    self.__dict__[k].assign(other.__dict__[k])
-                    continue
-            self.__dict__[k] = copy.deepcopy(other.__dict__[k])
+            self.__dict__[k] = self._recursive_assign(self.__dict__[k], other.__dict__[k])
+
+    def _recursive_assign(self, a, b):
+        if hasattr(a, 'assign') and callable(a.assign):
+            a.assign(b)
+        elif isinstance(a, dict) and isinstance(b, dict):
+            assert len(a)==len(b)
+            for key in a.keys():
+                a[key] = self._recursive_assign(a[key], b[key])
+        elif isinstance(a, list) and isinstance(b, list):
+            assert len(a)==len(b)
+            for i in range(len(a)):
+                a[i] = self._recursive_assign(a[i], b[i])
+        elif isinstance(a, tuple) and isinstance(b, tuple):
+            assert len(a)==len(b)  # creates a new tuple
+            a = tuple(self._recursive_assign(aa, bb) for aa, bb in zip(a,b))
+        else:  # deepcopy
+            a = copy.deepcopy(b)
+        return a
 
     def __deepcopy__(self, memo, excludes=()):
         """ __deepcopy__ but with an exclusion list
@@ -78,3 +92,5 @@ class Oracle(ABC):
         else:
             new.__dict__.update(d)
         return new
+
+

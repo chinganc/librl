@@ -16,6 +16,7 @@ from rl.core.utils.misc_utils import flatten, unflatten, zipsame
 #      ts_variables is a list of tf.Variables
 
 
+
 class tfFuncApp(FunctionApproximator):
     """ A minimal wrapper for tensorflow 2 operators.
 
@@ -47,11 +48,14 @@ class tfFuncApp(FunctionApproximator):
     def variable(self, val):
         self.variables = self.unflatten(val)
 
-    def assign(self, other, excludes=()):
-        ts_vars = [k for k,v in self.__dict__.items() if isinstance(v, tf.Variable)]
-        excludes = list(excludes)+ts_vars
-        super().assign(other, excludes)
-        [getattr(self,k).assign(getattr(other,k)) for k in ts_vars]
+    def _recursive_assign(self, a,b):
+        if isinstance(a, tf.Variable):
+            a.assign(b)
+        elif isinstance(a, tf.Module) and isinstance(b, tf.Module):
+            [aa.assign(bb) for aa, bb in zip(a.variables, b.variables)]
+        else:
+            a = super()._recursive_assign(a,b)
+        return a 
 
     # Users can choose to implement `update`.
 
