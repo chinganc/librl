@@ -13,6 +13,8 @@ def def_traj_config(c):
     c['experimenter']['ro_kwargs']['min_n_samples'] = None
     return c
 
+# Dart
+
 config_cp = {
     'exp_name': 'cp',
     'mdp': {
@@ -93,21 +95,6 @@ config_reacher3d = {
 
 config_reacher3d_traj = def_traj_config(config_reacher3d)
 
-config_halfcheetah = {
-    'exp_name': 'halfcheetah',
-    'mdp': {
-        'envid': 'DartHalfCheetah-v1',
-        'horizon': 1000,
-        'gamma': 1.0,
-    },
-    'experimenter': {
-        'run_kwargs': {'n_itrs': 200},
-        'ro_kwargs': {'min_n_samples': 16000},
-    },
-}
-
-config_halfcheetah_traj = def_traj_config(config_halfcheetah)
-
 config_dog = {
     'exp_name': 'dog',
     'mdp': {
@@ -185,24 +172,7 @@ config_snake = {
 config_sanke_traj = def_traj_config(config_snake)
 
 
-config_humanoid = {
-    'exp_name': 'humanoid',
-    'mdp': {
-        'envid': 'Humanoid-v2',
-        'horizon': 1000,
-        'gamma': 1.0,
-        'rw_scale': 0.01,
-    },
-    'experimenter': {
-        'run_kwargs': {'n_itrs': 1000},
-        'ro_kwargs': {'min_n_samples': 50000,
-                      'max_n_rollouts': None},
-    },
-}
-
-config_humanoid_traj = def_traj_config(config_humanoid)
-
-
+#PyBullet
 config_bhumanoid = {
     'exp_name': 'bhumanoid',
     'mdp': {
@@ -221,3 +191,69 @@ config_bhumanoid = {
 config_bhumanoid_traj = def_traj_config(config_bhumanoid)
 
 
+#Mujoco
+config_mujoco_humanoid = {
+    'exp_name': 'mujoco_humanoid',
+    'mdp': {
+        'envid': 'Humanoid-v2',
+        'horizon': 1000,
+        'gamma': 1.0,
+        'rw_scale': 0.01,
+    },
+    'experimenter': {
+        'run_kwargs': {'n_itrs': 1000},
+        'ro_kwargs': {'min_n_samples': 50000,
+                      'max_n_rollouts': None},
+    },
+}
+
+config_mujoco_humanoid_traj = def_traj_config(config_mujoco_humanoid)
+
+
+
+config_mujoco_halfcheetah = {
+    'exp_name': 'mujoco_mujoco_halfcheetah',
+    'mdp': {
+        'envid': 'HalfCheetah-v2',
+        'horizon': 500,
+        'gamma': 1.0,
+    },
+    'experimenter': {
+        'run_kwargs': {'n_itrs': 1000},
+        'ro_kwargs': {'min_n_samples': 16000},
+    },
+}
+
+config_mujoco_halfcheetah_traj = def_traj_config(config_mujoco_halfcheetah)
+
+
+config_mujoco_reacher = {
+    'exp_name': 'mujoco_reacher',
+    'mdp': {
+        'envid': 'Reacher-v2',
+        'horizon': 500,
+        'gamma': 1.0,
+    },
+    'experimenter': {
+        'run_kwargs': {'n_itrs': 1000},
+        'ro_kwargs': {'min_n_samples': 16000},
+    },
+}
+
+config_mujoco_reacher_traj = def_traj_config(config_mujoco_reacher)
+
+
+config_mujoco_ant = {
+    'exp_name': 'mujoco_ant',
+    'mdp': {
+        'envid': 'Ant-v2',
+        'horizon': 500,
+        'gamma': 1.0,
+    },
+    'experimenter': {
+        'run_kwargs': {'n_itrs': 1000},
+        'ro_kwargs': {'min_n_samples': 16000},
+    },
+}
+
+config_mujoco_ant_traj = def_traj_config(config_mujoco_ant)
