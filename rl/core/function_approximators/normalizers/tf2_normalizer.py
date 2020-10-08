@@ -76,8 +76,11 @@ def make_tf_normalizer(cls):
             super().reset()
             self._update_tf_vars()
 
-        def assign(self, other):
-            super().assign(other)
+        def assign(self, other, excludes=()):
+            # assign tf.Variable
+            ts_vars = [k for k,v in self.__dict__.items() if isinstance(v, tf.Variable)]
+            excludes = list(excludes)+ts_vars
+            super().assign(other, excludes)
             self._update_tf_vars()
 
         def _update_tf_vars(self):

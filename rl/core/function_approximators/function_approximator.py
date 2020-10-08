@@ -28,7 +28,6 @@ def online_compatible(f):
         return y
     return decorated_f
 
-
 def pad_zeros(xs, desired_n):
     if len(xs)<desired_n:
         n_zeros = desired_n-len(xs)
