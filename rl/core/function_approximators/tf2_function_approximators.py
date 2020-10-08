@@ -16,6 +16,7 @@ from rl.core.utils.misc_utils import flatten, unflatten, zipsame
 #      ts_variables is a list of tf.Variables
 
 
+
 class tfFuncApp(FunctionApproximator):
     """ A minimal wrapper for tensorflow 2 operators.
 
@@ -47,11 +48,14 @@ class tfFuncApp(FunctionApproximator):
     def variable(self, val):
         self.variables = self.unflatten(val)
 
-    def assign(self, other, excludes=()):
-        ts_vars = [k for k,v in self.__dict__.items() if isinstance(v, tf.Variable)]
-        excludes = list(excludes)+ts_vars
-        super().assign(other, excludes)
-        [getattr(self,k).assign(getattr(other,k)) for k in ts_vars]
+    def _recursive_assign(self, a,b):
+        if isinstance(a, tf.Variable):
+            a.assign(b)
+        elif isinstance(a, tf.Module) and isinstance(b, tf.Module):
+            [aa.assign(bb) for aa, bb in zip(a.variables, b.variables)]
+        else:
+            a = super()._recursive_assign(a,b)
+        return a 
 
     # Users can choose to implement `update`.
 
@@ -227,7 +231,7 @@ class tfRobustFuncApp(tfFuncApp):
     def ts_predict(self, ts_xs, clip_y=True, **kwargs):
         # include also input and output normalizeations
         ts_xs = self._x_nor.ts_predict(ts_xs)
-        ts_ys = super().ts_predict(ts_xs)
+        ts_ys = super().ts_predict(ts_xs, **kwargs)
         return self._y_nor.ts_predict(ts_ys) if clip_y else ts_ys
 
     def update(self, xs=None, ys=None, *args, **kwargs):

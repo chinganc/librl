@@ -13,7 +13,7 @@ from rl.core.utils.misc_utils import flatten, unflatten
 
 
 class tfPolicy(tfFuncApp, Policy):
-    """ A stochastic version of tfFuncApp.
+    """ A wrapper class to make tfFuncApp to be a Policy.
 
         The user need to define `ts_predict`, `ts_variables`, and optionally
         `ts_logp`, `ts_kl` and `ts_fvp`.
@@ -34,9 +34,14 @@ class tfPolicy(tfFuncApp, Policy):
     # Users may choose to implement `exp_fun`, `exp_grad`, `noise`, `derandomize`.
 
     @online_compatible
-    @minibatch(n_args=2)
+    @minibatch(n_args=2, use_padding=True, batchsize=64)
     def logp(self, xs, ys, **kwargs):  # override
-        return self.ts_logp(array_to_ts(xs), array_to_ts(ys), **kwargs).numpy()
+    #   return self.ts_logp(array_to_ts(xs), array_to_ts(ys), **kwargs).numpy()
+        return self._ts_logp(array_to_ts(xs), array_to_ts(ys), **kwargs).numpy()
+
+    # @tf.function
+    def _ts_logp(self, *args, **kwargs):
+        return self.ts_logp(*args, **kwargs)
 
     def logp_grad(self, xs, ys, fs, **kwargs):
         ts_grad = self.ts_logp_grad(array_to_ts(xs), array_to_ts(ys),
@@ -66,7 +71,7 @@ class tfPolicy(tfFuncApp, Policy):
     # New methods of tfPolicy
     def ts_predict(self, ts_xs, stochastic=True, **kwargs):
         """ Define the tf operators for predict """
-        return super().ts_predict(ts_xs, stochastic=stochastic, **kwargs)
+        return super().ts_predict(ts_xs, **kwargs)
 
     def ts_logp(self, ts_xs, ts_ys):
         """ Define the tf operators for logp """
@@ -249,7 +254,7 @@ class tfGaussianPolicy(tfPolicy):
 
     def ts_predict_all(self, ts_xs, stochastic=True, **kwargs):
         """ Define the tf operators for predict """
-        ts_ms = super().ts_predict(ts_xs, **kwargs)
+        ts_ms = super().ts_predict(ts_xs, stochastic=False, **kwargs)
         shape = [ts_xs.shape[0]]+list(self.y_shape)
         if stochastic:
             ts_noises = tf.exp(self.ts_lstd) * tf.random.normal(shape)
