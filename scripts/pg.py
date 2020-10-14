@@ -46,7 +46,7 @@ CONFIG = {
     'exp_name': 'cp',
     'seed': 9,
     'mdp': {
-        'envid': 'DartCartPole-v1',
+        'envid': 'InvertedPendulum-v2',
         'horizon': 1000,  # the max length of rollouts in training
         'gamma': 1.0,
         'n_processes':1,
@@ -65,8 +65,8 @@ CONFIG = {
         },
     },
     'algorithm': {
-        'optimizer':'adam',
-        'lr':0.001,
+        'optimizer':'rnatgrad0',
+        'lr':0.1,
         'max_kl':0.1,
         'delta':None,
         'lambd':0.99,

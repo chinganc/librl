@@ -210,6 +210,8 @@ class Mamba(PolicyGradient):
                 for k, expert in enumerate(self.experts):
                     ros, _ = gen_ro(PolicyAgent(expert))
                     ro = self.merge(ros)
+                    expert_performance = np.mean([np.sum(r.rws) for r in ro])
+                    print('Expert {} performance {}'.format(k, expert_performance))
                     if k == 0 and self._use_bc:  # assumed to be the best
                         dagger = DAgger(self.policy, init_ro=ro)
                         _, err0, err1 = dagger.pretrain()

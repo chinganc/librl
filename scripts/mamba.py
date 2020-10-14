@@ -171,8 +171,8 @@ CONFIG = {
         },
     },
     'algorithm': {
-        'optimizer':'adam',
-        'lr':0.001,
+        'optimizer':'rnatgrad0',
+        'lr':0.1,
         'max_kl':0.05,
         'delta':None,
         'lambd':0.9,
@@ -191,7 +191,7 @@ CONFIG = {
     'init_lstd': -1,
     'use_experts': True,
     'expert_info':{
-        'name':'policy_15',
+        'name':'policy_best',
         'path': None, #'experts/DartCartPole-v1/'+str(100)+'/saved_policies',
         'order': True,  # True to use the ordering based on performance; False to use a random ordering
     },
