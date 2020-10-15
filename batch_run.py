@@ -11,7 +11,13 @@ from functools import partial
 
 try: # Restrict TensorFlow to use limited memory
     import tensorflow as tf
-    gpus = tf.config.experimental.list_physical_devices('GPU')
+    # set the number of threads used by tensorflow
+    n_tf_threads=4
+    tf.config.threading.set_inter_op_parallelism_threads(n_tf_threads)
+    tf.config.threading.set_intra_op_parallelism_threads(n_tf_threads)
+
+
+    gpus = tf.config.experimental.liist_physical_devices('GPU')
     if gpus:
         try:
             for gpu in gpus:
