@@ -160,7 +160,8 @@ class KerasFuncApp(tfFuncApp):
     def k_predict(self, xs, **kwargs):
         """ Batch prediction using the keras implementation. """
         # return self.kmodel.predict(xs, **kwargs)
-        return self.kmodel.predict_on_batch(xs)
+        # return self.kmodel.predict_on_batch(xs)
+        return self.kmodel.predict_step(xs)
 
     # utilities (tf.keras.Model needs to be serialized)
     def assign(self, other, excludes=()):

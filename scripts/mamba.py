@@ -126,6 +126,7 @@ def main(c):
         experts = create_experts(c['mdp']['envid'], **c['expert_info'])
         if c['n_experts'] is not None and len(experts)>c['n_experts']:
             experts = experts[:c['n_experts']]
+            # experts = experts[1:c['n_experts']+1]  # HACK exclude the first one
         if len(experts)<1:
             experts = None
     else:
@@ -185,6 +186,7 @@ CONFIG = {
         'policy_as_expert': False,
         'max_n_batches_experts':100,
         'use_bc': False,
+        'n_bc_steps': 100,
     },
     'policy_units': (128,128),
     'value_units': (256,256),

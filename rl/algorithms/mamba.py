@@ -159,6 +159,7 @@ class Mamba(PolicyGradient):
                  max_n_batches_experts=1000,  # for the experts
                  policy_as_expert=True,
                  use_bc=False,
+                 n_bc_steps=2000,
                  mix_unroll_kwargs=None,  # extra kwargs for ExpertsAgent
                  **kwargs):
 
@@ -200,6 +201,7 @@ class Mamba(PolicyGradient):
 
 
         self._use_bc = use_bc
+        self._n_bc_steps = n_bc_steps
         # For rollout
         self._avg_n_steps = PolMvAvg(1,weight=1)
         self.mix_unroll_kwargs = mix_unroll_kwargs or {}
@@ -214,7 +216,7 @@ class Mamba(PolicyGradient):
                     print('Expert {} performance {}'.format(k, expert_performance))
                     if k == 0 and self._use_bc:  # assumed to be the best
                         dagger = DAgger(self.policy, init_ro=ro)
-                        _, err0, err1 = dagger.pretrain()
+                        _, err0, err1 = dagger.pretrain(n_steps=self._n_bc_steps)
                         print('bc',err0, err1)
                     else:
                         self.policy.update(ro['obs_short'])

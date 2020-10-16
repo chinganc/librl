@@ -29,20 +29,20 @@ class DAgger(Algorithm):
             self.dataset.extend(init_ro)
         self._n_pretrain_itrs = n_pretrain_itrs
 
-    def _update(self):
+    def _update(self, **kwargs):
         xs = self.dataset['obs_short']
         if self.mode=='bc':
             ys = self.dataset['acs']
         if self.mode=='dagger':
             ys = self.expert(xs)
-        return self.superpolicy.update(xs=xs, ys=ys)
+        return self.superpolicy.update(xs=xs, ys=ys, **kwargs)
 
-    def pretrain(self, gen_ro=None):
+    def pretrain(self, gen_ro=None, **kwargs):
         if (gen_ro is not None) and (self.expert is not None):
             for _ in range(self._n_pretrain_itrs):
-                ros, _ = gen_ro(self.agent('target'))
+                ros, _ = gen_ro(PolicyAgent(self.expert))
                 self.dataset.append(merge_ros(ros))
-        return self._update()
+        return self._update(**kwargs)
 
     def update(self, ros, agents):
         self.dataset.append(merge_ros(ros))
