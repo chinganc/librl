@@ -119,7 +119,8 @@ def main(c):
                                     units=c['policy_units'])
     vfn = SuperRobustKerasMLP(ob_shape, (1,), name='learner_vfn',
                                 units=c['value_units'])
-    policy, vfn = create_learner(c['mdp']['envid'], c['seed'], policy, vfn)
+    if c['reuse_initialization']:
+        policy, vfn = create_learner(c['mdp']['envid'], c['seed'], policy, vfn)
 
     # Define experts
     if c['use_experts']:
@@ -186,10 +187,12 @@ CONFIG = {
         'policy_as_expert': False,
         'max_n_batches_experts':100,
         'use_bc': False,
-        'n_bc_steps': 100,
+        'n_bc_steps':100,
+        'n_value_steps':100,
     },
     'policy_units': (128,128),
     'value_units': (256,256),
+    'reuse_initialization':True,
     'init_lstd': -1,
     'use_experts': True,
     'expert_info':{

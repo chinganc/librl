@@ -160,6 +160,7 @@ class Mamba(PolicyGradient):
                  policy_as_expert=True,
                  use_bc=False,
                  n_bc_steps=2000,
+                 n_value_steps=100,
                  mix_unroll_kwargs=None,  # extra kwargs for ExpertsAgent
                  **kwargs):
 
@@ -199,9 +200,9 @@ class Mamba(PolicyGradient):
                 aes.append(create_ae(e, v, max_n_batches=max_n_batches_experts))
         self.aes = aes  # of the experts
 
-
         self._use_bc = use_bc
         self._n_bc_steps = n_bc_steps
+        self._n_value_steps = n_value_steps
         # For rollout
         self._avg_n_steps = PolMvAvg(1,weight=1)
         self.mix_unroll_kwargs = mix_unroll_kwargs or {}
@@ -220,7 +221,7 @@ class Mamba(PolicyGradient):
                         print('bc',err0, err1)
                     else:
                         self.policy.update(ro['obs_short'])
-                    _, err0, err1 = self.aes[k].update(ro)
+                    _, err0, err1 = self.aes[k].update(ro, n_steps=self._n_value_steps)
                     print('pretrain nrmse', err0, err1)
             # sync the online optimizer
             self.learner.x = self.policy.variable
@@ -244,7 +245,7 @@ class Mamba(PolicyGradient):
             EV0, EV1 = [], []
             for k, ro_exp in enumerate(ro_exps):
                 if len(ro_exp)>0:
-                    _, err0, err1 = self.aes[k].update(ro_exp)
+                    _, err0, err1 = self.aes[k].update(ro_exp, n_steps=self._n_value_steps)
                     EV0.append(err0)
                     EV1.append(err1)
             # Update oracle
@@ -252,7 +253,7 @@ class Mamba(PolicyGradient):
 
             # Update the value function the learner (after oracle update so it unbiased)
             if self.policy_as_expert:
-                _, err0, err1 = self.aes[-1].update(ro_pol)
+                _, err0, err1 = self.aes[-1].update(ro_pol, n_steps=self._n_value_steps)
 
             # For adaptive sampling
             self._avg_n_steps.update(np.mean([len(r) for r in ro_pol]))
