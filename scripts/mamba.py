@@ -151,7 +151,7 @@ CONFIG = {
     'exp_name': 'cp',
     'seed': 0,
     'mdp': {
-        'envid': 'DartCartPole-v1',
+        'envid':  'DartCartPole-v1',
         'horizon': 1000,  # the max length of rollouts in training
         'gamma': 1.0,
         'n_processes': 1,
@@ -186,8 +186,8 @@ CONFIG = {
         'strategy':'max',
         'policy_as_expert': False,
         'max_n_batches_experts':100,
-        'use_bc': False,
-        'n_bc_steps':100,
+        'use_bc': True,
+        'n_bc_steps':0,
         'n_value_steps':100,
     },
     'policy_units': (128,128),

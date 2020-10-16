@@ -43,7 +43,7 @@ def robust_keras_supervised_learner(cls):
 
             # shuffle and subsampling
             ind = np.random.permutation(len(xs))
-            ind = ind[:min(batch_size*n_steps, len(xs))]
+            ind = ind[:max(1,min(batch_size*n_steps, len(xs)))]
             xs = xs[ind,:]
             ys = ys[ind,:]
             ws = ws[ind]

@@ -95,7 +95,16 @@ range_debug = [
     [['n_experts'], [8]]
 ]
 
-
-
-
-
+range_agg_debug= [
+    [['top_log_dir'], ['log_agg_debug']],
+    [['algorithm', 'lambd'], [0.]],
+    [['n_experts'], [1]],
+    [['algorithm', 'strategy'], ['max']],
+    [['algorithm', 'policy_as_expert'], [False]],
+    [['use_bc', True]],
+    [['algorithm', 'lr'], [0.1, 0.05, 0.001]],
+    [['algorithm', 'n_bc_steps'], [0, 100, 1000]],
+    [['algorithm', 'n_value_steps'], [10, 100, 1000]],
+    [['value_units', (256, 256), (512, 512), (256,256,256)]],
+]
+range_agg_debug = R.merge_ranges(range_common, range_agg_debug)
