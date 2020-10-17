@@ -257,3 +257,19 @@ config_mujoco_ant = {
 }
 
 config_mujoco_ant_traj = def_traj_config(config_mujoco_ant)
+
+config_mujoco_walker2d = {
+    'exp_name': 'mujoco_walker2d',
+    'mdp': {
+        'envid': 'Walker2d-v2',
+        'horizon': 500,
+        'gamma': 1.0,
+    },
+    'experimenter': {
+        'run_kwargs': {'n_itrs': 1000},
+        'ro_kwargs': {'min_n_samples': 16000},
+    },
+}
+
+config_mujoco_walker2d_traj = def_traj_config(config_mujoco_walker2d)
+
