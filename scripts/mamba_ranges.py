@@ -6,14 +6,14 @@ from scripts import ranges as R
 
 
 range_common = [
-    [['seed'], [x * 100 for x in range(8)]],
+    [['seed'], [x * 100 for x in range(4)]],
 ]
 
 # basic baseline
 
 range_pg = [
     [['top_log_dir'], ['log_pg']],
-    [['algorithm', 'lambd'], [0.9, 0.98, 1.00]],
+    [['algorithm', 'lambd'], [0.0, 0.9, 0.99]],
     [['use_experts'], [False]],
 ]
 range_pg = R.merge_ranges(range_common, range_pg)
@@ -61,12 +61,21 @@ range_softmax = R.merge_ranges(range_common, range_softmax)
 
 range_max = [
     [['top_log_dir'], ['log_max']],
-    [['algorithm', 'lambd'], [0., 0.1, 0.5, 0.9]],
-    [['n_experts'], [1, 2, 4, 8]],
+    [['algorithm', 'lambd'], [0.9]],
+    [['n_experts'], [1, 2, 4,]],
     [['algorithm', 'strategy'], ['max']],
     [['algorithm', 'policy_as_expert'], [False]],
 ]
 range_max = R.merge_ranges(range_common, range_max)
+
+range_agg = [
+    [['top_log_dir'], ['log_max']],
+    [['algorithm', 'lambd'], [0.]],
+    [['n_experts'], [1,]],
+    [['algorithm', 'strategy'], ['max']],
+    [['algorithm', 'policy_as_expert'], [False]],
+]
+range_agg = R.merge_ranges(range_common, range_agg)
 
 range_uniform = [
     [['top_log_dir'], ['log_uniform']],
@@ -102,10 +111,10 @@ range_agg_debug= [
     [['algorithm', 'strategy'], ['max']],
     [['algorithm', 'policy_as_expert'], [False]],
     [['algorithm', 'use_bc'], [True]],
-    [['algorithm', 'lr'], [0.1, 0.05, 0.001]],
-    [['algorithm', 'n_bc_steps'], [0, 100, 1000]],
-    [['algorithm', 'n_value_steps'], [10, 100, 1000]],
-    [['algorithm', 'max_n_batches_experts'], [2, 10, 100,]],
-    [['value_units'], [(256, 256), (512, 512), (256,256,256)]],
+    [['algorithm', 'lr'], [0.1]], #, 0.05, 0.001]],
+    [['algorithm', 'n_bc_steps'], [1000]],
+    [['algorithm', 'n_value_steps'], [200, 300, 400]], #, 100, 1000]],
+    [['algorithm', 'max_n_batches_experts'], [1, 2, 3, 4, 10]],
+    [['value_units'], [(256, 256)]], #, (512, 512), (256,256,256)]],
 ]
 range_agg_debug = R.merge_ranges(range_common, range_agg_debug)

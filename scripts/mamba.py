@@ -154,7 +154,7 @@ CONFIG = {
         'envid':  'DartCartPole-v1',
         'horizon': 1000,  # the max length of rollouts in training
         'gamma': 1.0,
-        'n_processes': 1,
+        'n_processes': 8,
         'min_ro_per_process': 2,  # needs to be at least 2 so the experts will be rollout
         'max_run_calls':25,
         'rw_scale':0.01,
@@ -185,10 +185,10 @@ CONFIG = {
         'eps':1.0,
         'strategy':'max',
         'policy_as_expert': False,
-        'max_n_batches_experts':100,
+        'max_n_batches_experts':2,
         'use_bc': True,
-        'n_bc_steps':0,
-        'n_value_steps':100,
+        'n_bc_steps':1000*2,
+        'n_value_steps':800,
     },
     'policy_units': (128,128),
     'value_units': (256,256),
@@ -196,7 +196,7 @@ CONFIG = {
     'init_lstd': -1,
     'use_experts': True,
     'expert_info':{
-        'name':'policy_best',
+        'name':'policy_200',
         'path': None, #'experts/DartCartPole-v1/'+str(100)+'/saved_policies',
         'order': True,  # True to use the ordering based on performance; False to use a random ordering
     },
