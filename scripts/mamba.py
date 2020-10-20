@@ -78,8 +78,9 @@ def create_experts(envid, name, path=None, order=True, mix_experts=False, mix_sw
     if mix_experts:
         assert mix_swtich is not None
         new_experts = []
-        for i in range(len(experts)):
+        for i in range(int(len(experts)/2)):
             new_experts.append(SwtichingExpert(experts[i], experts[-1-i], mix_swtich))
+            new_experts.append(SwtichingExpert(experts[-1-i], experts[i], mix_swtich))
         experts = new_experts
     return experts
 
