@@ -220,7 +220,7 @@ config_mujoco_halfcheetah = {
     },
     'experimenter': {
         'run_kwargs': {'n_itrs': 1000},
-        'ro_kwargs': {'min_n_samples': 16000*4},
+        'ro_kwargs': {'min_n_samples': 16000},
     },
 }
 
