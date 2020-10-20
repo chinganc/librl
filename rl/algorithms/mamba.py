@@ -209,13 +209,25 @@ class Mamba(PolicyGradient):
 
     def pretrain(self, gen_ro):
         with timed('Pretraining'):
+
+            best_index = None
+
             for _ in range(self._n_pretrain_itrs):
+
+                ro_and_performance = []
                 for k, expert in enumerate(self.experts):
                     ros, _ = gen_ro(PolicyAgent(expert))
                     ro = self.merge(ros)
                     expert_performance = np.mean([np.sum(r.rws) for r in ro])
                     print('Expert {} performance {}'.format(k, expert_performance))
-                    if k == 0 and self._use_bc:  # assumed to be the best
+                    ro_and_performance.append((ro, expert_performance))
+
+                if best_index is None:
+                    best_index = np.argmax([p for _,p in ro_and_performance])
+
+                for k, (ro, expert_performance) in enumerate(ro_and_performance):
+                    assert best_index is not None
+                    if k == best_index and self._use_bc:  # assumed to be the best
                         dagger = DAgger(self.policy, init_ro=ro)
                         _, err0, err1 = dagger.pretrain(n_steps=self._n_bc_steps)
                         print('bc',err0, err1)
